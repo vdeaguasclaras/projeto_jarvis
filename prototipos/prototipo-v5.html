@@ -1,0 +1,2501 @@
+<title>Kairós — Protótipo v5</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #f6f7f6;
+    --surface: #ffffff;
+    --surface-2: #eff1f0;
+    --ink: #1c2422;
+    --ink-2: #5b6663;
+    --ink-3: #939c98;
+    --line: #e2e6e4;
+    --accent: #14685c;
+    --accent-soft: #e0edea;
+    --accent-ink: #0e5045;
+    --today: #b45309;
+    --today-soft: #f7ead8;
+    --google: #4285c8;
+    --outlook: #2f6bb0;
+    --task: #7c6ba8;
+    --task-soft: #ece8f4;
+    --shadow: 0 10px 30px rgba(28, 36, 34, 0.10);
+    --shadow-lg: 0 24px 60px rgba(28, 36, 34, 0.18);
+    --sans: system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --serif: Georgia, "Times New Roman", serif;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141817; --surface: #1b2120; --surface-2: #222927;
+      --ink: #e7ecea; --ink-2: #a3ada9; --ink-3: #6e7975; --line: #2c3432;
+      --accent: #4cc2ae; --accent-soft: #1d3330; --accent-ink: #7fd8c8;
+      --today: #e5a04c; --today-soft: #362a1a; --task-soft: #2a2634;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7f6; --surface: #ffffff; --surface-2: #eff1f0;
+    --ink: #1c2422; --ink-2: #5b6663; --ink-3: #939c98; --line: #e2e6e4;
+    --accent: #14685c; --accent-soft: #e0edea; --accent-ink: #0e5045;
+    --today: #b45309; --today-soft: #f7ead8; --task-soft: #ece8f4;
+    --shadow: 0 10px 30px rgba(28, 36, 34, 0.10);
+    --shadow-lg: 0 24px 60px rgba(28, 36, 34, 0.18);
+  }
+  :root[data-theme="dark"] {
+    --bg: #141817; --surface: #1b2120; --surface-2: #222927;
+    --ink: #e7ecea; --ink-2: #a3ada9; --ink-3: #6e7975; --line: #2c3432;
+    --accent: #4cc2ae; --accent-soft: #1d3330; --accent-ink: #7fd8c8;
+    --today: #e5a04c; --today-soft: #362a1a; --task-soft: #2a2634;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: var(--sans); background: var(--bg); color: var(--ink);
+    font-size: 14px; line-height: 1.45; overflow: hidden;
+  }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  input, textarea { font: inherit; color: var(--ink); }
+  button:focus-visible, input:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px;
+  }
+
+  .app { display: grid; grid-template-columns: 248px 1fr; height: 100vh; }
+
+  /* ── Sidebar (PARA) ─────────────────────────────── */
+  .sidebar {
+    background: var(--surface); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 3px; padding: 16px 12px;
+    overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 14px; }
+  .brand-mark {
+    width: 28px; height: 28px; border-radius: 9px; background: var(--accent);
+    color: var(--surface); display: grid; place-items: center;
+    font-weight: 700; font-size: 14px; transition: transform 0.4s var(--ease);
+  }
+  .brand:hover .brand-mark { transform: rotate(-8deg) scale(1.06); }
+  .brand-name { font-weight: 650; font-size: 15px; }
+  .brand-sub { font-size: 10.5px; color: var(--ink-3); display: block; margin-top: -2px; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 9px; width: 100%;
+    padding: 7px 10px; border-radius: 8px; color: var(--ink-2); text-align: left;
+    transition: background 0.15s, transform 0.2s var(--ease);
+  }
+  .nav-item:hover { background: var(--surface-2); transform: translateX(2px); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+  .nav-item .count {
+    margin-left: auto; font-size: 11.5px; color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .nav-item.active .count { color: var(--accent-ink); }
+  .nav-ico { width: 16px; text-align: center; flex: none; font-size: 13px; }
+  .nav-item .due-chip {
+    margin-left: auto; font-size: 10px; background: var(--today-soft); color: var(--today);
+    border-radius: 5px; padding: 1px 6px; font-weight: 650;
+  }
+
+  .para-row { display: flex; align-items: center; padding: 14px 10px 5px; }
+  .para-label {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--ink-3); font-weight: 650;
+  }
+  .para-add {
+    margin-left: auto; width: 18px; height: 18px; border-radius: 5px; color: var(--ink-3);
+    display: grid; place-items: center; font-size: 13px; line-height: 1;
+    transition: all 0.15s;
+  }
+  .para-add:hover { background: var(--accent-soft); color: var(--accent-ink); }
+  .proj-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .sidebar-foot { margin-top: auto; padding: 12px 8px 2px; border-top: 1px solid var(--line); }
+  .theme-toggle { font-size: 12px; color: var(--ink-3); padding: 6px 4px; }
+  .theme-toggle:hover { color: var(--ink); }
+
+  /* ── Main / topbar ─────────────────────────────── */
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    display: flex; align-items: center; gap: 14px; padding: 12px 20px;
+    border-bottom: 1px solid var(--line); background: var(--surface); flex-wrap: wrap;
+  }
+  .date-title { font-size: 17px; font-weight: 650; text-wrap: balance; min-width: 180px; }
+  .date-title small { display: block; font-size: 11.5px; font-weight: 400; color: var(--ink-3); }
+  .nav-arrows { display: flex; align-items: center; gap: 2px; }
+  .nav-arrows button { padding: 5px 9px; border-radius: 7px; color: var(--ink-2); font-size: 13px; }
+  .nav-arrows button:hover { background: var(--surface-2); }
+  .btn-hoje { border: 1px solid var(--line); border-radius: 7px; padding: 4px 11px; font-size: 12.5px; color: var(--ink-2); }
+
+  .views {
+    position: relative; display: flex; background: var(--surface-2);
+    border-radius: 9px; padding: 3px; gap: 2px;
+  }
+  .views .pill {
+    position: absolute; top: 3px; bottom: 3px; border-radius: 7px; background: var(--surface);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12); z-index: 0;
+    transition: transform 0.35s var(--ease), width 0.35s var(--ease);
+  }
+  .views button {
+    position: relative; z-index: 1; padding: 5px 12px; border-radius: 7px;
+    font-size: 12.5px; color: var(--ink-2); white-space: nowrap;
+    transition: color 0.2s;
+  }
+  .views button.active { color: var(--ink); font-weight: 600; }
+  .views kbd {
+    font-family: inherit; font-size: 10px; color: var(--ink-3);
+    margin-left: 5px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px;
+  }
+
+  /* Captura rápida */
+  .capture { position: relative; flex: 1; min-width: 200px; max-width: 440px; margin-left: auto; }
+  .capture input {
+    width: 100%; padding: 8px 12px 8px 34px; border: 1px solid var(--line);
+    border-radius: 9px; background: var(--bg); font-size: 13px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .capture input::placeholder { color: var(--ink-3); }
+  .capture input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .capture .plus {
+    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+    color: var(--accent); font-size: 16px; font-weight: 600; pointer-events: none;
+  }
+  .capture-chips {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: var(--shadow); padding: 9px 11px;
+    opacity: 0; transform: translateY(-4px); pointer-events: none;
+    transition: opacity 0.18s, transform 0.18s var(--ease);
+  }
+  .capture-chips.show { opacity: 1; transform: none; pointer-events: auto; }
+  .chip {
+    display: inline-block; font-size: 11.5px; border-radius: 6px; padding: 2px 8px;
+    margin: 2px 4px 2px 0; background: var(--accent-soft); color: var(--accent-ink); font-weight: 600;
+  }
+  .chip.muted { background: var(--surface-2); color: var(--ink-2); font-weight: 400; }
+  .chip.person { background: var(--today-soft); color: var(--today); }
+  .chip.file { background: var(--surface-2); color: var(--ink-2); font-weight: 500; cursor: pointer; }
+  .chip.file:hover { background: var(--accent-soft); color: var(--accent-ink); }
+  .capture-hint { font-size: 11px; color: var(--ink-3); margin-top: 5px; }
+
+  /* ── Canvas e transições entre visões ──────────── */
+  .canvas { flex: 1; overflow: auto; padding: 18px 20px; }
+  .view { display: none; --dx: 0px; }
+  .view.active { display: block; animation: viewIn 0.38s var(--ease) both; }
+  @keyframes viewIn {
+    from { opacity: 0; transform: translateX(var(--dx)) translateY(8px) scale(0.988); filter: blur(2px); }
+    to   { opacity: 1; transform: none; filter: none; }
+  }
+  .view.active .stagger { animation: rise 0.45s var(--ease) both; animation-delay: calc(var(--i, 0) * 40ms); }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  /* Check do dia */
+  .daycheck {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    background: linear-gradient(120deg, var(--today-soft), var(--surface));
+    border: 1px solid var(--line); border-left: 3px solid var(--today);
+    border-radius: 10px; padding: 10px 14px;
+  }
+  .daycheck .ttl { font-weight: 650; font-size: 13px; }
+  .daycheck .sub { font-size: 12px; color: var(--ink-2); }
+  .daycheck .go {
+    margin-left: auto; background: var(--today); color: #fff; border-radius: 8px;
+    padding: 6px 14px; font-size: 12.5px; font-weight: 600; flex: none;
+    transition: transform 0.2s var(--ease), box-shadow 0.2s;
+  }
+  .daycheck .go:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+  .daycheck.done { border-left-color: var(--accent); background: linear-gradient(120deg, var(--accent-soft), var(--surface)); }
+
+  /* Grades de hora */
+  .timegrid { display: grid; grid-template-columns: 52px 1fr; }
+  .timegrid.week { grid-template-columns: 52px repeat(7, 1fr); }
+  .hourlabel {
+    grid-column: 1; height: 52px; font-size: 10.5px; color: var(--ink-3);
+    text-align: right; padding-right: 10px; transform: translateY(-6px);
+    font-variant-numeric: tabular-nums;
+  }
+  .daycol { position: relative; border-left: 1px solid var(--line); }
+  .hourline { height: 52px; border-bottom: 1px solid var(--line); }
+  .hourline:first-child { border-top: 1px solid var(--line); }
+  .evt {
+    position: absolute; left: 5px; right: 5px; border-radius: 7px;
+    padding: 4px 8px; font-size: 12px; overflow: hidden; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    transition: box-shadow 0.15s, transform 0.15s var(--ease);
+  }
+  .evt:hover { box-shadow: var(--shadow); transform: translateY(-1px); z-index: 5; }
+  .evt .t { font-weight: 600; display: block; line-height: 1.25; }
+  .evt .h { color: var(--ink-3); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .evt.g { border-left-color: var(--google); }
+  .evt.o { border-left-color: var(--outlook); }
+  .evt.task { border-left-color: var(--task); border-style: dashed; background: var(--surface-2); }
+  .evt.task .t::before { content: "☐ "; color: var(--task); }
+  .evt.prop {
+    border: 1.5px dashed var(--today); border-left-width: 3px; background: var(--today-soft);
+  }
+  .evt.prop .t::before { content: "✦ "; color: var(--today); }
+  .evt.prop .h::after { content: " · proposto — clique para aceitar"; color: var(--today); }
+  .src-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
+  .nowline { position: absolute; left: 0; right: 0; height: 2px; background: var(--today); z-index: 6; pointer-events: none; }
+  .nowline::before {
+    content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--today);
+  }
+  .weekhead { display: grid; grid-template-columns: 52px repeat(7, 1fr); margin-bottom: 6px; }
+  .weekhead .wd { text-align: center; font-size: 12px; color: var(--ink-2); padding: 4px 0; }
+  .weekhead .wd b { display: block; font-size: 16px; font-weight: 600; color: var(--ink); }
+  .weekhead .wd.today b {
+    background: var(--today); color: #fff; width: 28px; height: 28px; line-height: 28px;
+    border-radius: 50%; margin: 2px auto 0;
+  }
+
+  /* Mês */
+  .monthgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .monthgrid .wd {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-3); text-align: center; padding-bottom: 2px;
+  }
+  .mday {
+    min-height: 92px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 7px; font-size: 11.5px;
+    transition: transform 0.18s var(--ease), box-shadow 0.18s;
+  }
+  .mday:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .mday.out { opacity: 0.35; }
+  .mday .n { font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .mday.today { border-color: var(--today); background: var(--today-soft); }
+  .mday.today .n { color: var(--today); }
+  .mevt {
+    margin-top: 3px; padding: 1px 6px; border-radius: 5px; background: var(--accent-soft);
+    color: var(--accent-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    cursor: pointer; font-size: 11px;
+  }
+  .mevt.g { background: color-mix(in srgb, var(--google) 14%, var(--surface)); color: var(--ink-2); }
+  .mevt.o { background: color-mix(in srgb, var(--outlook) 14%, var(--surface)); color: var(--ink-2); }
+  .mmore { color: var(--ink-3); font-size: 10.5px; margin-top: 2px; }
+
+  /* Ano: densidade + linha do tempo */
+  .yeartabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .yeartabs button {
+    border: 1px solid var(--line); border-radius: 8px; padding: 5px 14px; font-size: 12.5px; color: var(--ink-2);
+    transition: all 0.2s;
+  }
+  .yeartabs button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .year-note { font-size: 12px; color: var(--ink-3); margin: 0 0 12px; }
+  .yearmode { display: none; }
+  .yearmode.active { display: block; animation: viewIn 0.3s var(--ease) both; }
+  .yearrow { display: grid; grid-template-columns: 44px 1fr; align-items: center; margin-bottom: 7px; }
+  .yearrow .mn { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-2); font-weight: 650; }
+  .yeardays { display: grid; grid-template-columns: repeat(37, 1fr); gap: 3px; }
+  .yd { aspect-ratio: 1; border-radius: 4px; background: var(--surface-2); }
+  .yd.empty { background: transparent; }
+  .yd.wknd { background: var(--surface); border: 1px solid var(--line); }
+  .yd.d1 { background: color-mix(in srgb, var(--accent) 30%, var(--surface-2)); }
+  .yd.d2 { background: color-mix(in srgb, var(--accent) 55%, var(--surface-2)); }
+  .yd.d3 { background: var(--accent); }
+  .yd.today { outline: 2px solid var(--today); outline-offset: 1px; }
+  .yearlegend { display: flex; gap: 14px; align-items: center; margin-top: 14px; font-size: 11px; color: var(--ink-3); }
+  .yearlegend .yd { width: 12px; aspect-ratio: 1; display: inline-block; }
+
+  .tl { position: relative; --tl-lbl: 170px; }
+  .tl-months { display: grid; grid-template-columns: var(--tl-lbl) repeat(12, 1fr); margin-bottom: 4px; }
+  .tl-months span {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-3); text-align: center; padding: 2px 0; border-left: 1px solid var(--line);
+  }
+  .tl-months span:first-child { border-left: none; }
+  .tl-row { display: grid; grid-template-columns: var(--tl-lbl) 1fr; align-items: center; min-height: 34px; }
+  .tl-row .lbl { font-size: 12.5px; color: var(--ink-2); padding-right: 12px; display: flex; align-items: center; gap: 7px; }
+  .tl-row .lbl.sub { padding-left: 18px; font-size: 11.5px; color: var(--ink-3); }
+  .tl-track {
+    position: relative; height: 26px; border-radius: 6px;
+    background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px calc(100% / var(--tl-div, 12)));
+  }
+  .tl-bar {
+    position: absolute; top: 4px; bottom: 4px; border-radius: 6px; cursor: pointer;
+    transform-origin: left center; animation: grow 0.7s var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 90ms);
+    display: flex; align-items: center; padding: 0 8px; font-size: 10.5px; color: #fff;
+    white-space: nowrap; overflow: hidden;
+  }
+  @keyframes grow { from { transform: scaleX(0); opacity: 0; } }
+  .tl-bar.thin { top: 8px; bottom: 8px; opacity: 0.75; }
+  .tl-today {
+    position: absolute; top: 0; bottom: 0; width: 2px; background: var(--today); z-index: 3;
+  }
+  .tl-today::after {
+    content: "hoje"; position: absolute; top: -18px; left: -14px; font-size: 10px;
+    color: var(--today); font-weight: 650;
+  }
+
+  /* Tarefas (GTD) */
+  .gtd { max-width: 720px; }
+  .gtd h3 {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--ink-3);
+    margin: 20px 0 8px; font-weight: 650; display: flex; gap: 8px; align-items: baseline;
+  }
+  .gtd h3:first-child { margin-top: 0; }
+  .gtd h3 .count { font-variant-numeric: tabular-nums; }
+  .todo {
+    display: flex; align-items: center; gap: 11px; padding: 9px 12px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 9px; margin-bottom: 6px;
+    transition: transform 0.2s var(--ease), opacity 0.35s, box-shadow 0.15s;
+  }
+  .todo:hover { box-shadow: var(--shadow); }
+  .todo .box {
+    width: 18px; height: 18px; border: 1.5px solid var(--ink-3); border-radius: 6px; flex: none;
+    display: grid; place-items: center; color: transparent; font-size: 12px;
+    transition: all 0.2s var(--ease); cursor: pointer;
+  }
+  .todo .box:hover { border-color: var(--accent); }
+  .todo.done { opacity: 0.45; }
+  .todo.done .box { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .todo.done .txt { text-decoration: line-through; }
+  .todo .txt { flex: 1; min-width: 0; }
+  .todo .chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+  .todo .chip { margin: 0; font-size: 10.5px; padding: 1px 7px; }
+
+  /* Grafo */
+  .graphwrap { position: relative; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+  #graph { display: block; width: 100%; height: min(62vh, 560px); cursor: grab; }
+  #graph:active { cursor: grabbing; }
+  .graphlegend {
+    position: absolute; left: 12px; bottom: 10px; display: flex; gap: 12px; font-size: 11px; color: var(--ink-2);
+    background: color-mix(in srgb, var(--surface) 82%, transparent); border-radius: 8px; padding: 5px 10px;
+    backdrop-filter: blur(4px);
+  }
+  .graphlegend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+
+  /* Página de projeto (estilo Notion) */
+  .pagewrap { max-width: 760px; }
+  .page-back { color: var(--ink-3); font-size: 12.5px; margin-bottom: 14px; padding: 4px 8px; border-radius: 6px; }
+  .page-back:hover { background: var(--surface-2); color: var(--ink); }
+  .page-head h1 { font-size: 26px; margin: 0 0 4px; font-weight: 700; letter-spacing: -0.01em; }
+  .page-props { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+  .page-desc { font-family: var(--serif); font-size: 15px; color: var(--ink-2); max-width: 62ch; margin: 12px 0 0; line-height: 1.6; }
+  .progress { height: 6px; border-radius: 3px; background: var(--surface-2); margin: 16px 0 4px; overflow: hidden; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; transition: width 0.9s var(--ease) 0.2s; }
+  .progress-lbl { font-size: 11px; color: var(--ink-3); }
+  .page-cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 26px; margin-top: 10px; }
+  .page-sec h3 {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--ink-3);
+    margin: 18px 0 8px; font-weight: 650;
+  }
+  .goal { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; font-size: 13px; color: var(--ink-2); }
+  .goal.ok { color: var(--ink-3); text-decoration: line-through; }
+  .goal .m { color: var(--accent); flex: none; }
+  .linknote {
+    display: block; width: 100%; text-align: left; padding: 8px 10px; border: 1px solid var(--line);
+    border-radius: 8px; margin-bottom: 6px; font-size: 12.5px; color: var(--ink-2);
+  }
+  .linknote:hover { background: var(--surface-2); }
+  .linknote b { color: var(--ink); display: block; font-size: 13px; }
+
+  /* ── Painel de detalhe ─────────────────────────── */
+  .detail {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 94vw; z-index: 48;
+    background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--shadow-lg);
+    transform: translateX(105%); transition: transform 0.32s var(--ease);
+    display: flex; flex-direction: column;
+  }
+  .detail.open { transform: translateX(0); }
+  .detail-head { display: flex; align-items: flex-start; gap: 10px; padding: 18px 20px 10px; }
+  .detail-head h2 { font-size: 17px; margin: 0; font-weight: 650; text-wrap: balance; }
+  .detail-close { margin-left: auto; color: var(--ink-3); font-size: 18px; padding: 2px 8px; }
+  .detail-body { padding: 0 20px 24px; overflow-y: auto; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 14px; }
+  .meta .chip { margin: 0; }
+  .detail h3 {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--ink-3);
+    margin: 18px 0 8px; font-weight: 650;
+  }
+  .note { font-family: var(--serif); font-size: 14.5px; line-height: 1.62; max-width: 62ch; }
+  .note p { margin: 0 0 10px; }
+  .note mark {
+    background: color-mix(in srgb, var(--today) 22%, transparent); color: inherit;
+    border-radius: 3px; padding: 0 2px;
+  }
+  .wikilink {
+    color: var(--accent-ink); background: var(--accent-soft); border-radius: 4px;
+    padding: 0 3px; text-decoration: none; cursor: pointer;
+  }
+  .wikilink:hover { text-decoration: underline; }
+  .embed {
+    border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 8px 0;
+  }
+  .embed .ph {
+    aspect-ratio: 16/9; display: grid; place-items: center; color: #fff; font-size: 12px;
+    background:
+      radial-gradient(circle at 30% 35%, color-mix(in srgb, var(--accent) 80%, #000) 0, transparent 55%),
+      radial-gradient(circle at 75% 70%, color-mix(in srgb, var(--task) 70%, #000) 0, transparent 50%),
+      var(--ink);
+  }
+  .embed .ph.video { position: relative; }
+  .embed .ph.video::before {
+    content: "▶"; position: absolute; width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(255,255,255,0.92); color: #1c2422; display: grid; place-items: center; font-size: 15px;
+    padding-left: 3px;
+  }
+  .embed figcaption { font-size: 11px; color: var(--ink-3); padding: 6px 10px; }
+  .backlink {
+    display: block; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+    margin-bottom: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; text-align: left; width: 100%;
+  }
+  .backlink:hover { background: var(--surface-2); }
+  .backlink b { color: var(--ink); display: block; font-size: 13px; }
+  .tasklist { list-style: none; margin: 0; padding: 0; }
+  .tasklist li { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; font-size: 13px; }
+  .tasklist .bx { color: var(--task); }
+
+  /* ── Modais ────────────────────────────────────── */
+  .scrim {
+    position: fixed; inset: 0; background: rgba(15, 20, 18, 0.35); z-index: 45;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s; backdrop-filter: blur(2px);
+  }
+  .scrim.show { opacity: 1; pointer-events: auto; }
+  .modal-wrap {
+    position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px;
+    pointer-events: none;
+  }
+  .modal {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: var(--shadow-lg); width: 100%; max-width: 540px; max-height: 86vh; overflow-y: auto;
+    opacity: 0; transform: translateY(18px) scale(0.965);
+    transition: opacity 0.28s, transform 0.34s var(--ease); pointer-events: none;
+  }
+  .modal.open { opacity: 1; transform: none; pointer-events: auto; }
+  .modal-pad { padding: 22px 24px; }
+  .modal h2 { font-size: 18px; margin: 0 0 2px; font-weight: 650; }
+  .modal .sub { font-size: 12.5px; color: var(--ink-3); margin: 0 0 16px; }
+  .code-steps { display: flex; gap: 4px; margin: 0 0 16px; }
+  .code-steps span {
+    flex: 1; text-align: center; font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 5px 2px; border-radius: 7px; background: var(--surface-2); color: var(--ink-3); font-weight: 600;
+  }
+  .code-steps span.on { background: var(--accent-soft); color: var(--accent-ink); }
+
+  .triage-card {
+    border: 1px solid var(--line); border-radius: 12px; padding: 16px;
+    animation: cardIn 0.35s var(--ease) both;
+  }
+  @keyframes cardIn { from { opacity: 0; transform: translateX(26px); } }
+  .triage-card.out { animation: cardOut 0.28s var(--ease) both; }
+  @keyframes cardOut { to { opacity: 0; transform: translateX(-30px); } }
+  .triage-src { font-size: 11px; color: var(--ink-3); margin-bottom: 5px; }
+  .triage-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .triage-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tri-btn {
+    border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; font-size: 12.5px;
+    text-align: left; color: var(--ink-2); transition: all 0.15s;
+  }
+  .tri-btn b { display: block; color: var(--ink); font-size: 13px; }
+  .tri-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .tri-btn.warm:hover { border-color: var(--today); background: var(--today-soft); }
+  .triage-progress { font-size: 11.5px; color: var(--ink-3); margin-top: 14px; text-align: center; font-variant-numeric: tabular-nums; }
+  .allclear { text-align: center; padding: 26px 10px 14px; }
+  .allclear .big { font-size: 34px; }
+  .allclear h4 { margin: 8px 0 4px; font-size: 16px; }
+  .allclear p { font-size: 12.5px; color: var(--ink-2); margin: 0; }
+
+  .wk-step { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); align-items: flex-start; }
+  .wk-step:last-of-type { border-bottom: none; }
+  .wk-num {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink);
+    display: grid; place-items: center; font-size: 11px; font-weight: 700; flex: none; margin-top: 1px;
+  }
+  .wk-step b { display: block; font-size: 13.5px; }
+  .wk-step p { margin: 2px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .wk-step .chip { margin-top: 6px; }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 11.5px; color: var(--ink-2); margin-bottom: 4px; font-weight: 600; }
+  .field input, .field textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+    background: var(--bg); font-size: 13px;
+  }
+  .field input:focus, .field textarea:focus { border-color: var(--accent); outline: none; }
+  .modal-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  .btn {
+    border-radius: 9px; padding: 8px 16px; font-size: 13px; font-weight: 600;
+    transition: transform 0.15s var(--ease);
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary { background: var(--accent); color: var(--surface); }
+  .btn.ghost { color: var(--ink-2); border: 1px solid var(--line); }
+
+  .toast {
+    position: fixed; bottom: 78px; left: 50%; transform: translate(-50%, 16px);
+    background: var(--ink); color: var(--bg); border-radius: 10px; padding: 9px 16px;
+    font-size: 13px; opacity: 0; transition: all 0.3s var(--ease); z-index: 70; pointer-events: none;
+    max-width: 88vw; box-shadow: var(--shadow-lg);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* Filtros das visões de calendário */
+  .filterbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
+  .filterbar .flabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); font-weight: 650; margin-right: 2px; }
+  .fchip { border: 1px solid var(--line); border-radius: 99px; padding: 3px 11px; font-size: 12px; color: var(--ink-2); transition: all 0.15s; }
+  .fchip:hover { border-color: var(--accent); }
+  .fchip.on { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; }
+  .fchip .fdot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
+  .evt.dim, .mevt.dim { opacity: 0.14; filter: grayscale(0.6); pointer-events: none; }
+  .tl-group.dim, .tl-row.dim { opacity: 0.2; }
+  .todo.dim, .kcard.dim { opacity: 0.18; }
+
+  /* Autocompletar (@pessoa, #projeto) */
+  .ac-list { border-top: 1px solid var(--line); margin-top: 7px; padding-top: 5px; }
+  .ac-item { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 6px 8px; border-radius: 7px; font-size: 12.5px; color: var(--ink-2); }
+  .ac-item:hover, .ac-item.sel { background: var(--accent-soft); color: var(--accent-ink); }
+  .ac-item .k { margin-left: auto; font-size: 10px; color: var(--ink-3); }
+
+  /* Linha do tempo: expandir/recolher e janela de meses */
+  .tl-row .lbl.parent { cursor: pointer; }
+  .tl-row .caret { font-size: 9px; color: var(--ink-3); transition: transform 0.25s var(--ease); width: 10px; flex: none; }
+  .tl-group.open .caret { transform: rotate(90deg); }
+  .tl-kids { overflow: hidden; max-height: 0; transition: max-height 0.35s var(--ease); }
+  .tl-group.open .tl-kids { max-height: 300px; }
+  .rangebar { display: flex; gap: 6px; margin: 0 0 12px; flex-wrap: wrap; }
+  .rangebar button { border: 1px solid var(--line); border-radius: 8px; padding: 4px 12px; font-size: 12px; color: var(--ink-2); }
+  .rangebar button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .tl-daysrow { display: grid; grid-template-columns: var(--tl-lbl) repeat(31, 1fr); margin-bottom: 4px; }
+  .tl-daysrow span { font-size: 9px; color: var(--ink-3); text-align: center; font-variant-numeric: tabular-nums; }
+  .tl-dens { display: grid; grid-template-columns: repeat(31, 1fr); gap: 2px; align-items: center; height: 26px; }
+
+  /* Triagem em etapas (CODE) */
+  .tri-cls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .tri-cls .tri-btn { text-align: center; padding: 12px 8px; }
+  .tri-sec { display: flex; gap: 6px; }
+  .tri-sec .tri-btn { flex: 1; text-align: center; padding: 7px; font-size: 11.5px; }
+  .pillrow { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 10px; }
+  .pill-opt { border: 1px solid var(--line); border-radius: 99px; padding: 3px 11px; font-size: 12px; color: var(--ink-2); transition: all 0.15s; }
+  .pill-opt:hover { border-color: var(--accent); }
+  .pill-opt.on { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; }
+  .pill-opt.warm.on { background: var(--today); border-color: var(--today); }
+  .tri-back { font-size: 11.5px; color: var(--ink-3); padding: 2px 6px; margin-bottom: 8px; }
+  .tri-back:hover { color: var(--ink); }
+  .flab { font-size: 11px; color: var(--ink-3); font-weight: 650; text-transform: uppercase; letter-spacing: 0.07em; margin: 10px 0 4px; }
+  .tri-input, .tri-ta {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+    background: var(--bg); font-size: 13px;
+  }
+  .tri-input:focus, .tri-ta:focus { border-color: var(--accent); outline: none; }
+
+  /* Relatório do projeto (PDF) */
+  .btn.export { border: 1px solid var(--line); color: var(--ink-2); margin-top: 14px; font-weight: 500; }
+  .btn.export:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .report .rp-head { border-bottom: 2px solid var(--ink); padding-bottom: 10px; margin-bottom: 14px; }
+  .report h1 { font-size: 20px; margin: 0; }
+  .report .rp-meta { font-size: 11.5px; color: var(--ink-2); margin-top: 4px; }
+  .report h4 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); margin: 16px 0 6px; }
+  .report p, .report li { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; margin: 0 0 4px; }
+  .report ul { margin: 0; padding-left: 18px; }
+  @media print {
+    body > *:not(.modal-wrap) { display: none !important; }
+    .modal-wrap { position: static !important; padding: 0 !important; display: block !important; }
+    .modal { display: none !important; }
+    #modalReport.open { display: block !important; opacity: 1 !important; transform: none !important; box-shadow: none !important; border: none !important; max-height: none !important; max-width: none !important; }
+    #modalReport .modal-foot { display: none !important; }
+  }
+
+  /* Prioridades do dia / da semana */
+  .prio-row {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 14px;
+    padding: 8px 12px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .prio-row .plabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--today); font-weight: 700; margin-right: 2px; }
+  .prio-chip {
+    border: 1px solid var(--line); border-radius: 99px; padding: 3px 12px; font-size: 12.5px;
+    color: var(--ink); font-weight: 550; background: var(--bg);
+  }
+  .prio-chip.done { color: var(--ink-3); text-decoration: line-through; font-weight: 400; }
+  .prio-chip::before { content: "★ "; color: var(--today); font-size: 11px; }
+  .prio-chip.done::before { content: "✓ "; color: var(--accent); }
+
+  /* Controles da visão Tarefas */
+  .gtd-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .gtd-controls .pillrow { margin: 0; }
+
+  /* Kanban */
+  .kanban { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; align-items: start; }
+  .kcol { background: var(--surface-2); border-radius: 10px; padding: 8px; }
+  .kcol h4 {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3);
+    margin: 2px 4px 8px; font-weight: 650; display: flex; justify-content: space-between;
+  }
+  .kcard {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 9px; margin-bottom: 6px; font-size: 12.5px; cursor: pointer;
+    transition: transform 0.15s var(--ease), box-shadow 0.15s;
+  }
+  .kcard:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+  .kcard .chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+  .kcard .chip { margin: 0; font-size: 10.5px; padding: 1px 7px; }
+  .kcard.done-card { opacity: 0.55; }
+  .kcard.done-card .kt { text-decoration: line-through; }
+
+  /* Listas mobile (PARA no menu inferior) */
+  .listrow {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    padding: 13px 14px; border: 1px solid var(--line); border-radius: 10px;
+    margin-bottom: 8px; background: var(--surface); font-size: 14px;
+  }
+  .listrow:hover { box-shadow: var(--shadow); }
+  .listrow .count { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+  .listrow .go { color: var(--ink-3); }
+
+  /* Entrada livre na triagem */
+  .tri-free { display: none; margin: -4px 0 10px; }
+
+  /* Vislumbre da semana (revisão) */
+  .wk-glance { display: flex; gap: 5px; margin-top: 8px; }
+  .wk-glance span {
+    flex: 1; text-align: center; border: 1px solid var(--line); border-radius: 8px;
+    padding: 5px 2px; font-size: 11px; color: var(--ink-2);
+  }
+  .wk-glance b { display: block; font-size: 13px; color: var(--ink); }
+  .wk-glance span.warn { border-color: var(--today); background: var(--today-soft); }
+  .wk-stats { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+  /* ── Módulo de Notas (Zettelkasten) ── */
+  .notes-wrap { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+  .note-list-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .note-search {
+    flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px;
+    padding: 7px 10px; background: var(--surface); font-size: 12.5px;
+  }
+  .note-search:focus { border-color: var(--accent); outline: none; }
+  .btn-newnote { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--accent-ink); font-weight: 600; flex: none; }
+  .btn-newnote:hover { background: var(--accent-soft); }
+  .note-group-h {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-3); font-weight: 650; margin: 12px 2px 6px;
+  }
+  .note-item {
+    display: block; width: 100%; text-align: left; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; margin-bottom: 6px;
+    transition: transform 0.15s var(--ease), box-shadow 0.15s;
+  }
+  .note-item:hover { box-shadow: var(--shadow); }
+  .note-item.active { border-color: var(--accent); background: var(--accent-soft); }
+  .note-item b { display: block; font-size: 13px; }
+  .note-item .snip { font-size: 11.5px; color: var(--ink-3); display: block; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .note-item .chips { margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap; }
+  .note-item .chip { margin: 0; font-size: 10px; padding: 1px 6px; }
+  .note-editor { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; min-height: 420px; }
+  .note-ed-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .note-ed-head h2 { font-size: 19px; margin: 0; font-weight: 650; flex: 1; min-width: 140px; }
+  .note-md {
+    width: 100%; min-height: 320px; border: 1px solid var(--line); border-radius: 9px;
+    padding: 12px 14px; background: var(--bg);
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: 12.5px; line-height: 1.6; resize: vertical;
+  }
+  .note-md:focus { border-color: var(--accent); outline: none; }
+  .note-tag { color: var(--task); background: var(--task-soft); border-radius: 4px; padding: 0 4px; font-size: 0.9em; cursor: pointer; }
+  .note-render h1 { font-size: 20px; margin: 6px 0 10px; font-family: var(--sans); }
+  .note-render h2 { font-size: 15px; margin: 16px 0 6px; font-family: var(--sans); }
+  .note-render ul, .note-render ol { margin: 0 0 10px; padding-left: 20px; }
+  .note-render li { margin: 3px 0; }
+  .note-render blockquote {
+    border-left: 3px solid var(--accent); margin: 10px 0; padding: 6px 12px;
+    color: var(--ink-2); background: var(--surface-2); border-radius: 0 8px 8px 0;
+  }
+  .note-h3 {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--ink-3); margin: 18px 0 8px; font-weight: 650; font-family: var(--sans);
+  }
+
+  /* Painel de detalhe dinâmico (pessoa / nó do grafo) */
+  .dyn-title { font-size: 15px; font-weight: 650; margin: 2px 0 8px; }
+  .mini-prog { height: 5px; border-radius: 3px; background: var(--surface-2); margin: 8px 0 4px; overflow: hidden; }
+  .mini-prog i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+
+  /* ── Mobile ────────────────────────────────────── */
+  .bottomnav { display: none; }
+  @media (max-width: 900px) {
+    body { overflow: auto; }
+    .app { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+    .sidebar { display: none; }
+    .topbar { padding: 10px 12px; gap: 8px; }
+    .date-title { font-size: 15px; min-width: 0; }
+    .views { overflow-x: auto; max-width: 100%; }
+    .views kbd { display: none; }
+    /* Captura fixa embaixo, acima do menu — melhor para digitar */
+    .capture {
+      position: fixed; left: 10px; right: 10px; z-index: 32;
+      bottom: calc(64px + env(safe-area-inset-bottom));
+      max-width: none; margin: 0;
+    }
+    .capture input { box-shadow: var(--shadow); background: var(--surface); }
+    .capture-chips { top: auto; bottom: calc(100% + 6px); }
+    .canvas { padding: 12px 10px 150px; }
+    .detail { width: 100%; max-width: none; }
+    .timegrid { grid-template-columns: 40px 1fr; }
+    .timegrid.week { grid-template-columns: 40px repeat(7, 1fr); }
+    .weekhead { grid-template-columns: 40px repeat(7, 1fr); }
+    .mday { min-height: 56px; padding: 4px; }
+    .mevt, .mmore { display: none; }
+    .mday .dots { display: flex; gap: 2px; margin-top: 3px; }
+    .page-cols { grid-template-columns: 1fr; gap: 4px; }
+    .tl { --tl-lbl: 90px; }
+    .tl-row .lbl { font-size: 11px; }
+    .tl-bar { font-size: 0; }
+    .yd { border-radius: 2px; }
+    .triage-actions { grid-template-columns: 1fr; }
+    .tri-cls { grid-template-columns: 1fr; }
+    .kanban { display: flex; overflow-x: auto; padding-bottom: 8px; }
+    .kanban .kcol { min-width: 190px; flex: none; }
+    .notes-wrap { grid-template-columns: 1fr; }
+    #noteList { max-height: 34vh; overflow-y: auto; }
+    .note-editor { padding: 14px; }
+    .bottomnav {
+      display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+      background: var(--surface); border-top: 1px solid var(--line);
+      padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    }
+    .bottomnav button {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
+      font-size: 10.5px; color: var(--ink-3); padding: 4px 0;
+    }
+    .bottomnav button.active { color: var(--accent-ink); font-weight: 600; }
+    .bottomnav .ico { font-size: 17px; }
+  }
+  @media (min-width: 901px) { .mday .dots { display: none; } }
+</style>
+
+<div class="app">
+  <!-- ══ Sidebar PARA ══ -->
+  <nav class="sidebar" aria-label="Navegação PARA">
+    <div class="brand">
+      <div class="brand-mark">K</div>
+      <div>
+        <span class="brand-name">Kairós</span>
+        <span class="brand-sub">o tempo certo · protótipo v5</span>
+      </div>
+    </div>
+
+    <button class="nav-item active"><span class="nav-ico">◉</span> Hoje <span class="count">6</span></button>
+    <button class="nav-item" id="navInbox"><span class="nav-ico">↓</span> Inbox <span class="count" id="inboxCount">3</span></button>
+    <button class="nav-item" id="navNotes"><span class="nav-ico">✎</span> Notas <span class="count">7</span></button>
+    <button class="nav-item" id="navWeekly"><span class="nav-ico">⟳</span> Revisão semanal <span class="due-chip">dom</span></button>
+
+    <div class="para-row"><span class="para-label">Projetos</span><button class="para-add" data-kind="Projeto" aria-label="Novo projeto">+</button></div>
+    <div id="projList">
+      <button class="nav-item proj-open" data-proj="sede"><span class="proj-dot" style="background:var(--today)"></span> Mudança de sede <span class="count">5</span></button>
+      <button class="nav-item proj-open" data-proj="rel"><span class="proj-dot" style="background:var(--accent)"></span> Relatório anual 2026 <span class="count">8</span></button>
+      <button class="nav-item proj-open" data-proj="sist"><span class="proj-dot" style="background:var(--task)"></span> Sistema de atendimento <span class="count">12</span></button>
+    </div>
+
+    <div class="para-row"><span class="para-label">Áreas</span><button class="para-add" data-kind="Área" aria-label="Nova área">+</button></div>
+    <div id="areaList">
+      <button class="nav-item"><span class="nav-ico">▣</span> Equipe</button>
+      <button class="nav-item"><span class="nav-ico">▣</span> Atendimentos</button>
+      <button class="nav-item"><span class="nav-ico">▣</span> Financeiro</button>
+    </div>
+
+    <div class="para-row"><span class="para-label">Recursos</span><button class="para-add" data-kind="Recurso" aria-label="Novo recurso">+</button></div>
+    <div id="recList">
+      <button class="nav-item"><span class="nav-ico">◈</span> Gestão de projetos</button>
+      <button class="nav-item"><span class="nav-ico">◈</span> Leituras</button>
+    </div>
+
+    <div class="para-row"><span class="para-label">&nbsp;</span></div>
+    <button class="nav-item" id="navArchive"><span class="nav-ico">▤</span> Arquivo</button>
+
+    <div class="sidebar-foot">
+      <button class="theme-toggle" id="themeToggle">◐ Alternar tema</button>
+    </div>
+  </nav>
+
+  <!-- ══ Main ══ -->
+  <main class="main">
+    <header class="topbar">
+      <div class="date-title" id="dateTitle">Quinta-feira, 9 de julho
+        <small>Semana 28 · julho de 2026</small>
+      </div>
+      <div class="nav-arrows">
+        <button aria-label="Anterior">‹</button>
+        <button class="btn-hoje">Hoje</button>
+        <button aria-label="Próximo">›</button>
+      </div>
+      <div class="views" role="tablist" aria-label="Visões" id="viewTabs">
+        <span class="pill" id="viewPill"></span>
+        <button role="tab" data-view="dia" class="active">Dia <kbd>1</kbd></button>
+        <button role="tab" data-view="semana">Semana <kbd>2</kbd></button>
+        <button role="tab" data-view="mes">Mês <kbd>3</kbd></button>
+        <button role="tab" data-view="ano">Ano <kbd>4</kbd></button>
+        <button role="tab" data-view="tarefas">Tarefas <kbd>5</kbd></button>
+        <button role="tab" data-view="grafo">Grafo <kbd>6</kbd></button>
+        <button role="tab" data-view="notas">Notas <kbd>7</kbd></button>
+      </div>
+      <div class="capture">
+        <span class="plus">+</span>
+        <input id="captureInput" type="text"
+          placeholder="Capturar… ex.: revisar edital dia 24 14h @Ana #Sede /Financeiro"
+          autocomplete="off">
+        <div class="capture-chips" id="captureChips"></div>
+      </div>
+    </header>
+
+    <div class="canvas">
+      <div class="filterbar" id="filterbar"></div>
+      <!-- ── DIA ── -->
+      <section class="view active" id="view-dia" role="tabpanel">
+        <div class="daycheck stagger" id="daycheck" style="--i:0">
+          <div>
+            <div class="ttl">◉ Check do dia</div>
+            <div class="sub">Sua Inbox tem <b id="dcCount">3</b> itens esperando triagem — etapa <b>Organizar</b> do CODE.</div>
+          </div>
+          <button class="go" id="dcGo">Fazer o check</button>
+        </div>
+        <div class="prio-row stagger" style="--i:0.5">
+          <span class="plabel">Prioridades de hoje</span>
+          <span class="prio-chip done">Check do dia</span>
+          <span class="prio-chip">Parecer do contrato 114</span>
+          <span class="prio-chip">Rascunho do relatório anual</span>
+        </div>
+        <div class="timegrid stagger" id="dayGrid" style="--i:1"></div>
+      </section>
+
+      <!-- ── SEMANA ── -->
+      <section class="view" id="view-semana" role="tabpanel">
+        <div class="prio-row stagger" style="--i:0">
+          <span class="plabel">Prioridades da semana</span>
+          <span class="prio-chip">Fechar o parecer 114</span>
+          <span class="prio-chip">Avançar o rascunho do relatório</span>
+          <span class="prio-chip">Destravar o Sistema de atendimento</span>
+        </div>
+        <div class="weekhead stagger" id="weekHead" style="--i:0.5"></div>
+        <div class="timegrid week stagger" id="weekGrid" style="--i:1"></div>
+      </section>
+
+      <!-- ── MÊS ── -->
+      <section class="view" id="view-mes" role="tabpanel">
+        <div class="yeartabs stagger" style="--i:0">
+          <button class="active" data-mmode="grid">Grade</button>
+          <button data-mmode="tl">Linha do tempo</button>
+        </div>
+        <div class="yearmode active" id="mmode-grid">
+          <div class="monthgrid" id="monthGrid"></div>
+        </div>
+        <div class="yearmode" id="mmode-tl">
+          <p class="year-note">Julho de 2026, dia a dia — densidade de compromissos no alto e barras com a duração de projetos e ações no mês.</p>
+          <div class="tl" id="mtl"></div>
+        </div>
+      </section>
+
+      <!-- ── ANO ── -->
+      <section class="view" id="view-ano" role="tabpanel">
+        <div class="yeartabs stagger" style="--i:0">
+          <button class="active" data-ymode="dens">Densidade</button>
+          <button data-ymode="tl">Linhas do tempo</button>
+        </div>
+
+        <div class="yearmode active" id="ymode-dens">
+          <p class="year-note">Cada linha é um mês, alinhado por dia da semana. A cor mostra a densidade de compromissos.</p>
+          <div id="yearGrid"></div>
+          <div class="yearlegend">
+            <span>menos</span>
+            <span class="yd"></span><span class="yd d1"></span><span class="yd d2"></span><span class="yd d3"></span>
+            <span>mais</span>
+            <span style="margin-left:12px">■ contorno âmbar = hoje</span>
+          </div>
+        </div>
+
+        <div class="yearmode" id="ymode-tl">
+          <p class="year-note">Barras contínuas com a duração de projetos e ações. Clique no <b>nome</b> de um projeto para expandir/recolher as ações; clique na <b>barra</b> para abrir a página do projeto.</p>
+          <div class="rangebar" id="tlRange">
+            <button class="active" data-range="0,12">Ano todo</button>
+            <button data-range="0,6">1º semestre</button>
+            <button data-range="6,12">2º semestre</button>
+            <button data-range="6,9">Trimestre atual</button>
+          </div>
+          <div class="tl">
+            <div class="tl-months" id="tlMonths"></div>
+            <div id="tlRows" style="position:relative"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── TAREFAS (GTD) ── -->
+      <section class="view" id="view-tarefas" role="tabpanel">
+        <div class="gtd-controls stagger" style="--i:0">
+          <div class="pillrow" data-single id="gtdDay">
+            <button class="pill-opt">qua 8</button>
+            <button class="pill-opt on">qui 9 · hoje</button>
+            <button class="pill-opt">sex 10</button>
+            <button class="pill-opt">seg 13</button>
+          </div>
+          <div class="yeartabs" style="margin:0">
+            <button class="active" data-gmode="lista">Lista</button>
+            <button data-gmode="kanban">Kanban</button>
+          </div>
+        </div>
+        <div class="gtd" id="gtdList"></div>
+        <div class="kanban" id="kanban" style="display:none"></div>
+      </section>
+
+      <!-- ── GRAFO ── -->
+      <section class="view" id="view-grafo" role="tabpanel">
+        <p class="year-note stagger" style="--i:0">Conexões entre notas, projetos, recursos e pessoas. Arraste os nós para reorganizar.</p>
+        <div class="graphwrap stagger" style="--i:1">
+          <canvas id="graph"></canvas>
+          <div class="graphlegend">
+            <span><i style="background:var(--accent)"></i>Nota</span>
+            <span><i style="background:var(--task)"></i>Projeto</span>
+            <span><i style="background:var(--today)"></i>Pessoa</span>
+            <span><i style="background:var(--ink-3)"></i>Recurso</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── PÁGINA DE PROJETO ── -->
+      <section class="view" id="view-projeto" role="tabpanel">
+        <div class="pagewrap">
+          <button class="page-back" id="pageBack">← Voltar ao calendário</button>
+          <div class="page-head">
+            <h1 id="pjTitle">Mudança de sede</h1>
+            <div class="page-props" id="pjProps"></div>
+            <p class="page-desc" id="pjDesc"></p>
+            <div class="progress"><i id="pjProg"></i></div>
+            <div class="progress-lbl" id="pjProgLbl"></div>
+            <button class="btn export" id="pjExport">⬇ Exportar relatório (PDF)</button>
+          </div>
+          <div class="page-cols">
+            <div class="page-sec">
+              <h3>Objetivos</h3>
+              <div id="pjGoals"></div>
+              <h3>Tarefas do projeto</h3>
+              <div id="pjTasks"></div>
+            </div>
+            <div class="page-sec">
+              <h3>Pessoas</h3>
+              <div id="pjPeople"></div>
+              <h3>Notas vinculadas</h3>
+              <div id="pjNotes"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── NOTAS (Zettelkasten) ── -->
+      <section class="view" id="view-notas" role="tabpanel">
+        <div class="notes-wrap">
+          <div class="note-list stagger" style="--i:0">
+            <div class="note-list-head">
+              <input class="note-search" id="noteSearch" placeholder="Buscar nota…" autocomplete="off">
+              <button class="btn-newnote" id="newNote">+ Nova</button>
+            </div>
+            <div class="pillrow" data-single id="noteGroupMode" style="margin:0 0 10px">
+              <button class="pill-opt on" data-gm="fluxo">Fluxo</button>
+              <button class="pill-opt" data-gm="grupo">Por grupo</button>
+              <button class="pill-opt" data-gm="tema">Por tema</button>
+            </div>
+            <div id="noteList"></div>
+          </div>
+          <div class="note-editor stagger" style="--i:1">
+            <div class="note-ed-head">
+              <h2 id="noteTitle"></h2>
+              <div id="noteChips"></div>
+              <div class="yeartabs" style="margin:0">
+                <button class="active" data-nmode="ver">Visualizar</button>
+                <button data-nmode="editar">Editar</button>
+              </div>
+            </div>
+            <div class="note note-render" id="noteRender"></div>
+            <textarea class="note-md" id="noteMd" style="display:none" spellcheck="false"></textarea>
+            <div class="note-h3">Backlinks — notas que apontam para cá</div>
+            <div id="noteBacklinks"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── LISTA (mobile: Projetos / Áreas / Recursos) ── -->
+      <section class="view" id="view-lista" role="tabpanel">
+        <div class="pagewrap">
+          <h1 id="liTitle" style="font-size:20px;margin:4px 0 4px"></h1>
+          <p class="year-note" id="liHint"></p>
+          <div id="liBody"></div>
+        </div>
+      </section>
+
+      <!-- ── PÁGINA GENÉRICA (Área / Recurso / Arquivo) ── -->
+      <section class="view" id="view-pagina" role="tabpanel">
+        <div class="pagewrap">
+          <button class="page-back" data-back>← Voltar ao calendário</button>
+          <div class="page-head">
+            <h1 id="pgTitle"></h1>
+            <div class="page-props" id="pgProps"></div>
+            <p class="page-desc" id="pgDesc"></p>
+          </div>
+          <div class="page-cols" id="pgCols"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ══ Painel de detalhe ══ -->
+<div class="scrim" id="scrim"></div>
+<aside class="detail" id="detail" aria-label="Detalhe do item">
+  <div class="detail-head">
+    <h2 id="detailTitle">Reunião de equipe</h2>
+    <button class="detail-close" id="detailClose" aria-label="Fechar">×</button>
+  </div>
+  <div class="detail-body">
+    <div class="meta" id="detailMeta"></div>
+    <div id="detailDyn" style="display:none"></div>
+    <div id="detailStatic">
+
+    <h3>Participantes</h3>
+    <div><span class="chip person">@Ana</span> <span class="chip person">@Marcos</span> <span class="chip person">@Raul</span></div>
+
+    <h3>Nota de reunião <span style="float:right;letter-spacing:0;text-transform:none;font-weight:400">✧ destilar = destacar</span></h3>
+    <div class="note">
+      <p>Priorizamos o cronograma do <a class="wikilink">[[Sistema de atendimento]]</a> para o segundo semestre. <mark>A <a class="wikilink">@Ana</a> assume o levantamento de requisitos</mark> e apresenta na próxima segunda.</p>
+      <p>Ficou definido que o orçamento segue o modelo discutido em <a class="wikilink">[[Planejamento 2026]]</a> — ver também <a class="wikilink">[[Critérios de priorização]]</a>.</p>
+      <figure class="embed" style="margin-left:0;margin-right:0">
+        <div class="ph">foto embutida · quadro do planejamento</div>
+        <figcaption>Imagens e vídeos entram direto na nota (Markdown <code>![...]</code>)</figcaption>
+      </figure>
+    </div>
+
+    <h3>Arquivos vinculados</h3>
+    <div>
+      <span class="chip file">📄 Cronograma-2026.gsheet · Drive</span>
+      <span class="chip file">📄 Ata-junho.docx · OneDrive</span>
+    </div>
+
+    <h3>Ações extraídas</h3>
+    <ul class="tasklist">
+      <li><span class="bx">☐</span> Revisar requisitos enviados pela @Ana <span style="margin-left:auto;color:var(--ink-3);font-size:11.5px">seg</span></li>
+      <li><span class="bx">☐</span> Consolidar orçamento do semestre <span style="margin-left:auto;color:var(--ink-3);font-size:11.5px">sex</span></li>
+    </ul>
+
+    <h3>Backlinks — notas que apontam para cá</h3>
+    <button class="backlink"><b>Planejamento 2026</b> "…as decisões da reunião de equipe de julho orientam o Q3…"</button>
+    <button class="backlink"><b>Diário · 02/07</b> "…preparar pauta para a reunião de equipe de quinta…"</button>
+    </div>
+  </div>
+</aside>
+
+<!-- ══ Modal: Check do dia (triagem CODE) ══ -->
+<div class="modal-wrap">
+  <div class="modal" id="modalTriage" role="dialog" aria-label="Check do dia">
+    <div class="modal-pad">
+      <h2>Check do dia</h2>
+      <p class="sub">Quinta, 9 de julho · triagem da Inbox, um item por vez</p>
+      <div class="code-steps">
+        <span>Capturar</span><span class="on">Organizar</span><span>Destilar</span><span>Expressar</span>
+      </div>
+      <div id="triageBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Revisão semanal ══ -->
+<div class="modal-wrap">
+  <div class="modal" id="modalWeekly" role="dialog" aria-label="Revisão semanal">
+    <div class="modal-pad">
+      <h2>Revisão semanal</h2>
+      <p class="sub">Domingo, 12 de julho · fechar a semana 28, decidir a semana 29</p>
+
+      <div class="wk-step">
+        <span class="wk-num">1</span>
+        <div style="flex:1"><b>Como foi a semana 28</b>
+          <div class="wk-stats">
+            <span class="chip">14 de 19 tarefas concluídas</span>
+            <span class="chip">9h de foco protegido</span>
+            <span class="chip muted">12 capturas triadas</span>
+            <span class="chip muted" style="color:var(--today)">2 vencidas ↓ passo 4</span>
+          </div>
+          <p style="margin-top:8px">Prioridades da 28: parecer 114 <strong>✓</strong> · rascunho do relatório <strong>parcial</strong> · destravar Sistema de atendimento <strong>não andou</strong> ↓ passo 6.</p>
+        </div>
+      </div>
+
+      <div class="wk-step">
+        <span class="wk-num">2</span>
+        <div style="flex:1"><b>Vislumbre da semana 29 · 11 compromissos</b>
+          <div class="wk-glance">
+            <span>seg<b>3</b></span>
+            <span class="warn">ter<b>6h ⚠</b></span>
+            <span>qua<b>2</b></span>
+            <span>qui<b>4</b></span>
+            <span>sex<b>2</b></span>
+          </div>
+          <p>Terça está tomada por reuniões; quarta é o dia mais livre.</p>
+        </div>
+      </div>
+
+      <div class="wk-step">
+        <span class="wk-num">3</span>
+        <div style="flex:1"><b>Decisão · Prioridades da semana 29</b>
+          <p>Escolha até 3 — vão aparecer no topo do Dia e da Semana.</p>
+          <div class="pillrow" data-multi id="wkPrioRow">
+            <button class="pill-opt on">Avançar o rascunho do relatório</button>
+            <button class="pill-opt on">Destravar o Sistema de atendimento</button>
+            <button class="pill-opt">Fechar a licitação da sede</button>
+            <button class="pill-opt">Preparar reunião de diretoria</button>
+          </div>
+          <span class="chip" style="cursor:pointer" id="wkPrio">Definir prioridades →</span>
+        </div>
+      </div>
+
+      <div class="wk-step">
+        <span class="wk-num">4</span>
+        <div style="flex:1"><b>Decisão · 2 tarefas venceram sem conclusão</b>
+          <p>O Kairós <strong>sugere</strong> novos dias (pré-selecionados) — troque se preferir outros.</p>
+          <div class="flab">Enviar proposta revisada · venceu ter 07/07</div>
+          <div class="pillrow" data-single id="wkR1">
+            <button class="pill-opt on">seg 13</button><button class="pill-opt">ter 14</button><button class="pill-opt">qua 15</button><button class="pill-opt">qui 16</button><button class="pill-opt warm" data-free>outra data…</button>
+          </div>
+          <input class="tri-input tri-free" placeholder="ex.: 24/07, dia 24 ou próxima sexta">
+          <div class="flab">Ligar para o cartório · venceu qua 08/07</div>
+          <div class="pillrow" data-single id="wkR2">
+            <button class="pill-opt">seg 13</button><button class="pill-opt on">ter 14</button><button class="pill-opt">qua 15</button><button class="pill-opt">qui 16</button><button class="pill-opt warm" data-free>outra data…</button>
+          </div>
+          <input class="tri-input tri-free" placeholder="ex.: 24/07, dia 24 ou próxima sexta">
+          <span class="chip" style="cursor:pointer" id="wkResched">Confirmar reagendamento →</span>
+        </div>
+      </div>
+
+      <div class="wk-step">
+        <span class="wk-num">5</span>
+        <div style="flex:1"><b>Decisão · Proteger um bloco de foco</b>
+          <p>Espaços realmente livres na semana 29, já descontando seus compromissos:</p>
+          <div class="pillrow" data-single id="wkFocusRow">
+            <button class="pill-opt on">qua 15 · 9h–12h</button>
+            <button class="pill-opt">qui 16 · 14h–16h</button>
+            <button class="pill-opt">sex 17 · 9h–11h</button>
+            <button class="pill-opt warm" data-free>outro horário…</button>
+          </div>
+          <input class="tri-input tri-free" placeholder="ex.: seg 14h–16h">
+          <span class="chip" style="cursor:pointer" id="wkFocus">Reservar bloco →</span>
+        </div>
+      </div>
+
+      <div class="wk-step">
+        <span class="wk-num">6</span>
+        <div style="flex:1"><b>Decisão · "Sistema de atendimento" parado há 12 dias</b>
+          <p>Sem tarefa concluída nem nota nova desde 27/06. Qual é o próximo passo, e para quando?</p>
+          <input class="tri-input" id="wkProjTask" value="Combinar com a @Ana a entrega do levantamento">
+          <div class="pillrow" data-single id="wkProjDay" style="margin-top:8px">
+            <button class="pill-opt on">seg 13</button><button class="pill-opt">ter 14</button><button class="pill-opt">qua 15</button>
+          </div>
+          <span class="chip" style="cursor:pointer" id="wkProj">Criar tarefa →</span>
+        </div>
+      </div>
+
+      <div class="wk-step">
+        <span class="wk-num">7</span>
+        <div><b>Inbox em dia</b>
+          <p>Nenhum item esperando triagem. 1 ideia incubada volta em 07/10.</p>
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn ghost" data-close>Depois</button>
+        <button class="btn primary" id="wkDone">Concluir revisão ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Novo Projeto/Área/Recurso ══ -->
+<div class="modal-wrap">
+  <div class="modal" id="modalNew" role="dialog" aria-label="Criar item">
+    <div class="modal-pad">
+      <h2 id="newTitle">Novo projeto</h2>
+      <p class="sub">Só o nome é obrigatório — o resto pode vir depois.</p>
+      <div class="field"><label for="nfName">Nome</label><input id="nfName" type="text" placeholder="ex.: Curso de formação da equipe"></div>
+      <div class="field"><label for="nfDesc">Descrição</label><textarea id="nfDesc" rows="2" placeholder="Do que se trata, em uma ou duas frases"></textarea></div>
+      <div class="field" id="nfDeadlineWrap"><label for="nfDeadline">Prazo</label><input id="nfDeadline" type="text" placeholder="ex.: 30/09/2026"></div>
+      <div class="field"><label for="nfGoal">Objetivo</label><input id="nfGoal" type="text" placeholder="Como você sabe que terminou?"></div>
+      <div class="modal-foot">
+        <button class="btn ghost" data-close>Cancelar</button>
+        <button class="btn primary" id="nfSave">Criar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Relatório do projeto (PDF) ══ -->
+<div class="modal-wrap">
+  <div class="modal" id="modalReport" role="dialog" aria-label="Relatório do projeto" style="max-width:640px">
+    <div class="modal-pad report" id="reportBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══ Navegação mobile: o PARA embaixo, as visões em cima ══ -->
+<nav class="bottomnav" aria-label="Navegação">
+  <button class="active" data-mnav="dia"><span class="ico">◉</span>Hoje</button>
+  <button data-mnav="projetos"><span class="ico">▶</span>Projetos</button>
+  <button data-mnav="areas"><span class="ico">▣</span>Áreas</button>
+  <button data-mnav="recursos"><span class="ico">◈</span>Recursos</button>
+  <button data-mnav="arquivo"><span class="ico">▤</span>Arquivo</button>
+</nav>
+
+<script>
+  // ═══ Dados de demonstração (semana de 6 a 12 de julho de 2026; hoje = quinta 9) ═══
+  const TODAY_DOW = 3, H0 = 8, H1 = 19;
+  const EVENTS = [
+    { dow: 0, s: 9,    e: 9.5,  title: "Alinhamento semanal",         cal: "g",    area: "Equipe" },
+    { dow: 0, s: 14,   e: 15.5, title: "Atendimento — Sr. Almeida",   cal: "o",    area: "Atendimentos" },
+    { dow: 1, s: 10,   e: 11,   title: "Análise de contratos",        cal: "task", area: "Financeiro" },
+    { dow: 1, s: 15,   e: 16,   title: "Reunião fornecedor da sede",  cal: "o",    area: "Mudança de sede", ppl: "@Marcos" },
+    { dow: 2, s: 9,    e: 12,   title: "Bloco de foco — relatório",   cal: "task", area: "Relatório anual 2026" },
+    { dow: 2, s: 16,   e: 17,   title: "1:1 com a @Ana",              cal: "g",    area: "Equipe" },
+    { dow: 3, s: 8.5,  e: 9.25, title: "Check do dia + prioridades",  cal: "task", area: "Rotina" },
+    { dow: 3, s: 10,   e: 11,   title: "Reunião de equipe",           cal: "g",    area: "Equipe", ppl: "@Ana @Marcos" },
+    { dow: 3, s: 11.5, e: 12.5, title: "Parecer do contrato 114",     cal: "task", area: "Financeiro", ppl: "@Marcos" },
+    { dow: 3, s: 14,   e: 15,   title: "Atendimento — Dna. Célia",    cal: "o",    area: "Atendimentos" },
+    { dow: 3, s: 15.5, e: 16.25,title: "Preparar revisão de sexta",   cal: "prop", area: "Rotina" },
+    { dow: 3, s: 16.5, e: 18,   title: "Rascunho do relatório anual", cal: "task", area: "Relatório anual 2026" },
+    { dow: 4, s: 9,    e: 10,   title: "Revisão da semana (PARA)",    cal: "task", area: "Rotina" },
+    { dow: 4, s: 11,   e: 12,   title: "Reunião de diretoria",        cal: "o",    area: "Equipe", ppl: "@Marcos" },
+    { dow: 4, s: 14,   e: 14.75,title: "Parecer do contrato — envio", cal: "task", area: "Mudança de sede" },
+  ];
+  const WD_SHORT = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
+  const WEEK_DATES = [6, 7, 8, 9, 10, 11, 12];
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => [...document.querySelectorAll(s)];
+
+  let toastTimer;
+  function showToast(msg) {
+    const t = $("#toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  // ═══ Grades de hora ═══
+  function renderTimeGrid(el, days) {
+    let html = "";
+    for (let h = H0; h < H1; h++) html += `<div class="hourlabel" style="grid-row:${h - H0 + 1}">${h}:00</div>`;
+    days.forEach((dow) => {
+      let col = `<div class="daycol" style="grid-row:1 / span ${H1 - H0}; grid-column:auto">`;
+      for (let h = H0; h < H1; h++) col += `<div class="hourline"></div>`;
+      EVENTS.filter((ev) => ev.dow === dow).forEach((ev) => {
+        const top = (ev.s - H0) * 52, height = (ev.e - ev.s) * 52 - 3;
+        const hh = (t) => `${Math.floor(t)}:${String(Math.round((t % 1) * 60)).padStart(2, "0")}`;
+        col += `<div class="evt ${ev.cal}" data-title="${ev.title}" data-area="${ev.area}" data-cal="${ev.cal}" data-ppl="${ev.ppl || ""}"
+          style="top:${top}px;height:${height}px" tabindex="0" role="button">
+          <span class="t">${ev.title}</span><span class="h">${hh(ev.s)} – ${hh(ev.e)}</span></div>`;
+      });
+      if (dow === TODAY_DOW) {
+        const now = new Date();
+        let nowH = now.getHours() + now.getMinutes() / 60;
+        if (nowH < H0 || nowH > H1) nowH = 11.2;
+        col += `<div class="nowline" style="top:${(nowH - H0) * 52}px"></div>`;
+      }
+      col += `</div>`;
+      html += col;
+    });
+    el.innerHTML = html;
+  }
+  renderTimeGrid($("#dayGrid"), [TODAY_DOW]);
+  renderTimeGrid($("#weekGrid"), [0, 1, 2, 3, 4, 5, 6]);
+  $("#weekHead").innerHTML = `<div></div>` +
+    WEEK_DATES.map((d, i) => `<div class="wd ${i === TODAY_DOW ? "today" : ""}">${WD_SHORT[i]}<b>${d}</b></div>`).join("");
+
+  // ═══ Mês (julho/2026) ═══
+  (function renderMonth() {
+    let html = WD_SHORT.map((w) => `<div class="wd">${w}</div>`).join("");
+    const firstOffset = 2, daysInMonth = 31;
+    for (let i = 0; i < firstOffset; i++) html += `<div class="mday out"><span class="n">${29 + i}</span></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dow = (firstOffset + d - 1) % 7;
+      const inWeek = d >= 6 && d <= 12;
+      const evts = inWeek ? EVENTS.filter((e) => e.dow === WEEK_DATES.indexOf(d)) : [];
+      const fake = !inWeek && dow < 5 && d % 3 !== 0 ? [{ title: d % 2 ? "Atendimento" : "Reunião", cal: d % 2 ? "o" : "g" }] : [];
+      const shown = evts.length ? evts : fake;
+      html += `<div class="mday stagger ${d === 9 ? "today" : ""}" style="--i:${Math.floor(d / 8)}"><span class="n">${d}</span>` +
+        shown.slice(0, 2).map((e) => `<div class="mevt ${e.cal}" data-title="${e.title}" data-area="${e.area || ""}" data-cal="${e.cal}" role="button" tabindex="0">${e.title}</div>`).join("") +
+        (shown.length > 2 ? `<div class="mmore">+ ${shown.length - 2} itens</div>` : ``) +
+        `<div class="dots">` + shown.slice(0, 3).map(() => `<span class="proj-dot" style="background:var(--accent);width:5px;height:5px"></span>`).join("") + `</div></div>`;
+    }
+    $("#monthGrid").innerHTML = html;
+  })();
+
+  // ═══ Ano — densidade ═══
+  const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  (function renderYear() {
+    let html = "";
+    for (let m = 0; m < 12; m++) {
+      const offset = (new Date(2026, m, 1).getDay() + 6) % 7;
+      const dim = new Date(2026, m + 1, 0).getDate();
+      let cells = "";
+      for (let i = 0; i < offset; i++) cells += `<div class="yd empty"></div>`;
+      for (let d = 1; d <= dim; d++) {
+        const dow = (offset + d - 1) % 7;
+        const seed = (m * 31 + d) % 7;
+        let cls = dow >= 5 ? "wknd" : seed < 2 ? "" : seed < 4 ? "d1" : seed < 6 ? "d2" : "d3";
+        if (m === 6 && d >= 6 && d <= 10) cls = "d2";
+        cells += `<div class="yd ${cls} ${m === 6 && d === 9 ? "today" : ""}" title="${d} ${MONTHS[m]}"></div>`;
+      }
+      for (let i = offset + dim; i < 37; i++) cells += `<div class="yd empty"></div>`;
+      html += `<div class="yearrow stagger" style="--i:${Math.floor(m / 3)}"><div class="mn">${MONTHS[m]}</div><div class="yeardays">${cells}</div></div>`;
+    }
+    $("#yearGrid").innerHTML = html;
+  })();
+
+  // ═══ Ano — linhas do tempo (expansível, com janela de meses) ═══
+  const TLP = [
+    { proj: "sist", lbl: "Sistema de atendimento", from: 0, to: 8, color: "var(--task)",
+      kids: [["Mapear fluxo atual", 4, 6], ["Levantamento de requisitos", 6, 7.5], ["Escolha da ferramenta", 7.5, 8.8]] },
+    { proj: "rel", lbl: "Relatório anual 2026", from: 2, to: 11, color: "var(--accent)",
+      kids: [["Coleta de dados", 4, 6.5], ["Rascunho dos capítulos", 6.1, 8], ["Revisão final", 9.5, 11]] },
+    { proj: "sede", lbl: "Mudança de sede", from: 5, to: 9, color: "var(--today)",
+      kids: [["Contrato de locação", 5, 6.2], ["Licitação da sede", 6, 7.7], ["Mudança física", 8.3, 9]] },
+  ];
+  let tlM0 = 0, tlM1 = 12;
+  function tlBar(from, to, color, lbl, proj, thin, i) {
+    const span = tlM1 - tlM0;
+    const f = Math.max(from, tlM0), t = Math.min(to, tlM1);
+    if (t <= f) return `<div class="tl-track"></div>`;
+    const l = ((f - tlM0) / span) * 100, w = ((t - f) / span) * 100;
+    return `<div class="tl-track"><div class="tl-bar ${thin ? "thin" : ""}" data-proj="${proj}" style="--i:${i};left:${l}%;width:${w}%;background:${color}" role="button" tabindex="0">${thin ? "" : lbl}</div></div>`;
+  }
+  function renderTimeline(keepOpen) {
+    const open = keepOpen || new Set();
+    const span = tlM1 - tlM0;
+    $("#tlMonths").innerHTML = `<span style="border:none"></span>` +
+      MONTHS.slice(tlM0, tlM1).map((m) => `<span>${m}</span>`).join("");
+    $("#tlMonths").style.gridTemplateColumns = `var(--tl-lbl) repeat(${span}, 1fr)`;
+    $("#tlRows").style.setProperty("--tl-div", span);
+    const todayM = 6 + 8 / 31;
+    $("#tlRows").innerHTML = TLP.map((p, i) =>
+      `<div class="tl-group ${open.has(p.proj) ? "open" : ""}" data-flt="${p.lbl}">
+        <div class="tl-row">
+          <div class="lbl parent" data-tog="${p.proj}" role="button" tabindex="0"><span class="caret">▶</span><span class="proj-dot" style="background:${p.color}"></span> ${p.lbl}</div>
+          ${tlBar(p.from, p.to, p.color, p.lbl, p.proj, false, i)}
+        </div>
+        <div class="tl-kids">${p.kids.map(([k, f, t], j) =>
+          `<div class="tl-row"><div class="lbl sub">↳ ${k}</div>${tlBar(f, t, p.color, k, p.proj, true, j)}</div>`).join("")}</div>
+      </div>`).join("") +
+      (todayM >= tlM0 && todayM <= tlM1
+        ? `<div class="tl-today" style="left:calc(var(--tl-lbl) + (100% - var(--tl-lbl)) * ${(todayM - tlM0) / span})"></div>` : "");
+    applyFilter();
+  }
+  document.addEventListener("click", (e) => {
+    const tog = e.target.closest("[data-tog]");
+    if (tog) tog.closest(".tl-group").classList.toggle("open");
+  });
+  $$("#tlRange button").forEach((b) => b.addEventListener("click", () => {
+    $$("#tlRange button").forEach((x) => x.classList.toggle("active", x === b));
+    const [a, z] = b.dataset.range.split(",").map(Number);
+    const open = new Set($$(".tl-group.open").map((g) => g.querySelector("[data-tog]").dataset.tog));
+    tlM0 = a; tlM1 = z;
+    renderTimeline(open);
+  }));
+  $$(".yeartabs [data-ymode]").forEach((b) => b.addEventListener("click", () => {
+    $$(".yeartabs [data-ymode]").forEach((x) => x.classList.toggle("active", x === b));
+    $("#ymode-dens").classList.toggle("active", b.dataset.ymode === "dens");
+    $("#ymode-tl").classList.toggle("active", b.dataset.ymode === "tl");
+  }));
+  $$(".yeartabs [data-mmode]").forEach((b) => b.addEventListener("click", () => {
+    $$(".yeartabs [data-mmode]").forEach((x) => x.classList.toggle("active", x === b));
+    $("#mmode-grid").classList.toggle("active", b.dataset.mmode === "grid");
+    $("#mmode-tl").classList.toggle("active", b.dataset.mmode === "tl");
+  }));
+
+  // ═══ Mês — linha do tempo (julho, dia a dia, expansível) ═══
+  const MTLP = [
+    { proj: "sist", lbl: "Sistema de atendimento", from: 1, to: 31, color: "var(--task)",
+      kids: [["Levantamento de requisitos", 6, 31]] },
+    { proj: "rel", lbl: "Relatório anual 2026", from: 1, to: 31, color: "var(--accent)",
+      kids: [["Coleta de dados", 1, 10], ["Rascunho dos capítulos", 4, 17]] },
+    { proj: "sede", lbl: "Mudança de sede", from: 1, to: 31, color: "var(--today)",
+      kids: [["Licitação da sede", 1, 24], ["Visita técnica à sede nova", 20, 22]] },
+  ];
+  (function renderMonthTL() {
+    const days = 31;
+    const dayBar = (from, to, color, lbl, proj, thin, i) => {
+      const l = ((from - 1) / days) * 100, w = ((to - from + 1) / days) * 100;
+      return `<div class="tl-track"><div class="tl-bar ${thin ? "thin" : ""}" data-proj="${proj}" style="--i:${i};left:${l}%;width:${w}%;background:${color}" role="button" tabindex="0">${thin ? "" : lbl}</div></div>`;
+    };
+    let html = `<div class="tl-daysrow"><span></span>` +
+      Array.from({ length: days }, (_, i) => `<span>${i + 1}</span>`).join("") + `</div>`;
+    let cells = "";
+    for (let d = 1; d <= days; d++) {
+      const dow = (2 + d - 1) % 7;
+      const seed = (6 * 31 + d) % 7;
+      let cls = dow >= 5 ? "wknd" : seed < 2 ? "" : seed < 4 ? "d1" : seed < 6 ? "d2" : "d3";
+      if (d >= 6 && d <= 10) cls = "d2";
+      cells += `<div class="yd ${cls} ${d === 9 ? "today" : ""}" title="${d} jul"></div>`;
+    }
+    html += `<div class="tl-row"><div class="lbl">Compromissos</div><div class="tl-dens">${cells}</div></div>`;
+    html += MTLP.map((p, i) =>
+      `<div class="tl-group" data-flt="${p.lbl}">
+        <div class="tl-row">
+          <div class="lbl parent" data-tog="m-${p.proj}" role="button" tabindex="0"><span class="caret">▶</span><span class="proj-dot" style="background:${p.color}"></span> ${p.lbl}</div>
+          ${dayBar(p.from, p.to, p.color, p.lbl, p.proj, false, i)}
+        </div>
+        <div class="tl-kids">${p.kids.map(([k, f, t], j) =>
+          `<div class="tl-row"><div class="lbl sub">↳ ${k}</div>${dayBar(f, t, p.color, k, p.proj, true, j)}</div>`).join("")}</div>
+      </div>`).join("") +
+      `<div class="tl-today" style="left:calc(var(--tl-lbl) + (100% - var(--tl-lbl)) * ${8.35 / 31})"></div>`;
+    $("#mtl").innerHTML = html;
+    $("#mtl").style.setProperty("--tl-div", days);
+  })();
+
+  // ═══ Filtros (projeto · área · pessoa) ═══
+  const FILTER_DEFS = [
+    { lbl: "Todos", val: null },
+    { lbl: "Mudança de sede", val: "mudança de sede", dot: "var(--today)" },
+    { lbl: "Relatório anual", val: "relatório anual", dot: "var(--accent)" },
+    { lbl: "Sist. atendimento", val: "sistema de atendimento", dot: "var(--task)" },
+    { lbl: "Equipe", val: "equipe" },
+    { lbl: "Atendimentos", val: "atendimentos" },
+    { lbl: "Financeiro", val: "financeiro" },
+    { lbl: "@Ana", val: "@ana" },
+    { lbl: "@Marcos", val: "@marcos" },
+  ];
+  const activeFilters = new Set();
+  $("#filterbar").innerHTML = `<span class="flabel">Filtrar</span>` + FILTER_DEFS.map((f) =>
+    `<button class="fchip ${f.val === null ? "on" : ""}" data-fval="${f.val ?? ""}">${f.dot ? `<span class="fdot" style="background:${f.dot}"></span>` : ""}${f.lbl}</button>`).join("");
+  function applyFilter() {
+    const fs = [...activeFilters];
+    const others = fs.filter((q) => !q.startsWith("@"));
+    $$(".evt, .mevt").forEach((el) => {
+      if (!fs.length) return el.classList.remove("dim");
+      const hay = `${el.dataset.title || ""} ${el.dataset.area || ""} ${el.dataset.ppl || ""}`.toLowerCase();
+      el.classList.toggle("dim", !fs.some((q) => hay.includes(q)));
+    });
+    $$("[data-flt]").forEach((el) => {
+      if (!others.length) return el.classList.remove("dim");
+      el.classList.toggle("dim", !others.some((q) => el.dataset.flt.toLowerCase().includes(q)));
+    });
+    $$("[data-tflt]").forEach((el) => {
+      if (!fs.length) return el.classList.remove("dim");
+      el.classList.toggle("dim", !fs.some((q) => el.dataset.tflt.toLowerCase().includes(q)));
+    });
+  }
+  document.addEventListener("click", (e) => {
+    const f = e.target.closest(".fchip");
+    if (!f) return;
+    const val = f.dataset.fval || null;
+    if (!val) activeFilters.clear();
+    else {
+      f.classList.toggle("on");
+      if (f.classList.contains("on")) activeFilters.add(val);
+      else activeFilters.delete(val);
+    }
+    $$(".fchip").forEach((x) => {
+      if (!x.dataset.fval) x.classList.toggle("on", activeFilters.size === 0);
+      else if (!val) x.classList.remove("on");
+    });
+    applyFilter();
+    showToast(activeFilters.size ? `Filtros ativos: ${activeFilters.size} (combine à vontade)` : "Mostrando tudo");
+  });
+  renderTimeline();
+
+  // ═══ Tarefas (GTD): por dia, com filtros e kanban ═══
+  const GTD_BY_DAY = {
+    "qua 8": [
+      { t: "Bloco de foco — relatório", done: true, chips: ["Relatório anual 2026", "3h"] },
+      { t: "1:1 com a @Ana", done: true, chips: ["Equipe", "@Ana"] },
+    ],
+    "qui 9 · hoje": [
+      { t: "Check do dia + prioridades", done: true, chips: ["Rotina"] },
+      { t: "Parecer do contrato 114", chips: ["Financeiro", "@Marcos", "hoje 11:30"] },
+      { t: "Rascunho do relatório anual", chips: ["Relatório anual 2026", "90 min"] },
+    ],
+    "sex 10": [
+      { t: "Revisão da semana (PARA)", chips: ["Rotina", "9h"] },
+      { t: "Consolidar orçamento do semestre", chips: ["Financeiro"] },
+      { t: "Parecer do contrato — envio", chips: ["Mudança de sede", "@Marcos"] },
+    ],
+    "seg 13": [
+      { t: "Revisar requisitos enviados pela @Ana", chips: ["Sistema de atendimento", "@Ana"] },
+      { t: "Enviar proposta revisada (reagendada)", chips: ["Financeiro"] },
+    ],
+  };
+  const GTD_FIXED = [
+    { grp: "Próximas ações", items: [
+      { t: "Revisar requisitos enviados pela @Ana", chips: ["Sistema de atendimento", "@Ana", "seg"] },
+      { t: "Consolidar orçamento do semestre", chips: ["Financeiro", "sex"] },
+      { t: "Agendar visita à sede nova", chips: ["Mudança de sede"] },
+    ]},
+    { grp: "Em espera", items: [
+      { t: "Proposta do fornecedor — aguardando retorno", chips: ["Mudança de sede", "@Marcos", "desde 07/07"] },
+    ]},
+    { grp: "Algum dia / incubadas", items: [
+      { t: "Oficina de escrita para a equipe", chips: ["incubada · volta em 07/10"] },
+    ]},
+  ];
+  const todoHtml = (it, i) =>
+    `<div class="todo stagger ${it.done ? "done" : ""}" style="--i:${i * 0.5}" data-tflt="${it.t} ${it.chips.join(" ")}">
+      <span class="box" role="checkbox" aria-checked="${!!it.done}" tabindex="0">✓</span>
+      <div class="txt">${it.t}
+        <div class="chips">${it.chips.map((c) =>
+          `<span class="chip ${c.startsWith("@") ? "person" : "muted"}">${c}</span>`).join("")}</div>
+      </div>
+    </div>`;
+  function renderGTD(day) {
+    const dayItems = GTD_BY_DAY[day] || [];
+    $("#gtdList").innerHTML =
+      `<h3 class="stagger" style="--i:0">Tarefas de ${day} <span class="count">${dayItems.length}</span></h3>` +
+      dayItems.map(todoHtml).join("") +
+      GTD_FIXED.map((g, gi) =>
+        `<h3 class="stagger" style="--i:${gi + 1}">${g.grp} <span class="count">${g.items.length}</span></h3>` +
+        g.items.map(todoHtml).join("")).join("");
+    applyFilter();
+  }
+  const KANBAN = {
+    "A fazer": [
+      { t: "Rascunho do relatório anual", chips: ["Relatório anual 2026"] },
+      { t: "Agendar visita à sede nova", chips: ["Mudança de sede"] },
+      { t: "Revisar requisitos enviados pela @Ana", chips: ["Sistema de atendimento", "@Ana"] },
+    ],
+    "Em andamento": [
+      { t: "Parecer do contrato 114", chips: ["Financeiro", "@Marcos"] },
+      { t: "Licitação da sede", chips: ["Mudança de sede"] },
+    ],
+    "Em espera": [
+      { t: "Proposta do fornecedor", chips: ["Mudança de sede", "@Marcos"] },
+    ],
+    "Concluída": [
+      { t: "Check do dia + prioridades", done: true, chips: ["Rotina"] },
+      { t: "Contrato de locação", done: true, chips: ["Mudança de sede"] },
+    ],
+  };
+  (function renderKanban() {
+    $("#kanban").innerHTML = Object.entries(KANBAN).map(([col, items]) =>
+      `<div class="kcol"><h4>${col}<span>${items.length}</span></h4>` +
+      items.map((it) =>
+        `<div class="kcard ${it.done ? "done-card" : ""}" data-tflt="${it.t} ${it.chips.join(" ")}">
+          <span class="kt">${it.t}</span>
+          <div class="chips">${it.chips.map((c) =>
+            `<span class="chip ${c.startsWith("@") ? "person" : "muted"}">${c}</span>`).join("")}</div>
+        </div>`).join("") + `</div>`).join("");
+  })();
+  renderGTD("qui 9 · hoje");
+  document.addEventListener("click", (e) => {
+    const dp = e.target.closest("#gtdDay .pill-opt");
+    if (dp) setTimeout(() => renderGTD(dp.textContent.trim()), 0);
+    const gm = e.target.closest("[data-gmode]");
+    if (gm) {
+      gm.parentElement.querySelectorAll("[data-gmode]").forEach((x) => x.classList.toggle("active", x === gm));
+      const kan = gm.dataset.gmode === "kanban";
+      $("#gtdList").style.display = kan ? "none" : "";
+      $("#gtdDay").style.visibility = kan ? "hidden" : "";
+      $("#kanban").style.display = kan ? "" : "none";
+      applyFilter();
+    }
+  });
+  document.addEventListener("click", (e) => {
+    const box = e.target.closest(".todo .box");
+    if (box) {
+      const todo = box.closest(".todo");
+      todo.classList.toggle("done");
+      box.setAttribute("aria-checked", todo.classList.contains("done"));
+      if (todo.classList.contains("done")) showToast("Tarefa concluída ✓");
+    }
+  });
+
+  // ═══ Grafo de conexões ═══
+  const NODES = [
+    { id: "plan",  label: "Planejamento 2026",       type: "nota" },
+    { id: "reun",  label: "Reunião de equipe 09/07", type: "nota" },
+    { id: "crit",  label: "Critérios de priorização",type: "nota" },
+    { id: "orc",   label: "Orçamento do semestre",   type: "nota" },
+    { id: "diar",  label: "Diário 02/07",            type: "nota" },
+    { id: "ofic",  label: "Ideia: oficina de escrita", type: "nota" },
+    { id: "sist",  label: "Sistema de atendimento",  type: "projeto" },
+    { id: "rel",   label: "Relatório anual 2026",    type: "projeto" },
+    { id: "sede",  label: "Mudança de sede",         type: "projeto" },
+    { id: "ana",   label: "@Ana",                    type: "pessoa" },
+    { id: "marc",  label: "@Marcos",                 type: "pessoa" },
+    { id: "gest",  label: "Gestão de projetos",      type: "recurso" },
+  ];
+  const EDGES = [
+    ["reun", "sist"], ["reun", "plan"], ["reun", "crit"], ["reun", "ana"], ["reun", "marc"],
+    ["plan", "rel"], ["plan", "orc"], ["crit", "gest"], ["orc", "sede"], ["diar", "reun"],
+    ["ana", "sist"], ["marc", "sede"], ["ofic", "gest"], ["rel", "orc"], ["sist", "gest"],
+  ];
+  (function graph() {
+    const cv = $("#graph"), ctx = cv.getContext("2d");
+    const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let W, H, dragging = null, hover = null, raf = null;
+    const nodes = NODES.map((n, i) => ({
+      ...n,
+      x: 0.5 + 0.36 * Math.cos((i / NODES.length) * Math.PI * 2),
+      y: 0.5 + 0.36 * Math.sin((i / NODES.length) * Math.PI * 2),
+      vx: 0, vy: 0,
+    }));
+    const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+    const edges = EDGES.map(([a, b]) => [byId[a], byId[b]]);
+
+    function colors() {
+      const cs = getComputedStyle(document.documentElement);
+      return {
+        nota: cs.getPropertyValue("--accent").trim(),
+        projeto: cs.getPropertyValue("--task").trim(),
+        pessoa: cs.getPropertyValue("--today").trim(),
+        recurso: cs.getPropertyValue("--ink-3").trim(),
+        line: cs.getPropertyValue("--line").trim(),
+        ink: cs.getPropertyValue("--ink-2").trim(),
+      };
+    }
+    function resize() {
+      const r = cv.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+      W = r.width; H = r.height;
+      cv.width = W * dpr; cv.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function tick() {
+      for (const n of nodes) {
+        if (n === dragging) continue;
+        let fx = (0.5 - n.x) * 0.0012, fy = (0.5 - n.y) * 0.0012;
+        for (const m of nodes) {
+          if (m === n) continue;
+          const dx = n.x - m.x, dy = n.y - m.y, d2 = dx * dx + dy * dy + 0.0005;
+          fx += (dx / d2) * 0.000045; fy += (dy / d2) * 0.000045;
+        }
+        n.vx = (n.vx + fx) * 0.86; n.vy = (n.vy + fy) * 0.86;
+      }
+      for (const [a, b] of edges) {
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d = Math.hypot(dx, dy) || 0.001, f = (d - 0.2) * 0.004;
+        if (a !== dragging) { a.vx += (dx / d) * f; a.vy += (dy / d) * f; }
+        if (b !== dragging) { b.vx -= (dx / d) * f; b.vy -= (dy / d) * f; }
+      }
+      for (const n of nodes) {
+        if (n === dragging) continue;
+        n.x = Math.min(0.96, Math.max(0.04, n.x + n.vx));
+        n.y = Math.min(0.94, Math.max(0.06, n.y + n.vy));
+      }
+    }
+    function draw() {
+      const C = colors();
+      ctx.clearRect(0, 0, W, H);
+      ctx.strokeStyle = C.line; ctx.lineWidth = 1.2;
+      for (const [a, b] of edges) {
+        ctx.beginPath(); ctx.moveTo(a.x * W, a.y * H); ctx.lineTo(b.x * W, b.y * H); ctx.stroke();
+      }
+      for (const n of nodes) {
+        const r = n.type === "projeto" ? 10 : n.type === "nota" ? 7.5 : 6.5;
+        ctx.beginPath(); ctx.arc(n.x * W, n.y * H, r + (n === hover ? 2.5 : 0), 0, Math.PI * 2);
+        ctx.fillStyle = C[n.type]; ctx.fill();
+        ctx.fillStyle = C.ink; ctx.font = `${n === hover ? "600 " : ""}11px system-ui`;
+        ctx.textAlign = "center";
+        ctx.fillText(n.label, n.x * W, n.y * H + r + 14);
+      }
+    }
+    function loop() { tick(); draw(); raf = requestAnimationFrame(loop); }
+    function start() {
+      resize();
+      if (REDUCED) { for (let i = 0; i < 400; i++) tick(); draw(); }
+      else if (!raf) loop();
+    }
+    function stop() { if (raf) cancelAnimationFrame(raf); raf = null; }
+    function pick(e) {
+      const r = cv.getBoundingClientRect();
+      const x = (e.clientX - r.left) / W, y = (e.clientY - r.top) / H;
+      return nodes.find((n) => Math.hypot(n.x - x, n.y - y) < 0.04);
+    }
+    let downAt = null;
+    cv.addEventListener("pointerdown", (e) => {
+      downAt = { x: e.clientX, y: e.clientY };
+      dragging = pick(e);
+      if (dragging) cv.setPointerCapture(e.pointerId);
+    });
+    cv.addEventListener("pointermove", (e) => {
+      const r = cv.getBoundingClientRect();
+      if (dragging) {
+        dragging.x = (e.clientX - r.left) / W; dragging.y = (e.clientY - r.top) / H;
+        if (REDUCED) draw();
+      } else { hover = pick(e); if (REDUCED) draw(); }
+    });
+    cv.addEventListener("pointerup", (e) => {
+      if (dragging && downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 5) openNode(dragging);
+      dragging = null; downAt = null;
+    });
+    addEventListener("resize", () => { if ($("#view-grafo").classList.contains("active")) start(); });
+    window.__graph = { start, stop, nodes: () => nodes.map((n) => ({ id: n.id, x: n.x, y: n.y })) };
+  })();
+
+  // ═══ Notas (Zettelkasten): markdown, [[links]], agrupamento opcional ═══
+  const NOTES = [
+    { id: "plan", title: "Planejamento 2026", group: "Relatório anual 2026", tags: ["estratégia"], date: "ontem",
+      md: `As metas de 2026 se organizam em três frentes: **atendimento**, **estrutura** e **equipe**.
+
+## Decisões
+- O [[Sistema de atendimento]] é o projeto-âncora do 2º semestre
+- O orçamento segue o modelo de [[Orçamento do semestre]]
+- Critérios de corte: ver [[Critérios de priorização]]
+
+> Revisar este plano na primeira semana de outubro. #estratégia` },
+    { id: "reun", title: "Reunião de equipe 09/07", group: "Equipe", tags: ["reunião"], date: "hoje",
+      md: `Priorizamos o cronograma do [[Sistema de atendimento]] para o 2º semestre. A @Ana assume o levantamento de requisitos e apresenta segunda.
+
+## Ações
+- Revisar requisitos enviados pela @Ana
+- Consolidar orçamento do semestre
+
+Ver também [[Planejamento 2026]] e [[Critérios de priorização]]. #reunião` },
+    { id: "crit", title: "Critérios de priorização", group: null, tags: ["método"], date: "há 1 semana",
+      md: `Uma ideia por nota; esta é sobre **como decidir o que entra**.
+
+1. Impacto direto no atendimento
+2. Prazo legal ou contratual
+3. Custo de adiar
+
+Se empatar, vence o que destrava outras frentes. Aplicado em [[Planejamento 2026]]. #método #zettelkasten` },
+    { id: "orc", title: "Orçamento do semestre", group: "Financeiro", tags: ["orçamento"], date: "há 2 dias",
+      md: `Modelo em três faixas: fixo, projetos e reserva.
+
+- A [[Mudança de sede]] consome 40% da faixa de projetos
+- Reserva intocada até setembro
+
+Detalhes na planilha vinculada (Drive). #orçamento` },
+    { id: "kair", title: "Sobre o tempo oportuno", group: null, tags: ["leitura"], date: "02/07",
+      md: `*Kairós* é o tempo qualitativo — o momento certo — em oposição a *chronos*, o tempo do relógio.
+
+Planejar não é preencher horas: é reconhecer o momento de cada coisa. Conecta com [[Critérios de priorização]]. #leitura` },
+    { id: "ofic", title: "Ideia: oficina de escrita", group: null, tags: ["ideia"], date: "incubada · volta 07/10",
+      md: `Oficina interna para melhorar registros e atas.
+
+Sem grupo por enquanto — deixar amadurecer. Se virar ação, vai para a área **Equipe**. #ideia` },
+    { id: "diar", title: "Diário 02/07", group: null, tags: ["diário"], date: "02/07",
+      md: `Preparar pauta para a [[Reunião de equipe 09/07]].
+
+Dia bom de foco pela manhã; a tarde rendeu menos. #diário` },
+  ];
+  let currentNote = "plan", noteMode = "fluxo", noteQ = "";
+  function mdInline(s) {
+    return s
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+      .replace(/\[\[([^\]]+)\]\]/g, '<a class="wikilink" data-note="$1">[[$1]]</a>')
+      .replace(/(^|\s)#([\wÀ-ú-]+)/g, '$1<span class="note-tag">#$2</span>')
+      .replace(/(^|\s)@([\wÀ-ú]+)/g, '$1<span class="chip person" style="cursor:pointer">@$2</span>');
+  }
+  function mdToHtml(md) {
+    let html = "", list = null;
+    const closeList = () => { if (list) { html += `</${list}>`; list = null; } };
+    for (const raw of md.split("\n")) {
+      const l = raw.trimEnd();
+      if (/^- /.test(l)) { if (list !== "ul") { closeList(); html += "<ul>"; list = "ul"; } html += `<li>${mdInline(l.slice(2))}</li>`; continue; }
+      if (/^\d+\. /.test(l)) { if (list !== "ol") { closeList(); html += "<ol>"; list = "ol"; } html += `<li>${mdInline(l.replace(/^\d+\. /, ""))}</li>`; continue; }
+      closeList();
+      if (l.startsWith("## ")) html += `<h2>${mdInline(l.slice(3))}</h2>`;
+      else if (l.startsWith("# ")) html += `<h1>${mdInline(l.slice(2))}</h1>`;
+      else if (l.startsWith("> ")) html += `<blockquote>${mdInline(l.slice(2))}</blockquote>`;
+      else if (l) html += `<p>${mdInline(l)}</p>`;
+    }
+    closeList();
+    return html;
+  }
+  function noteBacklinksOf(title) { return NOTES.filter((n) => n.md.includes(`[[${title}]]`)); }
+  function renderNoteList() {
+    const q = noteQ.toLowerCase();
+    const match = NOTES.filter((n) => !q || n.title.toLowerCase().includes(q) || n.md.toLowerCase().includes(q));
+    const item = (n) => `<button class="note-item ${n.id === currentNote ? "active" : ""}" data-note-id="${n.id}">
+      <b>${n.title}</b><span class="snip">${n.md.split("\n")[0].replace(/[#*\[\]>]/g, "")}</span>
+      <div class="chips">${n.group ? `<span class="chip">${n.group}</span>` : `<span class="chip muted">sem grupo · atômica</span>`}${n.tags.map((t) => `<span class="chip muted">#${t}</span>`).join("")}<span class="chip muted">${n.date}</span></div>
+    </button>`;
+    let html = "";
+    if (noteMode === "fluxo") html = match.map(item).join("");
+    else if (noteMode === "grupo") {
+      const groups = [...new Set(match.map((n) => n.group || "Sem grupo — atômicas"))];
+      html = groups.map((g) => `<div class="note-group-h">${g}</div>` +
+        match.filter((n) => (n.group || "Sem grupo — atômicas") === g).map(item).join("")).join("");
+    } else {
+      const tags = [...new Set(match.flatMap((n) => n.tags))];
+      html = tags.map((t) => `<div class="note-group-h">#${t}</div>` +
+        match.filter((n) => n.tags.includes(t)).map(item).join("")).join("");
+    }
+    $("#noteList").innerHTML = html || `<p class="year-note">Nenhuma nota encontrada.</p>`;
+  }
+  function openNote(id) {
+    currentNote = id;
+    const n = NOTES.find((x) => x.id === id);
+    if (!n) return;
+    $("#noteTitle").textContent = n.title;
+    $("#noteChips").innerHTML =
+      (n.group ? `<span class="chip">${n.group}</span>` : `<span class="chip muted">sem grupo</span>`) +
+      n.tags.map((t) => `<span class="chip muted">#${t}</span>`).join("");
+    $("#noteRender").innerHTML = mdToHtml(n.md);
+    $("#noteMd").value = n.md;
+    const bl = noteBacklinksOf(n.title);
+    $("#noteBacklinks").innerHTML = bl.length
+      ? bl.map((b) => `<button class="backlink" data-note-id="${b.id}"><b>${b.title}</b>${b.date}</button>`).join("")
+      : `<p class="year-note">Nenhuma nota aponta para cá ainda — no Zettelkasten, são os links que estruturam, não as pastas.</p>`;
+    renderNoteList();
+  }
+  document.addEventListener("click", (e) => {
+    const ni = e.target.closest("[data-note-id]");
+    if (ni) openNote(ni.dataset.noteId);
+    const gm = e.target.closest("#noteGroupMode .pill-opt");
+    if (gm) { noteMode = gm.dataset.gm; setTimeout(renderNoteList, 0); }
+    const nm = e.target.closest("[data-nmode]");
+    if (nm) {
+      nm.parentElement.querySelectorAll("[data-nmode]").forEach((x) => x.classList.toggle("active", x === nm));
+      const edit = nm.dataset.nmode === "editar";
+      $("#noteMd").style.display = edit ? "block" : "none";
+      $("#noteRender").style.display = edit ? "none" : "";
+      if (!edit) $("#noteRender").innerHTML = mdToHtml(NOTES.find((x) => x.id === currentNote).md);
+    }
+  });
+  $("#noteMd").addEventListener("input", () => {
+    const n = NOTES.find((x) => x.id === currentNote);
+    if (n) n.md = $("#noteMd").value;
+  });
+  $("#noteSearch").addEventListener("input", () => { noteQ = $("#noteSearch").value.trim(); renderNoteList(); });
+  let noteSeq = 0;
+  $("#newNote").addEventListener("click", () => {
+    const id = "nova-" + (++noteSeq);
+    NOTES.unshift({ id, title: "Nova nota", group: null, tags: [], date: "agora",
+      md: "# Nova nota\n\nUma ideia por nota. Conecte com [[Planejamento 2026]] em vez de guardar em pasta.\n" });
+    openNote(id);
+    document.querySelector('[data-nmode="editar"]').click();
+    showToast("Nota criada sem grupo — agrupar é opcional");
+  });
+  $("#navNotes").addEventListener("click", () => setView("notas"));
+  openNote("plan");
+
+  // ═══ Páginas de projeto ═══
+  const PROJECTS = {
+    sede: {
+      title: "Mudança de sede", color: "var(--today)", status: "Em andamento", prazo: "30/09/2026", area: "Financeiro",
+      desc: "Transferir a operação para a sede nova até o fim de setembro, sem interromper os atendimentos e dentro do orçamento aprovado em maio.",
+      prog: 40,
+      goals: [["Fechar contrato de locação", true], ["Concluir licitação de mobiliário", false], ["Mudança física sem parar atendimentos", false]],
+      tasks: [["Parecer do contrato — envio", "sex"], ["Agendar visita à sede nova", ""], ["Proposta do fornecedor — em espera", "@Marcos"], ["Planta dos postos de trabalho", "ago"]],
+      people: ["@Raul", "@Marcos"],
+      notes: [["Reunião fornecedor da sede", "ter · 07/07"], ["Orçamento do semestre", "atualizada há 2 dias"]],
+    },
+    rel: {
+      title: "Relatório anual 2026", color: "var(--accent)", status: "Em andamento", prazo: "30/11/2026", area: "Financeiro",
+      desc: "Consolidar os resultados do ano em um relatório único para a diretoria, com dados de atendimentos, financeiro e equipe.",
+      prog: 25,
+      goals: [["Estrutura aprovada", true], ["Rascunho dos capítulos 1–3", false], ["Versão final revisada", false]],
+      tasks: [["Rascunho do relatório anual", "hoje"], ["Bloco de foco — relatório", "qua"], ["Pedir dados ao financeiro", "@Ana"]],
+      people: ["@Raul", "@Ana"],
+      notes: [["Planejamento 2026", "atualizada ontem"], ["Critérios de priorização", "há 1 semana"]],
+    },
+    sist: {
+      title: "Sistema de atendimento", color: "var(--task)", status: "Atenção · 12 dias parado", prazo: "20/12/2026", area: "Atendimentos",
+      desc: "Implantar o novo fluxo de atendimento com registro único, fila por prioridade e histórico por pessoa atendida.",
+      prog: 15,
+      goals: [["Levantamento de requisitos", false], ["Escolha da ferramenta", false], ["Piloto com a equipe", false]],
+      tasks: [["Revisar requisitos enviados pela Ana", "seg"], ["Mapear fluxo atual", ""], ["Definir próximo passo", "da revisão semanal"]],
+      people: ["@Ana", "@Raul"],
+      notes: [["Reunião de equipe 09/07", "hoje"]],
+    },
+  };
+  let currentProj = "sede";
+  function openProject(id) {
+    const p = PROJECTS[id];
+    if (!p) return;
+    currentProj = id;
+    $("#pjTitle").textContent = p.title;
+    $("#pjProps").innerHTML =
+      `<span class="chip" style="background:${p.color};color:#fff">${p.status}</span>` +
+      `<span class="chip muted">Prazo · ${p.prazo}</span><span class="chip muted">Projeto</span>` +
+      (p.area ? `<span class="chip" data-open-area="${p.area}" style="cursor:pointer" title="Abrir a área">▣ Área · ${p.area}</span>` : "");
+    $("#pjDesc").textContent = p.desc;
+    $("#pjGoals").innerHTML = p.goals.map(([g, ok]) =>
+      `<div class="goal ${ok ? "ok" : ""}"><span class="m">${ok ? "✓" : "○"}</span>${g}</div>`).join("");
+    $("#pjTasks").innerHTML = p.tasks.map(([t, d]) =>
+      `<div class="todo"><span class="box" role="checkbox" aria-checked="false" tabindex="0">✓</span>
+       <div class="txt">${t}<div class="chips">${d ? `<span class="chip ${d.startsWith("@") ? "person" : "muted"}">${d}</span>` : ""}</div></div></div>`).join("");
+    $("#pjPeople").innerHTML = p.people.map((x) => `<span class="chip person">${x}</span>`).join(" ");
+    $("#pjNotes").innerHTML = p.notes.map(([n, d]) => `<button class="linknote"><b>${n}</b>${d}</button>`).join("");
+    setView("projeto");
+    requestAnimationFrame(() => { $("#pjProg").style.width = p.prog + "%"; });
+    $("#pjProgLbl").textContent = p.prog + "% concluído";
+  }
+  $("#pageBack").addEventListener("click", () => setView("dia"));
+  document.addEventListener("click", (e) => {
+    const bar = e.target.closest(".tl-bar");
+    if (bar) openProject(bar.dataset.proj);
+  });
+
+  // ═══ Troca de visões (com direção) ═══
+  const ORDER = ["dia", "semana", "mes", "ano", "tarefas", "grafo", "notas", "projeto", "pagina", "lista"];
+  const TITLES = {
+    dia:     ["Quinta-feira, 9 de julho", "Semana 28 · julho de 2026"],
+    semana:  ["6 – 12 de julho",          "Semana 28 · julho de 2026"],
+    mes:     ["Julho de 2026",            "31 dias · 22 úteis"],
+    ano:     ["2026",                     "Densidade e linhas do tempo"],
+    tarefas: ["Tarefas",                  "Só o que é ação — sem ruído"],
+    grafo:   ["Grafo",                    "Conexões entre notas, projetos e pessoas"],
+    notas:   ["Notas",                    "Zettelkasten · agrupar é opcional"],
+    projeto: ["Projeto",                  "Página do projeto"],
+    pagina:  ["Página",                   "Área · Recurso · Arquivo"],
+    lista:   ["Listas",                   "Projetos · Áreas · Recursos"],
+  };
+  let current = "dia";
+  function movePill() {
+    const active = $("#viewTabs button.active");
+    const pill = $("#viewPill");
+    if (!active) { pill.style.width = "0"; return; }
+    pill.style.width = active.offsetWidth + "px";
+    pill.style.transform = `translateX(${active.offsetLeft - 3}px)`;
+  }
+  function setView(v) {
+    const oldIdx = ORDER.indexOf(current), newIdx = ORDER.indexOf(v);
+    const dir = newIdx >= oldIdx ? 26 : -26;
+    if (v !== "dia" && current === "dia") pushUI();
+    current = v;
+    $$("#viewTabs [data-view]").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
+    $$(".view").forEach((s) => {
+      const on = s.id === "view-" + v;
+      if (on) s.style.setProperty("--dx", dir + "px");
+      s.classList.toggle("active", on);
+    });
+    $("#dateTitle").innerHTML = `${TITLES[v][0]}<small>${TITLES[v][1]}</small>`;
+    $("#filterbar").style.display = ["dia", "semana", "mes", "ano", "tarefas"].includes(v) ? "" : "none";
+    movePill();
+    if (v === "grafo") window.__graph.start(); else window.__graph.stop();
+    if (v === "dia") $$(".bottomnav [data-mnav]").forEach((b) => b.classList.toggle("active", b.dataset.mnav === "dia"));
+  }
+  $$("#viewTabs [data-view]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+    const map = { 1: "dia", 2: "semana", 3: "mes", 4: "ano", 5: "tarefas", 6: "grafo", 7: "notas" };
+    if (map[e.key]) setView(map[e.key]);
+  });
+  addEventListener("resize", movePill);
+  movePill();
+
+  // ═══ Painel de detalhe ═══
+  const CAL_LABEL = { g: "Google Agenda", o: "Outlook", task: "Tarefa · Kairós", prop: "Proposto · agenda assistida" };
+  const CAL_COLOR = { g: "var(--google)", o: "var(--outlook)", task: "var(--task)", prop: "var(--today)" };
+  function openDetail(title, area, cal) {
+    $("#detailTitle").textContent = title;
+    $("#detailMeta").innerHTML =
+      `<span class="chip muted"><span class="src-dot" style="background:${CAL_COLOR[cal] || "var(--accent)"}"></span>${CAL_LABEL[cal] || "Evento"}</span>` +
+      (area ? `<span class="chip">${area}</span>` : "");
+    $("#detailStatic").style.display = "";
+    $("#detailDyn").style.display = "none";
+    if (!$("#detail").classList.contains("open")) pushUI();
+    $("#detail").classList.add("open");
+    $("#scrim").classList.add("show");
+  }
+
+  // Painel lateral com conteúdo dinâmico (pessoa, nó do grafo, prévia de projeto)
+  function openDyn(title, metaHtml, bodyHtml) {
+    $("#detailTitle").textContent = title;
+    $("#detailMeta").innerHTML = metaHtml;
+    $("#detailStatic").style.display = "none";
+    const dyn = $("#detailDyn");
+    dyn.style.display = "";
+    dyn.innerHTML = bodyHtml;
+    if (!$("#detail").classList.contains("open")) pushUI();
+    $("#detail").classList.add("open");
+    $("#scrim").classList.add("show");
+  }
+
+  // ═══ Visão por pessoa (discreta — abre pelo @chip ou pelo grafo) ═══
+  const PERSONS = {
+    Ana: { role: "Equipe · análise e requisitos",
+      tasks: [["Revisar requisitos — entrega seg", "Sistema de atendimento"], ["Pedir dados ao financeiro", "Relatório anual 2026"]],
+      wait: [],
+      meets: [["Reunião de equipe", "qui 10h"], ["1:1", "qua 16h"]],
+      notes: ["Reunião de equipe 09/07", "Planejamento 2026"] },
+    Marcos: { role: "Financeiro · coordenação",
+      tasks: [["Parecer do contrato 114 — revisar com você", "Financeiro"]],
+      wait: [["Proposta do fornecedor", "desde 07/07"]],
+      meets: [["Reunião de equipe", "qui 10h"], ["Reunião de diretoria", "sex 11h"]],
+      notes: ["Reunião de equipe 09/07"] },
+  };
+  function openPerson(raw) {
+    const name = raw.replace("@", "").trim();
+    const p = PERSONS[name] || { role: "Pessoa", tasks: [], wait: [], meets: [], notes: [] };
+    openDyn("@" + name,
+      `<span class="chip person">Pessoa</span><span class="chip muted">${p.role}</span>`,
+      `<h3>Tarefas com @${name}</h3>` +
+      (p.tasks.length ? p.tasks.map(([t, pr]) =>
+        `<div class="todo"><span class="box" role="checkbox" aria-checked="false" tabindex="0">✓</span><div class="txt">${t}<div class="chips"><span class="chip muted">${pr}</span></div></div></div>`).join("")
+        : `<p class="year-note">Nada atribuído no momento.</p>`) +
+      (p.wait.length ? `<h3>Em espera</h3>` + p.wait.map(([t, d]) =>
+        `<div class="todo"><span class="box">…</span><div class="txt">${t}<div class="chips"><span class="chip muted">${d}</span></div></div></div>`).join("") : "") +
+      `<h3>Reuniões da semana</h3>` + p.meets.map(([m, d]) => `<button class="backlink"><b>${m}</b>${d}</button>`).join("") +
+      `<h3>Notas que mencionam</h3>` + p.notes.map((n) => `<button class="backlink"><b>${n}</b></button>`).join(""));
+  }
+
+  // ═══ Grafo dinâmico — clique no nó abre o detalhe ═══
+  function openNode(n) {
+    if (n.type === "pessoa") return openPerson(n.label);
+    if (n.type === "projeto") {
+      const p = PROJECTS[n.id];
+      if (!p) return;
+      openDyn(p.title,
+        `<span class="chip" style="background:${p.color};color:#fff">${p.status}</span><span class="chip muted">Prazo · ${p.prazo}</span>`,
+        `<p class="year-note" style="margin-top:4px">${p.desc}</p>
+         <div class="mini-prog"><i style="width:${p.prog}%"></i></div><div class="progress-lbl">${p.prog}% concluído</div>
+         <h3>Próximas tarefas</h3>` +
+        p.tasks.slice(0, 3).map(([t]) =>
+          `<div class="todo"><span class="box" role="checkbox" aria-checked="false" tabindex="0">✓</span><div class="txt">${t}</div></div>`).join("") +
+        `<div class="modal-foot" style="justify-content:flex-start"><button class="btn primary" data-expand="${n.id}">Expandir página completa →</button></div>`);
+      return;
+    }
+    if (n.type === "recurso") {
+      openDyn(n.label, `<span class="chip muted">Recurso</span>`,
+        `<p class="year-note">Referências guardadas sobre ${n.label.toLowerCase()}.</p>
+         <button class="backlink"><b>Modelo de plano de projeto</b>guardado em mai</button>
+         <button class="backlink"><b>Artigo: revisão semanal eficaz</b>guardado em jun</button>`);
+      return;
+    }
+    const noteMatch = NOTES.find((x) => x.title === n.label);
+    if (noteMatch) { setView("notas"); openNote(noteMatch.id); return; }
+    openDyn(n.label, `<span class="chip">Nota</span>`,
+      `<p class="year-note">Prévia da nota — no app real, o conteúdo abre aqui com [[links]] e backlinks.</p>
+       <button class="backlink"><b>Backlinks</b>notas que apontam para cá</button>`);
+  }
+
+  // ═══ Páginas de Área / Recurso / Arquivo ═══
+  function openPage(title, props, desc, cols) {
+    $("#pgTitle").textContent = title;
+    $("#pgProps").innerHTML = props;
+    $("#pgDesc").textContent = desc;
+    $("#pgCols").innerHTML = cols;
+    setView("pagina");
+  }
+  const AREAS_PG = {
+    Equipe: { desc: "Cuidar do time: rituais, 1:1s, desenvolvimento e clima. Área contínua — sem prazo, com padrão a manter.",
+      projs: [],
+      pad: ["1:1 quinzenal com cada pessoa", "Reunião de equipe às quintas, 10h", "Feedback sempre registrado em nota"],
+      tasks: [["Preparar pauta da próxima reunião", "sex"], ["Agendar 1:1 com a @Ana", ""]],
+      notes: [["Reunião de equipe 09/07", "hoje"], ["1:1 Ana — junho", "23/06"]], people: ["@Ana", "@Marcos"] },
+    Atendimentos: { desc: "Atendimentos externos: agenda, registros e acompanhamento de cada caso.",
+      projs: [["sist", "Sistema de atendimento", "var(--task)", "15%"]],
+      pad: ["Registrar cada atendimento em nota vinculada ao evento", "Retorno em até 48h"],
+      tasks: [["Retorno para o Sr. Almeida", "amanhã"]],
+      notes: [["Atendimento — Dna. Célia", "hoje 14h"], ["Atendimento — Sr. Almeida", "seg"]], people: [] },
+    Financeiro: { desc: "Orçamento, contratos e pagamentos em dia.",
+      projs: [["sede", "Mudança de sede", "var(--today)", "40%"], ["rel", "Relatório anual 2026", "var(--accent)", "25%"]],
+      pad: ["Fechamento mensal até o dia 5", "Contratos revisados antes da renovação"],
+      tasks: [["Parecer do contrato 114", "hoje"], ["Consolidar orçamento do semestre", "sex"]],
+      notes: [["Orçamento do semestre", "há 2 dias"]], people: ["@Marcos"] },
+  };
+  function openArea(name) {
+    const a = AREAS_PG[name];
+    if (!a) return;
+    openPage(name, `<span class="chip">Área</span><span class="chip muted">contínua · sem prazo</span>`, a.desc,
+      `<div class="page-sec"><h3>Projetos da área</h3>` +
+      (a.projs.length
+        ? a.projs.map(([id, n, c, pr]) =>
+          `<button class="linknote" data-openproj="${id}"><b><span class="proj-dot" style="background:${c};display:inline-block;margin-right:6px"></span>${n}</b>${pr} concluído · toque para abrir</button>`).join("")
+        : `<p class="year-note" style="margin:0 0 6px">Nenhum projeto ativo — uma área pode abrigar vários; o "+" em Projetos cria um já vinculado.</p>`) +
+      `<h3>Padrão a manter</h3>` +
+      a.pad.map((g) => `<div class="goal"><span class="m">▣</span>${g}</div>`).join("") +
+      `<h3>Tarefas da área</h3>` +
+      a.tasks.map(([t, d]) => `<div class="todo"><span class="box" role="checkbox" aria-checked="false" tabindex="0">✓</span><div class="txt">${t}${d ? `<div class="chips"><span class="chip muted">${d}</span></div>` : ""}</div></div>`).join("") +
+      `</div><div class="page-sec">` +
+      (a.people.length ? `<h3>Pessoas</h3><div>${a.people.map((x) => `<span class="chip person">${x}</span>`).join(" ")}</div>` : "") +
+      `<h3>Notas da área</h3>` +
+      a.notes.map(([n, d]) => `<button class="linknote"><b>${n}</b>${d}</button>`).join("") + `</div>`);
+  }
+  const RECS_PG = {
+    "Gestão de projetos": { desc: "Referências e modelos sobre como conduzir projetos — alimenta os projetos ativos, sem ser um deles.",
+      refs: [["Modelo de plano de projeto", "guardado em mai"], ["Artigo: revisão semanal eficaz", "guardado em jun"], ["Checklist de encerramento de projeto", "guardado em abr"]] },
+    Leituras: { desc: "O que quero ler ou já li e vale voltar. Itens não usados são incubados e reaparecem na Inbox.",
+      refs: [["Building a Second Brain — cap. 6 (destilar)", "relido em jun"], ["A estratégia do oceano azul", "incubado · volta em 07/10"], ["Artigo: calendários e atenção", "guardado ontem"]] },
+  };
+  function openResource(name) {
+    const r = RECS_PG[name];
+    if (!r) return;
+    openPage(name, `<span class="chip">Recurso</span><span class="chip muted">referências por tema</span>`, r.desc,
+      `<div class="page-sec"><h3>Referências guardadas</h3>` +
+      r.refs.map(([n, d]) => `<button class="linknote"><b>${n}</b>${d}</button>`).join("") +
+      `</div><div class="page-sec"><h3>Como funciona</h3>
+       <div class="goal"><span class="m">◈</span>Guardar aqui é a etapa Organizar do CODE</div>
+       <div class="goal"><span class="m">◈</span>Cada item entra com uma linha destilada (por que vale guardar)</div>
+       <div class="goal"><span class="m">◈</span>O que não for usado reaparece na Inbox a cada 2–3 meses</div></div>`);
+  }
+  function openArchive() {
+    openPage("Arquivo", `<span class="chip">Arquivo</span><span class="chip muted">nada se perde</span>`,
+      "Tudo que concluiu ou esfriou. Pesquisável, restaurável — e cada projeto encerrado deixa um relatório em PDF.",
+      `<div class="page-sec"><h3>Projetos concluídos</h3>
+       <button class="linknote"><b>Planejamento 2026</b>concluído em fev · <span class="chip muted">⬇ PDF</span> <span class="chip muted">Reativar</span></button>
+       <button class="linknote"><b>Contratação de estagiários</b>concluído em abr · <span class="chip muted">⬇ PDF</span> <span class="chip muted">Reativar</span></button>
+       </div><div class="page-sec"><h3>Itens arquivados</h3>
+       <button class="linknote"><b>Notas do curso de gestão (2025)</b>12 notas</button>
+       <button class="linknote"><b>Fornecedores não escolhidos — sede</b>3 referências</button>
+       <h3>Incubados — voltam à Inbox</h3>
+       <button class="linknote"><b>Ideia: oficina de escrita</b>volta em 07/10/2026</button></div>`);
+  }
+  $$("#areaList .nav-item").forEach((b) => b.addEventListener("click", () => openArea(b.textContent.replace(/[▣◈]/g, "").trim())));
+  $$("#recList .nav-item").forEach((b) => b.addEventListener("click", () => openResource(b.textContent.replace(/[▣◈]/g, "").trim())));
+  $("#navArchive").addEventListener("click", openArchive);
+
+  // ═══ Listas mobile (PARA no menu inferior) ═══
+  const LISTA = {
+    projetos: { t: "Projetos", hint: "Toque para abrir a página do projeto.",
+      rows: [["sede", "Mudança de sede", "var(--today)", "5"], ["rel", "Relatório anual 2026", "var(--accent)", "8"], ["sist", "Sistema de atendimento", "var(--task)", "12"]] },
+    areas: { t: "Áreas", hint: "Toque para abrir — cada área mostra seus projetos, tarefas e notas.",
+      rows: [["Equipe"], ["Atendimentos"], ["Financeiro"]] },
+    recursos: { t: "Recursos", hint: "Referências por tema, com incubação automática.",
+      rows: [["Gestão de projetos"], ["Leituras"]] },
+  };
+  function openLista(kind) {
+    const L = LISTA[kind];
+    $("#liTitle").textContent = L.t;
+    $("#liHint").textContent = L.hint;
+    $("#liBody").innerHTML = L.rows.map((r) => kind === "projetos"
+      ? `<button class="listrow proj-open" data-proj="${r[0]}"><span class="proj-dot" style="background:${r[2]}"></span> ${r[1]} <span class="count">${r[3]}</span><span class="go">›</span></button>`
+      : `<button class="listrow" data-open-${kind === "areas" ? "area" : "rec"}="${r[0]}"><span class="nav-ico">${kind === "areas" ? "▣" : "◈"}</span> ${r[0]} <span class="go" style="margin-left:auto">›</span></button>`).join("");
+    setView("lista");
+  }
+  $$(".bottomnav [data-mnav]").forEach((b) => b.addEventListener("click", () => {
+    const k = b.dataset.mnav;
+    $$(".bottomnav [data-mnav]").forEach((x) => x.classList.toggle("active", x === b));
+    if (k === "dia") setView("dia");
+    else if (k === "arquivo") openArchive();
+    else openLista(k);
+  }));
+
+  // ═══ Botão voltar (Android): fecha painéis e volta à tela principal ═══
+  let poppingUI = false;
+  function pushUI() {
+    if (poppingUI) return;
+    try { history.pushState({ kairos: true }, ""); } catch (err) { /* iframe pode bloquear */ }
+  }
+  window.addEventListener("popstate", () => {
+    poppingUI = true;
+    const overlayOpen = $("#detail").classList.contains("open") || document.querySelector(".modal.open");
+    if (overlayOpen) closeAll();
+    else if (current !== "dia") setView("dia");
+    poppingUI = false;
+  });
+
+  // ═══ Relatório do projeto (PDF) ═══
+  $("#pjExport").addEventListener("click", () => {
+    const p = PROJECTS[currentProj];
+    $("#reportBody").innerHTML = `
+      <div class="rp-head"><h1>Relatório de projeto — ${p.title}</h1>
+      <div class="rp-meta">Kairós · gerado em 09/07/2026 · status: ${p.status} · prazo: ${p.prazo}</div></div>
+      <h4>Resumo executivo</h4><p>${p.desc}</p><p>Progresso na data do relatório: ${p.prog}% concluído.</p>
+      <h4>Objetivos e situação</h4><ul>${p.goals.map(([g, ok]) => `<li>${ok ? "✔" : "○"} ${g} — ${ok ? "concluído" : "em aberto"}</li>`).join("")}</ul>
+      <h4>Tarefas e entregas</h4><ul>${p.tasks.map(([t, d]) => `<li>${t}${d ? ` (${d})` : ""}</li>`).join("")}</ul>
+      <h4>Pessoas envolvidas</h4><p>${p.people.join(" · ")}</p>
+      <h4>Avaliação de encerramento</h4><p><i>Preenchida quando o prazo chega: o que funcionou, o que faria diferente e aprendizados — o histórico do que fazemos.</i></p>
+      <div class="modal-foot"><button class="btn ghost" data-close>Fechar</button><button class="btn primary" id="rpPrint">Imprimir / salvar PDF</button></div>`;
+    $("#rpPrint").addEventListener("click", () => {
+      showToast("No app real: PDF pronto para compartilhar");
+      try { window.print(); } catch (err) { /* iframe pode bloquear */ }
+    });
+    openModal("#modalReport");
+  });
+  function closeAll() {
+    $("#detail").classList.remove("open");
+    $("#scrim").classList.remove("show");
+    $$(".modal").forEach((m) => m.classList.remove("open"));
+  }
+  document.addEventListener("click", (e) => {
+    const evt = e.target.closest(".evt, .mevt");
+    if (evt) {
+      if (evt.dataset.cal === "prop") {
+        evt.classList.remove("prop"); evt.classList.add("task"); evt.dataset.cal = "task";
+        showToast("Bloco aceito e agendado ✓ — a agenda assistida propõe, você decide");
+        return;
+      }
+      openDetail(evt.dataset.title, evt.dataset.area, evt.dataset.cal);
+    }
+    const wl = e.target.closest(".wikilink");
+    if (wl) {
+      const t = (wl.dataset.note || wl.textContent.replace(/[\[\]]/g, "")).trim();
+      const target = NOTES.find((n) => n.title === t);
+      const projId = Object.keys(PROJECTS).find((k) => PROJECTS[k].title === t);
+      if (target) { closeAll(); setView("notas"); openNote(target.id); }
+      else if (projId) { closeAll(); openProject(projId); }
+      else showToast(`Criaria a nota "${t}" na hora — protótipo`);
+    }
+    const blk = e.target.closest(".backlink, .linknote");
+    if (blk && !blk.dataset.noteId && !blk.dataset.openproj) showToast("Abriria a nota — protótipo");
+    if (e.target.closest(".chip.file")) showToast("Abriria o arquivo no Drive/OneDrive — sem duplicar nada");
+    const dt = e.target.closest("[data-toast]");
+    if (dt) showToast(dt.dataset.toast);
+    if (e.target.closest("[data-close]")) closeAll();
+    if (e.target.closest("[data-back]")) setView("dia");
+    const ex = e.target.closest("[data-expand]");
+    if (ex) { closeAll(); openProject(ex.dataset.expand); }
+    const pop2 = e.target.closest(".proj-open");
+    if (pop2) openProject(pop2.dataset.proj);
+    const oa = e.target.closest("[data-open-area]");
+    if (oa) openArea(oa.dataset.openArea);
+    const orc = e.target.closest("[data-open-rec]");
+    if (orc) openResource(orc.dataset.openRec);
+    const opj = e.target.closest("[data-openproj]");
+    if (opj) openProject(opj.dataset.openproj);
+    const pc = e.target.closest(".chip.person");
+    if (pc && !pc.closest("#captureChips")) openPerson(pc.textContent);
+    const po = e.target.closest(".pillrow .pill-opt");
+    if (po) {
+      const row = po.parentElement;
+      if (row.hasAttribute("data-multi")) {
+        const onCount = row.querySelectorAll(".pill-opt.on").length;
+        if (!po.classList.contains("on") && onCount >= 3) showToast("Máximo de 3 prioridades — desmarque uma antes");
+        else po.classList.toggle("on");
+      } else if (row.hasAttribute("data-single")) {
+        row.querySelectorAll(".pill-opt").forEach((x) => x.classList.toggle("on", x === po));
+      }
+      const free = row.nextElementSibling;
+      if (free && free.classList.contains("tri-free")) {
+        const showFree = po.classList.contains("on") && po.dataset.free !== undefined;
+        free.style.display = showFree ? "block" : "none";
+        if (showFree) free.focus();
+      }
+    }
+    if (e.target === $("#scrim")) closeAll();
+  });
+  $("#wkResched").addEventListener("click", () =>
+    showToast(`Reagendadas: proposta → ${pillVal("#wkR1")} · cartório → ${pillVal("#wkR2")}`));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAll();
+    if (e.key === "Enter") {
+      const t = e.target.closest && e.target.closest(".evt, .mevt, .todo .box, .tl-bar");
+      if (t) t.click();
+    }
+  });
+  $("#detailClose").addEventListener("click", closeAll);
+
+  // ═══ Check do dia — triagem ═══
+  const INBOX = [
+    { src: "Captura rápida · ontem 22:14", title: "Ideia: oficina de escrita para a equipe" },
+    { src: "E-mail com estrela · Outlook", title: "Proposta do fornecedor de mobiliário" },
+    { src: "Captura rápida · hoje 08:02", title: "Ligar para a escola sobre a matrícula" },
+  ];
+  let triageIdx = 0, triStep = "cls";
+  const TRI_DEST = ["Mudança de sede", "Relatório anual 2026", "Sistema de atendimento", "Equipe", "Financeiro", "Atendimentos"];
+  function pillVal(sel) {
+    const row = document.querySelector(sel);
+    const on = row && row.querySelector(".pill-opt.on");
+    if (!on) return "—";
+    if (on.dataset.free !== undefined) {
+      const free = row.nextElementSibling;
+      const v = free && free.classList.contains("tri-free") ? free.value.trim() : "";
+      return v || on.textContent.trim();
+    }
+    return on.textContent.trim();
+  }
+  function triNext(msg) {
+    showToast(msg);
+    const left = String(INBOX.length - triageIdx - 1);
+    $("#inboxCount").textContent = left;
+    const dcc = $("#dcCount");
+    if (dcc) dcc.textContent = left;
+    const card = $("#triCard");
+    if (card) card.classList.add("out");
+    setTimeout(() => { triageIdx++; triStep = "cls"; renderTriage(); }, 240);
+  }
+  function renderTriage() {
+    const body = $("#triageBody");
+    if (triageIdx >= INBOX.length) {
+      body.innerHTML = `<div class="allclear"><div class="big">✓</div>
+        <h4>Inbox zero</h4><p>Check do dia concluído. A ideia incubada volta em 07/10/2026.</p>
+        <div class="modal-foot" style="justify-content:center"><button class="btn primary" data-close>Fechar</button></div></div>`;
+      const dc = $("#daycheck");
+      dc.classList.add("done");
+      dc.innerHTML = `<div><div class="ttl">✓ Check do dia feito</div><div class="sub">Inbox zero — bom dia de trabalho.</div></div>`;
+      $("#inboxCount").textContent = "0";
+      return;
+    }
+    const it = INBOX[triageIdx];
+    const head = `<div class="triage-src">${it.src}</div><div class="triage-title">${it.title}</div>`;
+    const back = `<button class="tri-back" data-step="cls">← voltar à classificação</button>`;
+    if (triStep === "cls") {
+      body.innerHTML = `<div class="triage-card" id="triCard">${head}
+        <div class="flab">O que é isto? (Organizar)</div>
+        <div class="tri-cls">
+          <button class="tri-btn" data-step="acao"><b>É uma ação</b>detalhar e virar tarefa</button>
+          <button class="tri-btn" data-step="ref"><b>É referência</b>destilar e guardar no PARA</button>
+          <button class="tri-btn" data-step="nota"><b>Nada disso</b>expressar em uma nota</button>
+        </div>
+        <div class="tri-sec">
+          <button class="tri-btn warm" data-fin="Incubada ⏳ — volta à Inbox em 07/10/2026 (90 dias)"><b>Incubar ⏳</b></button>
+          <button class="tri-btn" data-fin="Descartada — sem dó"><b>Descartar ✕</b></button>
+        </div>
+        <div class="triage-progress">${triageIdx + 1} de ${INBOX.length}</div></div>`;
+    } else if (triStep === "acao") {
+      body.innerHTML = `<div class="triage-card" id="triCard">${back}${head}
+        <div class="flab">Destilar — deixe acionável (edite o título)</div>
+        <input class="tri-input" id="triTitle" value="${it.title}">
+        <div class="flab">Projeto ou área</div>
+        <div class="pillrow" data-single id="triDest">${TRI_DEST.map((d, i) => `<button class="pill-opt ${i === 0 ? "on" : ""}">${d}</button>`).join("")}<button class="pill-opt warm" data-free>+ novo projeto/área…</button></div>
+        <input class="tri-input tri-free" placeholder="Nome do novo projeto ou área — criado na hora">
+        <div class="flab">Quando</div>
+        <div class="pillrow" data-single id="triWhen"><button class="pill-opt">hoje</button><button class="pill-opt on">amanhã</button><button class="pill-opt">seg</button><button class="pill-opt">sem data</button><button class="pill-opt warm" data-free>outra data…</button></div>
+        <input class="tri-input tri-free" placeholder="ex.: 24/07, dia 24 ou próxima sexta">
+        <div class="flab">Quem</div>
+        <div class="pillrow" data-single id="triWho"><button class="pill-opt on">@eu</button><button class="pill-opt">@Ana</button><button class="pill-opt">@Marcos</button><button class="pill-opt warm" data-free>outra pessoa…</button></div>
+        <input class="tri-input tri-free" placeholder="Nome — vira uma @pessoa nova">
+        <div class="modal-foot"><button class="btn primary" id="triMakeTask">Criar tarefa ✓</button></div></div>`;
+    } else if (triStep === "ref") {
+      body.innerHTML = `<div class="triage-card" id="triCard">${back}${head}
+        <div class="flab">Guardar em</div>
+        <div class="pillrow" data-single id="triDest"><button class="pill-opt on">Gestão de projetos</button><button class="pill-opt">Leituras</button><button class="pill-opt">Equipe</button><button class="pill-opt">Financeiro</button><button class="pill-opt warm" data-free>+ novo recurso…</button></div>
+        <input class="tri-input tri-free" placeholder="Nome do novo recurso — criado na hora">
+        <div class="flab">Destilar — a essência em uma linha</div>
+        <input class="tri-input" id="triGist" placeholder="Por que isso vale guardar?">
+        <div class="modal-foot"><button class="btn primary" id="triSaveRef">Guardar referência ✓</button></div></div>`;
+    } else {
+      body.innerHTML = `<div class="triage-card" id="triCard">${back}${head}
+        <div class="flab">Expressar — comece a nota agora</div>
+        <textarea class="tri-ta" id="triNote" rows="4">${it.title}
+
+</textarea>
+        <div class="flab">Vincular a</div>
+        <div class="pillrow" data-single id="triDest"><button class="pill-opt on">Nota livre</button><button class="pill-opt">Mudança de sede</button><button class="pill-opt">Relatório anual 2026</button><button class="pill-opt">Equipe</button></div>
+        <div class="modal-foot"><button class="btn primary" id="triMakeNote">Criar nota ✎</button></div></div>`;
+    }
+    body.querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", () => { triStep = b.dataset.step; renderTriage(); }));
+    body.querySelectorAll("[data-fin]").forEach((b) => b.addEventListener("click", () => triNext(b.dataset.fin)));
+    const mk = $("#triMakeTask");
+    if (mk) mk.addEventListener("click", () =>
+      triNext(`Tarefa criada em "${pillVal("#triDest")}" · ${pillVal("#triWhen")} · ${pillVal("#triWho")}`));
+    const sr = $("#triSaveRef");
+    if (sr) sr.addEventListener("click", () =>
+      triNext(`Referência destilada e guardada em "${pillVal("#triDest")}"`));
+    const mn = $("#triMakeNote");
+    if (mn) mn.addEventListener("click", () =>
+      triNext(`Nota criada (${pillVal("#triDest")}) — expressar ✎`));
+  }
+  function openModal(id) {
+    pushUI();
+    $("#scrim").classList.add("show");
+    $(id).classList.add("open");
+  }
+  $("#dcGo").addEventListener("click", () => { triageIdx = 0; triStep = "cls"; renderTriage(); openModal("#modalTriage"); });
+  $("#navInbox").addEventListener("click", () => { triageIdx = 0; triStep = "cls"; renderTriage(); openModal("#modalTriage"); });
+
+  // ═══ Revisão semanal ═══
+  $("#navWeekly").addEventListener("click", () => openModal("#modalWeekly"));
+  $("#wkDone").addEventListener("click", () => { closeAll(); showToast("Revisão semanal concluída — semana 29 organizada ✓"); });
+  $("#wkPrio").addEventListener("click", () => {
+    const sel = $$("#wkPrioRow .pill-opt.on").map((x) => x.textContent.trim());
+    showToast(sel.length ? `Prioridades da semana 29: ${sel.join(" · ")}` : "Escolha ao menos 1 prioridade");
+  });
+  $("#wkFocus").addEventListener("click", () => showToast(`Bloco de foco reservado: ${pillVal("#wkFocusRow")}`));
+  $("#wkProj").addEventListener("click", () =>
+    showToast(`Tarefa criada no Sistema de atendimento: "${$("#wkProjTask").value.trim()}" · ${pillVal("#wkProjDay")}`));
+
+  // ═══ Novo Projeto/Área/Recurso ═══
+  let newKind = "Projeto";
+  $$(".para-add").forEach((b) => b.addEventListener("click", () => {
+    newKind = b.dataset.kind;
+    $("#newTitle").textContent = newKind === "Área" ? "Nova área" : "Novo " + newKind.toLowerCase();
+    $("#nfDeadlineWrap").style.display = newKind === "Projeto" ? "" : "none";
+    $("#nfName").value = ""; $("#nfDesc").value = ""; $("#nfDeadline").value = ""; $("#nfGoal").value = "";
+    openModal("#modalNew");
+    setTimeout(() => $("#nfName").focus(), 150);
+  }));
+  $("#nfSave").addEventListener("click", () => {
+    const name = $("#nfName").value.trim();
+    if (!name) { showToast("Dê um nome — só isso é obrigatório"); return; }
+    const target = newKind === "Projeto" ? "#projList" : newKind === "Área" ? "#areaList" : "#recList";
+    const el = document.createElement("button");
+    el.className = "nav-item";
+    el.innerHTML = newKind === "Projeto"
+      ? `<span class="proj-dot" style="background:var(--accent)"></span> ${name} <span class="count">0</span>`
+      : `<span class="nav-ico">${newKind === "Área" ? "▣" : "◈"}</span> ${name}`;
+    el.style.animation = "rise 0.4s var(--ease) both";
+    $(target).appendChild(el);
+    closeAll();
+    showToast(`${newKind} "${name}" criado ✓`);
+  });
+
+  // ═══ Captura rápida (linguagem natural + @menções) ═══
+  const input = $("#captureInput"), chips = $("#captureChips");
+  const DATE_RX = /\b(hoje|amanhã|segunda|seg|terça|ter|quarta|qua|quinta|qui|sexta|sex|sábado|sab|domingo|dom)\b/i;
+  const TIME_RX = /\b(\d{1,2})h(\d{2})?\b/;
+  const AC_PEOPLE = ["Ana", "Marcos", "Célia", "Paula"];
+  const AC_PROJ = [
+    ["Sede", "Mudança de sede"],
+    ["Relatorio", "Relatório anual 2026"],
+    ["Sistema", "Sistema de atendimento"],
+  ];
+  const AC_AREAS = [
+    ["Equipe", "área"],
+    ["Financeiro", "área"],
+    ["Atendimentos", "área"],
+  ];
+  // Datas: dia da semana, 24/07 (ou 24/07/2026) e "dia 24"
+  const DATEN_RX = /\b(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\b/;
+  const DIA_RX = /\bdia\s+(\d{1,2})\b/i;
+  function acMatch(v) {
+    const m = v.match(/(^|\s)([@#\/])([\wÀ-ú]*)$/);
+    if (!m) return null;
+    const trigger = m[2], q = m[3].toLowerCase();
+    const list = trigger === "@"
+      ? AC_PEOPLE.filter((p) => p.toLowerCase().startsWith(q)).map((p) => [p, "pessoa"])
+      : trigger === "#"
+        ? AC_PROJ.filter(([t, d]) => t.toLowerCase().startsWith(q) || d.toLowerCase().includes(q)).map(([t, d]) => [t, d + " · projeto"])
+        : AC_AREAS.filter(([t]) => t.toLowerCase().startsWith(q));
+    return list.length ? { trigger, start: m.index + m[1].length, items: list.slice(0, 4) } : null;
+  }
+  function acComplete(val) {
+    const ac = acMatch(input.value);
+    if (!ac) return;
+    input.value = input.value.slice(0, ac.start) + ac.trigger + val + " ";
+    input.focus();
+    input.dispatchEvent(new Event("input"));
+  }
+  input.addEventListener("input", () => {
+    const v = input.value.trim();
+    if (!v) { chips.classList.remove("show"); return; }
+    const d = v.match(DATE_RX), dn = v.match(DATEN_RX), dd = v.match(DIA_RX), t = v.match(TIME_RX);
+    const g = v.match(/(?:^|\s)#(\S+)/);
+    const ar = v.match(/(?:^|\s)\/([\wÀ-ú]+)/);
+    const people = [...v.matchAll(/@([\wÀ-ú]+)/g)].map((m) => m[1]);
+    let title = v.replace(DATE_RX, "").replace(DIA_RX, "").replace(DATEN_RX, "").replace(TIME_RX, "")
+      .replace(/(?:^|\s)#\S+/g, "").replace(/(?:^|\s)\/[\wÀ-ú]+/g, "").replace(/@[\wÀ-ú]+/g, "").trim() || "Nova captura";
+    const dateChip = d ? d[1].toLowerCase() : dn ? dn[1] : dd ? `dia ${dd[1]}` : null;
+    const ac = acMatch(input.value);
+    chips.innerHTML =
+      `<span class="chip muted">${title}</span>` +
+      (dateChip ? `<span class="chip">📅 ${dateChip}</span>` : "") +
+      (t ? `<span class="chip">🕐 ${t[1]}h${t[2] || ""}</span>` : "") +
+      people.map((p) => `<span class="chip person">@${p}</span>`).join("") +
+      (g ? `<span class="chip">▶ ${g[1]}</span>` : "") +
+      (ar ? `<span class="chip">▣ ${ar[1]}</span>` : "") +
+      (!g && !ar ? `<span class="chip muted">→ Inbox</span>` : "") +
+      (ac ? `<div class="ac-list">` + ac.items.map(([val, desc], i) =>
+        `<button class="ac-item ${i === 0 ? "sel" : ""}" data-ac="${val}">${ac.trigger}${val}<span class="k">${desc}</span></button>`).join("") +
+        `</div><div class="capture-hint">Tab completa a primeira sugestão</div>`
+        : `<div class="capture-hint">Enter captura · @pessoa · #projeto · /área · datas: sexta, 24/07, dia 24</div>`);
+    chips.classList.add("show");
+  });
+  chips.addEventListener("mousedown", (e) => {
+    const item = e.target.closest(".ac-item");
+    if (item) { e.preventDefault(); acComplete(item.dataset.ac); }
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") {
+      const ac = acMatch(input.value);
+      if (ac) { e.preventDefault(); acComplete(ac.items[0][0]); return; }
+    }
+    if (e.key === "Enter" && input.value.trim()) {
+      const c = $("#inboxCount");
+      c.textContent = String(Number(c.textContent) + 1);
+      $("#dcCount").textContent = c.textContent;
+      showToast(`Capturado: "${input.value.trim().slice(0, 48)}"`);
+      input.value = "";
+      chips.classList.remove("show");
+    }
+    if (e.key === "Escape") { input.blur(); chips.classList.remove("show"); }
+  });
+  input.addEventListener("blur", () => setTimeout(() => chips.classList.remove("show"), 150));
+
+  // ═══ Tema ═══
+  $("#themeToggle").addEventListener("click", () => {
+    const root = document.documentElement;
+    const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+    const cur = root.dataset.theme || (dark ? "dark" : "light");
+    root.dataset.theme = cur === "dark" ? "light" : "dark";
+  });
+</script>
