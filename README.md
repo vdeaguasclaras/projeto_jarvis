@@ -13,12 +13,16 @@ A mistura do **poder de organização do Notion**, com as **notas livres e conec
 | Documento | Conteúdo |
 |---|---|
 | [docs/01-plano-do-produto.md](docs/01-plano-do-produto.md) | Visão, pesquisa de referências, requisitos, modelo conceitual, arquitetura e roadmap |
-| [prototipos/prototipo-v1.html](prototipos/prototipo-v1.html) | Protótipo navegável de design (abra no navegador) |
+| [docs/02-decisoes-e-feedback-v1.md](docs/02-decisoes-e-feedback-v1.md) | Decisões fechadas, feedback do v1 → requisitos, modelo de auto-agendamento e candidatos a nome |
+| [prototipos/prototipo-v1.html](prototipos/prototipo-v1.html) | Protótipo navegável v1 (abra no navegador) |
+| [prototipos/prototipo-v2.html](prototipos/prototipo-v2.html) | Protótipo navegável v2 — transições fluidas, check do dia, revisão semanal, visão GTD, grafo, páginas de projeto |
 
 ## Estado atual
 
 - [x] Levantamento de requisitos e pesquisa de referências (Motion, Briefmatic)
 - [x] Plano do produto
 - [x] Protótipo de design v1 (navegável, sem código de produção)
-- [ ] Validação do protótipo com o usuário
+- [x] Validação do v1 → decisões e novos requisitos (doc 02)
+- [x] Protótipo de design v2
+- [ ] Validação do v2 e escolha do nome
 - [ ] Definição final da stack e início do desenvolvimento
