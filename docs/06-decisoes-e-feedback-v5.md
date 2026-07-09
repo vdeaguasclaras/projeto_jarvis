@@ -18,3 +18,11 @@
 ## Decisão de método (item 8)
 
 CODE (Forte) e GTD (Allen) não competem: o CODE organiza o **conhecimento** (capturar → organizar → destilar → expressar) e o fluxo GTD decide o **destino da ação** dentro do "Organizar". Como as perguntas aparecem uma de cada vez, o usuário nunca vê a árvore inteira — só a próxima decisão. Fica registrado como padrão do produto.
+
+## Adendo (última rodada) — vínculo evento ↔ nota, mídia e expansão
+
+Dúvida final do Raul: de onde sai a nota que aparece ao clicar num evento, como vincular nota a agenda, como fica mídia/arquivo na nota, e faltava expandir a nota do painel lateral.
+
+1. **A nota nasce do evento.** Evento sem nota mostra "✎ Criar nota deste evento" no painel lateral: a nota é criada já vinculada (chip "📅 evento" no cabeçalho) e herda projeto/área e participantes como metadados. Evento com nota mostra a própria nota — a mesma que aparece no módulo Notas (uma nota, duas portas).
+2. **Expandir**: o painel lateral do evento com nota ganhou o botão "⤢ Abrir no módulo de notas".
+3. **Mídia e arquivos em notas**: o markdown renderiza `![legenda](foto.jpg)` como imagem embutida, `![legenda](video:...)` como vídeo e `[nome](file:...)` como chip de arquivo linkado (Drive/OneDrive, sem duplicar). No modo Editar há botões 🖼 🎬 📎 que inserem no cursor — no app real, upload/link direto.

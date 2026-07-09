@@ -1042,6 +1042,12 @@
             <div class="meta-pop" id="metaPop"></div>
             <div class="note note-render" id="noteRender"></div>
             <textarea class="note-md" id="noteMd" style="display:none" spellcheck="false"></textarea>
+            <div id="mdTools" style="display:none;margin-top:8px">
+              <button class="pill-opt" data-md-insert="![legenda da imagem](minha-foto.jpg)">🖼 Imagem</button>
+              <button class="pill-opt" data-md-insert="![legenda do vídeo](video:meu-video.mp4)">🎬 Vídeo</button>
+              <button class="pill-opt" data-md-insert="[nome-do-arquivo.pdf](file:drive)">📎 Arquivo (Drive/OneDrive)</button>
+              <span class="capture-hint" style="margin-left:6px">insere no cursor — no app real é upload ou link direto, sem duplicar o arquivo</span>
+            </div>
             <div class="ac-list" id="mdAc" style="display:none"></div>
             <div id="noteActions"></div>
             <div class="note-h3">Backlinks — notas que apontam para cá</div>
@@ -1090,7 +1096,8 @@
     <h3>Participantes</h3>
     <div><span class="chip person">@Ana</span> <span class="chip person">@Marcos</span> <span class="chip person">@Raul</span></div>
 
-    <h3>Nota de reunião <span style="float:right;letter-spacing:0;text-transform:none;font-weight:400">✧ destilar = destacar</span></h3>
+    <button class="btn ghost" id="detailExpandNote" style="margin-top:6px;font-size:12px">⤢ Abrir no módulo de notas</button>
+    <h3>Nota de reunião — vinculada a este evento <span style="float:right;letter-spacing:0;text-transform:none;font-weight:400">✧ destilar = destacar</span></h3>
     <div class="note">
       <p>Priorizamos o cronograma do <a class="wikilink">[[Sistema de atendimento]]</a> para o segundo semestre. <mark>A <a class="wikilink">@Ana</a> assume o levantamento de requisitos</mark> e apresenta na próxima segunda.</p>
       <p>Ficou definido que o orçamento segue o modelo discutido em <a class="wikilink">[[Planejamento 2026]]</a> — ver também <a class="wikilink">[[Critérios de priorização]]</a>.</p>
@@ -1780,7 +1787,12 @@
 - [ ] Revisar requisitos enviados pela @Ana até segunda
 - [ ] Consolidar orçamento do semestre até sexta
 
-Ver também [[Planejamento 2026]] e [[Critérios de priorização]]. #reunião` },
+![Quadro do planejamento](foto-quadro.jpg)
+
+Arquivos: [Cronograma-2026.gsheet](file:drive) [Ata-junho.docx](file:onedrive)
+
+Ver também [[Planejamento 2026]] e [[Critérios de priorização]]. #reunião`,
+      evento: "Reunião de equipe · qui 09/07 10h" },
     { id: "crit", title: "Critérios de priorização", group: null, tags: ["método"], date: "há 1 semana",
       md: `Uma ideia por nota; esta é sobre **como decidir o que entra**.
 
@@ -1816,6 +1828,7 @@ Dia bom de foco pela manhã; a tarde rendeu menos. #diário` },
       .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
       .replace(/\*([^*]+)\*/g, "<em>$1</em>")
       .replace(/\[\[([^\]]+)\]\]/g, '<a class="wikilink" data-note="$1">[[$1]]</a>')
+      .replace(/\[([^\]]+)\]\(file:[^)]*\)/g, '<span class="chip file">📄 $1</span>')
       .replace(/(^|\s)#([\wÀ-ú-]+)/g, '$1<span class="note-tag">#$2</span>')
       .replace(/(^|\s)@([\wÀ-ú]+)/g, '$1<span class="chip person" style="cursor:pointer">@$2</span>');
   }
@@ -1824,6 +1837,12 @@ Dia bom de foco pela manhã; a tarde rendeu menos. #diário` },
     const closeList = () => { if (list) { html += `</${list}>`; list = null; } };
     for (const raw of md.split("\n")) {
       const l = raw.trimEnd();
+      const media = l.match(/^!\[([^\]]*)\]\((video:)?[^)]*\)$/);
+      if (media) {
+        closeList();
+        html += `<figure class="embed" style="margin:10px 0;max-width:420px"><div class="ph ${media[2] ? "video" : ""}">${media[2] ? "" : "🖼 "}${media[1] || "mídia"}</div><figcaption>${media[1] || "mídia"} — no app real, o arquivo embutido aparece aqui</figcaption></figure>`;
+        continue;
+      }
       if (/^- \[[ x]\] /.test(l)) {
         if (list !== "ul") { closeList(); html += "<ul>"; list = "ul"; }
         const done = /^- \[x\]/.test(l);
@@ -1868,6 +1887,7 @@ Dia bom de foco pela manhã; a tarde rendeu menos. #diário` },
     if (!n) return;
     $("#noteTitle").textContent = n.title;
     $("#noteChips").innerHTML =
+      (n.evento ? `<span class="chip muted" title="Nota vinculada a um evento do calendário">📅 ${n.evento}</span>` : "") +
       `<span class="chip ${n.group ? "" : "muted"}" data-note-meta style="cursor:pointer" title="Alterar grupo">${n.group || "sem grupo"} ▾</span>` +
       n.tags.map((t) => `<span class="chip muted">#${t}</span>`).join("") +
       (n.people || []).map((p) => `<span class="chip person">@${p}</span>`).join("") +
@@ -1934,6 +1954,7 @@ Dia bom de foco pela manhã; a tarde rendeu menos. #diário` },
       nm.parentElement.querySelectorAll("[data-nmode]").forEach((x) => x.classList.toggle("active", x === nm));
       const edit = nm.dataset.nmode === "editar";
       $("#noteMd").style.display = edit ? "block" : "none";
+      $("#mdTools").style.display = edit ? "block" : "none";
       $("#noteRender").style.display = edit ? "none" : "";
       if (!edit) $("#noteRender").innerHTML = mdToHtml(NOTES.find((x) => x.id === currentNote).md);
     }
@@ -2014,6 +2035,30 @@ Dia bom de foco pela manhã; a tarde rendeu menos. #diário` },
     r.selectNodeContents(h);
     const sel = getSelection();
     sel.removeAllRanges(); sel.addRange(r);
+  });
+  // Mídia no editor + vínculo evento ↔ nota
+  document.addEventListener("click", (e) => {
+    const mi = e.target.closest("[data-md-insert]");
+    if (mi) {
+      const s = ta.selectionStart ?? ta.value.length;
+      ta.value = ta.value.slice(0, s) + "\n" + mi.dataset.mdInsert + "\n" + ta.value.slice(s);
+      ta.focus();
+      ta.selectionStart = ta.selectionEnd = s + mi.dataset.mdInsert.length + 2;
+      ta.dispatchEvent(new Event("input"));
+    }
+    if (e.target.closest("#detailExpandNote")) { closeAll(); setView("notas"); openNote("reun"); }
+    const mk = e.target.closest("[data-make-note]");
+    if (mk) {
+      const title = mk.dataset.makeNote;
+      const group = NOTE_GROUPS.includes(mk.dataset.makeGroup) ? mk.dataset.makeGroup : null;
+      const id = "evt-" + (++noteSeq);
+      NOTES.unshift({ id, title: "Nota — " + title, group, people: [], tags: ["evento"], date: "agora",
+        evento: title + " · qui 09/07",
+        md: `Contexto: ${title}, quinta 09/07.\n\n` });
+      closeAll(); setView("notas"); openNote(id);
+      document.querySelector('[data-nmode="editar"]').click();
+      showToast("Nota criada e vinculada ao evento ✓ — os encaminhamentos podem virar tarefas");
+    }
   });
   $("#navNotes").addEventListener("click", () => setView("notas"));
   $("#navToday").addEventListener("click", () => setView("dia"));
@@ -2136,9 +2181,23 @@ Dia bom de foco pela manhã; a tarde rendeu menos. #diário` },
     $("#detailTitle").textContent = title;
     $("#detailMeta").innerHTML =
       `<span class="chip muted"><span class="src-dot" style="background:${CAL_COLOR[cal] || "var(--accent)"}"></span>${CAL_LABEL[cal] || "Evento"}</span>` +
-      (area ? `<span class="chip">${area}</span>` : "");
-    $("#detailStatic").style.display = "";
-    $("#detailDyn").style.display = "none";
+      (area ? `<span class="chip">${area}</span>` : "") +
+      (title === "Reunião de equipe" ? `<span class="chip">✎ tem nota vinculada</span>` : "");
+    if (title === "Reunião de equipe") {
+      // Este evento tem nota: mostra a nota vinculada (a mesma do módulo Notas)
+      $("#detailStatic").style.display = "";
+      $("#detailDyn").style.display = "none";
+    } else {
+      // Evento sem nota: é AQUI que a nota nasce — vinculada ao evento
+      $("#detailStatic").style.display = "none";
+      const dyn = $("#detailDyn");
+      dyn.style.display = "";
+      dyn.innerHTML = `
+        <h3>Nota do evento</h3>
+        <p class="year-note" style="margin-top:2px">Este evento ainda não tem nota.</p>
+        <button class="btn primary" data-make-note="${title}" data-make-group="${area || ""}">✎ Criar nota deste evento</button>
+        <p class="year-note" style="margin-top:10px">A nota nasce <b>do evento</b>: fica vinculada a ele (abre por aqui e pelo módulo Notas) e já herda data, participantes e projeto/área como metadados.</p>`;
+    }
     if (!$("#detail").classList.contains("open")) pushUI();
     $("#detail").classList.add("open");
     $("#scrim").classList.add("show");
