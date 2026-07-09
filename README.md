@@ -38,4 +38,6 @@ A mistura do **poder de organização do Notion**, com as **notas livres e conec
 - [x] Validação do v4 → protótipo v5 com módulo de Notas (doc 05)
 - [x] Validação do v5 → protótipo v6, fechamento do design (doc 06)
 - [x] Kickoff técnico da Fase 1 (doc 07)
-- [ ] Fase 1 — esqueleto do app real (Next.js + Supabase + Vercel)
+- [x] Fase 1 · Marco 1 — esqueleto do app real em `web/` (Next.js + TypeScript, build ok)
+- [ ] Provisionar Supabase (aguarda vaga de projeto gratuito) e Vercel (aguarda permissão do conector)
+- [ ] Fase 1 · Marcos 2–7 — auth, captura persistente, tarefas, calendário, check do dia, PWA
