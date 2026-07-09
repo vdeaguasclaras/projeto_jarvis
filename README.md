@@ -15,9 +15,11 @@ A mistura do **poder de organização do Notion**, com as **notas livres e conec
 | [docs/01-plano-do-produto.md](docs/01-plano-do-produto.md) | Visão, pesquisa de referências, requisitos, modelo conceitual, arquitetura e roadmap |
 | [docs/02-decisoes-e-feedback-v1.md](docs/02-decisoes-e-feedback-v1.md) | Decisões fechadas, feedback do v1 → requisitos, modelo de auto-agendamento e candidatos a nome |
 | [docs/03-decisoes-e-feedback-v2.md](docs/03-decisoes-e-feedback-v2.md) | Nome aprovado (Kairós), feedback do v2 → v3 e correção do bug do painel |
+| [docs/04-decisoes-e-feedback-v3.md](docs/04-decisoes-e-feedback-v3.md) | Feedback do v3 → v4: prioridades, revisão semanal detalhada, mobile repensado, filtros múltiplos, kanban |
 | [prototipos/prototipo-v1.html](prototipos/prototipo-v1.html) | Protótipo navegável v1 (abra no navegador) |
 | [prototipos/prototipo-v2.html](prototipos/prototipo-v2.html) | Protótipo navegável v2 — transições fluidas, check do dia, revisão semanal, visão GTD, grafo, páginas de projeto |
 | [prototipos/prototipo-v3.html](prototipos/prototipo-v3.html) | Protótipo navegável v3 — filtros, autocompletar, triagem CODE completa, visão por pessoa, grafo dinâmico, PDF de projeto |
+| [prototipos/prototipo-v4.html](prototipos/prototipo-v4.html) | Protótipo navegável v4 — prioridades do dia/semana, revisão semanal em 7 passos, mobile com PARA no menu inferior, filtros múltiplos, kanban, `/área` e datas numéricas |
 
 ## Estado atual
 
@@ -27,5 +29,6 @@ A mistura do **poder de organização do Notion**, com as **notas livres e conec
 - [x] Validação do v1 → decisões e novos requisitos (doc 02)
 - [x] Protótipo de design v2
 - [x] Validação do v2, nome aprovado (Kairós) e protótipo v3 (doc 03)
-- [ ] Validação do v3
+- [x] Validação do v3 → protótipo v4 (doc 04)
+- [ ] Validação do v4
 - [ ] Definição final da stack e início do desenvolvimento (Fase 1)
