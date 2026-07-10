@@ -19,6 +19,8 @@ A mistura do **poder de organização do Notion**, com as **notas livres e conec
 | [docs/05-decisoes-e-feedback-v4.md](docs/05-decisoes-e-feedback-v4.md) | Feedback do v4 → v5: correção dos campos livres, projeto ↔ área e o módulo de Notas (Zettelkasten) |
 | [docs/06-decisoes-e-feedback-v5.md](docs/06-decisoes-e-feedback-v5.md) | Feedback do v5 → v6 (fechamento do design): notas editáveis, GTD na triagem, gamificação, menu colapsável |
 | [docs/07-fase-1-kickoff-tecnico.md](docs/07-fase-1-kickoff-tecnico.md) | Kickoff técnico da Fase 1: stack, schema, marcos de construção |
+| [docs/08-fase-1-status.md](docs/08-fase-1-status.md) | **Status atual da Fase 1** — o que funciona em produção e o que vem a seguir |
+| [CLAUDE.md](CLAUDE.md) | Memória do projeto para as próximas sessões (infra, decisões, armadilhas) |
 | [prototipos/prototipo-v1.html](prototipos/prototipo-v1.html) | Protótipo navegável v1 (abra no navegador) |
 | [prototipos/prototipo-v2.html](prototipos/prototipo-v2.html) | Protótipo navegável v2 — transições fluidas, check do dia, revisão semanal, visão GTD, grafo, páginas de projeto |
 | [prototipos/prototipo-v3.html](prototipos/prototipo-v3.html) | Protótipo navegável v3 — filtros, autocompletar, triagem CODE completa, visão por pessoa, grafo dinâmico, PDF de projeto |
@@ -40,5 +42,7 @@ A mistura do **poder de organização do Notion**, com as **notas livres e conec
 - [x] Kickoff técnico da Fase 1 (doc 07)
 - [x] Fase 1 · Marco 1 — esqueleto do app real em `web/` (Next.js + TypeScript, build ok)
 - [x] Supabase provisionado (projeto mapa-de-sala, tabelas `kairos_*` com RLS) e Vercel com deploy contínuo
-- [x] Fase 1 · Marco 2 (parte) — login por link mágico · Marco 3 (parte) — captura persistente na Inbox
-- [ ] Fase 1 · restante — OAuth Google/Microsoft, triagem, tarefas, calendário, check do dia, PWA
+- [x] Fase 1 · Marcos 2 (parte), 3, 4 e 6 — login, captura com roteamento e autocompletar, triagem GTD real, tarefas e PARA (com emojis) persistentes, placar
+- [ ] Fase 1 · restante — calendário real (Marco 5), revisão semanal, PWA completo, OAuth Google/Microsoft
+
+**App em produção:** https://projeto-jarvis-seven.vercel.app

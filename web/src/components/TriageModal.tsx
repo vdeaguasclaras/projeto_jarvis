@@ -5,6 +5,7 @@ import {
   criarNota,
   criarPessoa,
   criarTarefa,
+  hojeISO,
   incubarItem,
   marcarTriado,
   registrarRitual,
@@ -61,7 +62,13 @@ export default function TriageModal({ userId, items, containers, onClose, onChan
   const fazerAgora = async () => {
     await criarTarefa(userId, { titulo: parseCapture(item.texto).title, concluida: true });
     await marcarTriado(item.id);
-    await next("Feita agora ✓ regra dos 2 minutos — soma no placar de hoje");
+    await next("Registrada como feita ✓ (regra dos 2 minutos) — soma no placar de hoje");
+  };
+
+  const fazerHoje = async () => {
+    await criarTarefa(userId, { titulo: parseCapture(item.texto).title, status: "a_fazer", prazo: hojeISO() });
+    await marcarTriado(item.id);
+    await next("Na sua lista de hoje ✓ — veja na visão Tarefas");
   };
 
   const delegar = async () => {
@@ -164,16 +171,19 @@ export default function TriageModal({ userId, items, containers, onClose, onChan
 
                 {step === "sim2" && (
                   <>
-                    <div className="flab">Leva menos de 2 minutos?</div>
-                    <div className="tri-cls">
+                    <div className="flab">Quando você resolve isto?</div>
+                    <div className="tri-cls" style={{ gridTemplateColumns: "1fr 1fr" }}>
+                      <button className="tri-btn" onClick={fazerHoje}>
+                        <b>Fazer hoje</b>entra na lista de hoje
+                      </button>
                       <button className="tri-btn" onClick={fazerAgora}>
-                        <b>Sim — fazer agora</b>resolve e sai da fila
+                        <b>Já fiz agora ✓</b>menos de 2 min — só registra
                       </button>
                       <button className="tri-btn" onClick={() => setStep("deleg")}>
                         <b>Delegar</b>outra pessoa encaminha
                       </button>
                       <button className="tri-btn" onClick={goAcao}>
-                        <b>Adiar e planejar</b>destilar: projeto, quando
+                        <b>Planejar</b>destilar: projeto, quando
                       </button>
                     </div>
                   </>
@@ -216,6 +226,7 @@ export default function TriageModal({ userId, items, containers, onClose, onChan
                       </button>
                       {containersDe(["projeto", "area"]).map((c) => (
                         <button key={c.id} className={pill(containerId === c.id)} onClick={() => setContainerId(c.id)}>
+                          {c.emoji ? `${c.emoji} ` : ""}
                           {c.nome}
                         </button>
                       ))}
@@ -262,6 +273,7 @@ export default function TriageModal({ userId, items, containers, onClose, onChan
                       </button>
                       {containersDe(["recurso", "area"]).map((c) => (
                         <button key={c.id} className={pill(containerId === c.id)} onClick={() => setContainerId(c.id)}>
+                          {c.emoji ? `${c.emoji} ` : ""}
                           {c.nome}
                         </button>
                       ))}

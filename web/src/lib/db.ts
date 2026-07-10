@@ -3,7 +3,8 @@ import { supabase } from "./supabase";
 /** Camada de dados do Kairós — todas as tabelas kairos_* com RLS por usuário. */
 
 export type Kind = "projeto" | "area" | "recurso";
-export type Container = { id: string; kind: Kind; nome: string };
+export type Container = { id: string; kind: Kind; nome: string; emoji: string | null };
+export type Pessoa = { id: string; nome: string };
 export type InboxItem = { id: string; texto: string };
 export type TarefaStatus = "a_fazer" | "em_andamento" | "em_espera" | "concluida" | "algum_dia";
 export type Tarefa = {
@@ -43,20 +44,31 @@ export async function listContainers(): Promise<Container[]> {
   if (!supabase) return [];
   const { data } = await supabase
     .from("kairos_containers")
-    .select("id, kind, nome")
+    .select("id, kind, nome, emoji")
     .is("arquivado_em", null)
     .order("criado_em");
   return (data as Container[]) ?? [];
 }
 
-export async function createContainer(userId: string, kind: Kind, nome: string): Promise<Container | null> {
+export async function createContainer(
+  userId: string,
+  kind: Kind,
+  nome: string,
+  emoji?: string | null,
+): Promise<Container | null> {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from("kairos_containers")
-    .insert({ user_id: userId, kind, nome })
-    .select("id, kind, nome")
+    .insert({ user_id: userId, kind, nome, emoji: emoji ?? null })
+    .select("id, kind, nome, emoji")
     .single();
   return error ? null : (data as Container);
+}
+
+export async function listPessoas(): Promise<Pessoa[]> {
+  if (!supabase) return [];
+  const { data } = await supabase.from("kairos_pessoas").select("id, nome").order("nome");
+  return (data as Pessoa[]) ?? [];
 }
 
 export async function listInbox(): Promise<InboxItem[]> {

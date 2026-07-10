@@ -140,6 +140,13 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .chip.muted { background: var(--surface-2); color: var(--ink-2); font-weight: 400; }
 .chip.person { background: var(--today-soft); color: var(--today); }
 .capture-hint { font-size: 11px; color: var(--ink-3); margin-top: 5px; }
+.ac-list { border-top: 1px solid var(--line); margin-top: 7px; padding-top: 5px; }
+.ac-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  padding: 6px 8px; border-radius: 7px; font-size: 12.5px; color: var(--ink-2);
+}
+.ac-item:hover, .ac-item.sel { background: var(--accent-soft); color: var(--accent-ink); }
+.ac-item .k { margin-left: auto; font-size: 10px; color: var(--ink-3); }
 
 /* ═══ Canvas / visões ═══ */
 .canvas { flex: 1; overflow: auto; padding: 18px 20px; }

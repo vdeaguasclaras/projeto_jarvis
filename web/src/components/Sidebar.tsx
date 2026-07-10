@@ -56,7 +56,9 @@ export default function Sidebar(p: Props) {
         {reais !== null && reais.length === 0 && <p className="side-empty">nenhum ainda — use o +</p>}
         {reais?.map((c, i) => (
           <button key={c.id} className="nav-item" onClick={() => p.onSoon(`Página de ${c.nome}`)}>
-            {kind === "projeto" ? (
+            {c.emoji ? (
+              <span className="nav-ico">{c.emoji}</span>
+            ) : kind === "projeto" ? (
               <span className="proj-dot" style={{ background: DOT[i % DOT.length] }} />
             ) : (
               <span className="nav-ico">{ico}</span>
