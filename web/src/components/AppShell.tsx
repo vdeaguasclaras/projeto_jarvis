@@ -1,12 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import DayView from "@/components/DayView";
 import ComingSoon from "@/components/ComingSoon";
+import AuthBar from "@/components/AuthBar";
 import { ROADMAP, VIEWS, type ViewId } from "@/lib/demo";
 import { parseCapture } from "@/lib/parser";
+import { supabase } from "@/lib/supabase";
 
 const TITLES: Record<ViewId, [string, string]> = {
   dia: ["Hoje", "o dia é o ponto de entrada"],
@@ -18,14 +21,17 @@ const TITLES: Record<ViewId, [string, string]> = {
   notas: ["Notas", "chega na Fase 3"],
 };
 
+const DEMO_INBOX = [
+  "Ideia: oficina de escrita para a equipe",
+  "Proposta do fornecedor de mobiliário",
+  "Ligar para a escola sobre a matrícula",
+];
+
 export default function AppShell() {
   const [view, setView] = useState<ViewId>("dia");
   const [collapsed, setCollapsed] = useState(false);
-  const [inbox, setInbox] = useState<string[]>([
-    "Ideia: oficina de escrita para a equipe",
-    "Proposta do fornecedor de mobiliário",
-    "Ligar para a escola sobre a matrícula",
-  ]);
+  const [session, setSession] = useState<Session | null>(null);
+  const [inbox, setInbox] = useState<string[]>(DEMO_INBOX);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -35,14 +41,59 @@ export default function AppShell() {
     toastTimer.current = setTimeout(() => setToast(null), 2600);
   }, []);
 
+  // Sessão (link mágico persiste no navegador; RLS isola os dados por usuário)
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // Inbox real (kairos_inbox) quando logado; demo quando não
+  const loadInbox = useCallback(async () => {
+    if (!supabase || !session) return;
+    const { data, error } = await supabase
+      .from("kairos_inbox")
+      .select("texto")
+      .is("triado_em", null)
+      .order("criado_em");
+    if (!error && data) setInbox(data.map((r: { texto: string }) => r.texto));
+  }, [session]);
+
+  useEffect(() => {
+    if (session) {
+      loadInbox();
+    } else {
+      setInbox(DEMO_INBOX);
+    }
+  }, [session, loadInbox]);
+
   const capture = useCallback(
-    (text: string) => {
+    async (text: string) => {
       const c = parseCapture(text);
-      setInbox((prev) => [...prev, c.title]);
-      showToast(`Capturado: "${c.title.slice(0, 48)}" → Inbox`);
+      if (supabase && session) {
+        const { error } = await supabase
+          .from("kairos_inbox")
+          .insert({ user_id: session.user.id, texto: text.trim() });
+        if (error) {
+          showToast(`Erro ao salvar: ${error.message}`);
+          return;
+        }
+        await loadInbox();
+        showToast(`Capturado: "${c.title.slice(0, 48)}" → Inbox (salvo na nuvem ✓)`);
+      } else {
+        setInbox((prev) => [...prev, c.title]);
+        showToast(`Capturado: "${c.title.slice(0, 48)}" → Inbox (só nesta aba — entre para salvar)`);
+      }
     },
-    [showToast],
+    [session, showToast, loadInbox],
   );
+
+  const logout = useCallback(async () => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+    showToast("Você saiu — de volta ao modo demonstração");
+  }, [showToast]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -60,7 +111,9 @@ export default function AppShell() {
       <Sidebar
         inboxCount={inbox.length}
         activeToday={view === "dia"}
+        userEmail={session?.user.email ?? null}
         onToday={() => setView("dia")}
+        onLogout={logout}
         onSoon={(what) => showToast(`${what} — em construção nesta fase`)}
       />
       <main className="main">
@@ -72,6 +125,7 @@ export default function AppShell() {
           onCapture={capture}
         />
         <div className="canvas">
+          {!session && <AuthBar onToast={showToast} />}
           {view === "dia" ? (
             <DayView key="dia" inboxCount={inbox.length} onToast={showToast} />
           ) : (

@@ -5,11 +5,13 @@ import { AREAS, PROJECTS, RESOURCES } from "@/lib/demo";
 type Props = {
   inboxCount: number;
   activeToday: boolean;
+  userEmail: string | null;
   onToday: () => void;
+  onLogout: () => void;
   onSoon: (what: string) => void;
 };
 
-export default function Sidebar({ inboxCount, activeToday, onToday, onSoon }: Props) {
+export default function Sidebar({ inboxCount, activeToday, userEmail, onToday, onLogout, onSoon }: Props) {
   const toggleTheme = () => {
     const root = document.documentElement;
     const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -85,6 +87,12 @@ export default function Sidebar({ inboxCount, activeToday, onToday, onSoon }: Pr
       </button>
 
       <div className="sidebar-foot">
+        {userEmail && (
+          <div className="whoami">
+            <span title={userEmail}>{userEmail}</span>
+            <button onClick={onLogout}>Sair</button>
+          </div>
+        )}
         <button className="theme-toggle" onClick={toggleTheme}>
           ◐ Alternar tema
         </button>
