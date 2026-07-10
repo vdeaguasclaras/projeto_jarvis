@@ -14,7 +14,21 @@ export type Tarefa = {
   prazo: string | null;
   container_id: string | null;
   concluida_em: string | null;
+  agendada_inicio: string | null;
+  agendada_fim: string | null;
+  duracao_min: number | null;
 };
+export type EventoOrigem = "local" | "google" | "outlook";
+export type Evento = {
+  id: string;
+  titulo: string;
+  inicio: string;
+  fim: string;
+  origem: EventoOrigem;
+  container_id: string | null;
+};
+export type Prioridade = { id: string; tarefa_id: string; ordem: number };
+export type EscopoPrio = "dia" | "semana";
 
 export function hojeISO(): string {
   const d = new Date();
@@ -38,6 +52,21 @@ export function resolvePrazo(p: string | null): string | null {
     return isoEmDias(delta);
   }
   return null;
+}
+
+/** Segunda-feira da semana que contém a data (âncora das prioridades da semana). */
+export function segundaDe(dataISO: string): string {
+  const [a, m, d] = dataISO.split("-").map(Number);
+  const dt = new Date(a, m - 1, d);
+  dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7));
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+}
+
+/** Soma dias a uma data ISO (aceita negativos). */
+export function somaDias(dataISO: string, dias: number): string {
+  const [a, m, d] = dataISO.split("-").map(Number);
+  const dt = new Date(a, m - 1, d + dias);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
 export async function listContainers(): Promise<Container[]> {
@@ -103,7 +132,7 @@ export async function listTarefas(): Promise<Tarefa[]> {
   if (!supabase) return [];
   const { data } = await supabase
     .from("kairos_tarefas")
-    .select("id, titulo, status, prazo, container_id, concluida_em")
+    .select("id, titulo, status, prazo, container_id, concluida_em, agendada_inicio, agendada_fim, duracao_min")
     .order("criada_em", { ascending: false });
   return (data as Tarefa[]) ?? [];
 }
@@ -178,6 +207,102 @@ export async function registrarRitual(
   await supabase
     .from("kairos_rituais")
     .upsert({ user_id: userId, tipo, data: hojeISO(), placar }, { onConflict: "user_id,tipo,data" });
+}
+
+/** Eventos com início dentro do intervalo [deISO, ateISO) — datas locais. */
+export async function listEventos(deISO: string, ateISO: string): Promise<Evento[]> {
+  if (!supabase) return [];
+  const de = new Date(`${deISO}T00:00`).toISOString();
+  const ate = new Date(`${ateISO}T00:00`).toISOString();
+  const { data } = await supabase
+    .from("kairos_eventos")
+    .select("id, titulo, inicio, fim, origem, container_id")
+    .gte("inicio", de)
+    .lt("inicio", ate)
+    .order("inicio");
+  return (data as Evento[]) ?? [];
+}
+
+export async function criarEvento(
+  userId: string,
+  campos: { titulo: string; inicio: string; fim: string; container_id?: string | null },
+): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase.from("kairos_eventos").insert({
+    user_id: userId,
+    titulo: campos.titulo,
+    inicio: campos.inicio,
+    fim: campos.fim,
+    container_id: campos.container_id ?? null,
+  });
+  return error ? error.message : null;
+}
+
+export async function atualizarEvento(
+  id: string,
+  campos: { titulo?: string; inicio?: string; fim?: string; container_id?: string | null },
+): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase.from("kairos_eventos").update(campos).eq("id", id);
+  return error ? error.message : null;
+}
+
+export async function excluirEvento(id: string): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase.from("kairos_eventos").delete().eq("id", id);
+  return error ? error.message : null;
+}
+
+/** Coloca a tarefa num horário do dia (drag & drop) — o prazo acompanha o dia. */
+export async function agendarTarefa(
+  id: string,
+  inicio: string,
+  fim: string,
+  prazoISO: string,
+): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase
+    .from("kairos_tarefas")
+    .update({ agendada_inicio: inicio, agendada_fim: fim, prazo: prazoISO })
+    .eq("id", id);
+  return error ? error.message : null;
+}
+
+export async function desagendarTarefa(id: string): Promise<void> {
+  if (!supabase) return;
+  await supabase.from("kairos_tarefas").update({ agendada_inicio: null, agendada_fim: null }).eq("id", id);
+}
+
+export async function listPrioridades(escopo: EscopoPrio, dataISO: string): Promise<Prioridade[]> {
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("kairos_prioridades")
+    .select("id, tarefa_id, ordem")
+    .eq("escopo", escopo)
+    .eq("data", dataISO)
+    .order("ordem");
+  return (data as Prioridade[]) ?? [];
+}
+
+/** Substitui as prioridades do dia/da semana pelas escolhidas (máx. 3, na ordem dada). */
+export async function definirPrioridades(
+  userId: string,
+  escopo: EscopoPrio,
+  dataISO: string,
+  tarefaIds: string[],
+): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const del = await supabase
+    .from("kairos_prioridades")
+    .delete()
+    .eq("escopo", escopo)
+    .eq("data", dataISO);
+  if (del.error) return del.error.message;
+  if (!tarefaIds.length) return null;
+  const { error } = await supabase.from("kairos_prioridades").insert(
+    tarefaIds.slice(0, 3).map((tarefa_id, ordem) => ({ user_id: userId, escopo, data: dataISO, tarefa_id, ordem })),
+  );
+  return error ? error.message : null;
 }
 
 /** Sequência de dias consecutivos (até hoje) com check do dia feito. */

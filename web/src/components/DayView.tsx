@@ -1,39 +1,83 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { DAY_EVENTS } from "@/lib/demo";
-
-const H0 = 8;
-const H1 = 19;
-const ROW = 52;
-
-function hh(t: number) {
-  return `${Math.floor(t)}:${String(Math.round((t % 1) * 60)).padStart(2, "0")}`;
-}
+import { DAY_EVENTS, DAY_PRIORITIES } from "@/lib/demo";
+import type { Evento, Tarefa } from "@/lib/db";
+import TimeGrid, { blocoDeEvento, blocoDeTarefa, hhmm, type Bloco, type DropInfo } from "@/components/TimeGrid";
+import PrioRow, { type PrioItem } from "@/components/PrioRow";
 
 type Props = {
+  logged: boolean;
+  hoje: string;
   inboxCount: number;
   placar: { done: number; total: number };
   seq: number;
+  eventos: Evento[];
+  tarefas: Tarefa[];
+  prioridades: PrioItem[];
   onCheck: () => void;
   onToast: (msg: string) => void;
+  onSlotClick: (dataISO: string, hora: number) => void;
+  onDrop: (info: DropInfo, dataISO: string, hora: number) => void;
+  onEventoClick: (id: string) => void;
+  onConcluirTarefa: (id: string) => void;
+  onDefinirPrio: () => void;
 };
 
-export default function DayView({ inboxCount, placar, seq, onCheck, onToast }: Props) {
-  const [now, setNow] = useState<number | null>(null);
-
-  useEffect(() => {
-    const update = () => {
-      const d = new Date();
-      setNow(d.getHours() + d.getMinutes() / 60);
-    };
-    update();
-    const id = setInterval(update, 60_000);
-    return () => clearInterval(id);
-  }, []);
-
-  const hours = Array.from({ length: H1 - H0 }, (_, i) => H0 + i);
+export default function DayView({
+  logged,
+  hoje,
+  inboxCount,
+  placar,
+  seq,
+  eventos,
+  tarefas,
+  prioridades,
+  onCheck,
+  onToast,
+  onSlotClick,
+  onDrop,
+  onEventoClick,
+  onConcluirTarefa,
+  onDefinirPrio,
+}: Props) {
   const pct = Math.min(100, Math.round((placar.done / Math.max(placar.total, 1)) * 100));
+
+  // Demo (sem login) mantém a agenda de exemplo do protótipo
+  const blocos: Bloco[] = logged
+    ? [
+        ...eventos.map(blocoDeEvento),
+        ...tarefas.map(blocoDeTarefa).filter((b): b is Bloco => b !== null),
+      ].filter((b) => b.dataISO === hoje)
+    : DAY_EVENTS.map((ev) => ({
+        id: ev.id,
+        tipo: "evento" as const,
+        titulo: ev.title,
+        dataISO: hoje,
+        inicio: ev.start,
+        fim: ev.end,
+        classe: ev.source === "task" ? ("task" as const) : (ev.source as "g" | "o"),
+        durMin: (ev.end - ev.start) * 60,
+      }));
+
+  // Bandeja: o que é para hoje (ou venceu) e ainda não tem horário
+  const semHorario = logged
+    ? tarefas.filter(
+        (t) =>
+          (t.status === "a_fazer" || t.status === "em_andamento") &&
+          !t.agendada_inicio &&
+          t.prazo !== null &&
+          t.prazo <= hoje,
+      )
+    : [];
+
+  const clicarBloco = (b: Bloco) => {
+    if (!logged) {
+      onToast(`${b.titulo} — agenda de exemplo; entre para criar a sua`);
+      return;
+    }
+    if (b.tipo === "evento") onEventoClick(b.id);
+    else onToast(b.feita ? "Já concluída ✓" : `${b.titulo} · ${hhmm(b.inicio)} — duplo clique conclui, arraste para mudar o horário`);
+  };
 
   return (
     <div className="view-in">
@@ -74,36 +118,45 @@ export default function DayView({ inboxCount, placar, seq, onCheck, onToast }: P
         </button>
       </div>
 
-      <div className="timegrid stagger" style={{ ["--i" as string]: 1 }}>
-        {hours.map((h, i) => (
-          <div key={h} className="hourlabel" style={{ gridRow: i + 1 }}>
-            {h}:00
-          </div>
-        ))}
-        <div className="daycol" style={{ gridRow: `1 / span ${H1 - H0}`, gridColumn: 2 }}>
-          {hours.map((h) => (
-            <div key={h} className="hourline" />
-          ))}
-          {DAY_EVENTS.map((ev) => (
-            <div
-              key={ev.id}
-              className={`evt ${ev.source}`}
-              style={{ top: (ev.start - H0) * ROW, height: (ev.end - ev.start) * ROW - 3 }}
-              role="button"
-              tabIndex={0}
-              onClick={() => onToast(`${ev.title} · ${ev.container} — agenda de exemplo; eventos reais chegam no Marco 5`)}
+      <PrioRow
+        label="Prioridades de hoje"
+        items={logged ? prioridades : DAY_PRIORITIES.map((p) => ({ titulo: p.label, feita: p.done }))}
+        i={0.5}
+        onDefinir={() => (logged ? onDefinirPrio() : onToast("Entre com seu e-mail para definir as suas"))}
+      />
+
+      {semHorario.length > 0 && (
+        <div className="tray stagger" style={{ ["--i" as string]: 0.7 }}>
+          <span className="plabel">Sem horário</span>
+          {semHorario.map((t) => (
+            <span
+              key={t.id}
+              className="traychip"
+              draggable
+              onDragStart={(e) =>
+                e.dataTransfer.setData(
+                  "application/json",
+                  JSON.stringify({ tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 60 } satisfies DropInfo),
+                )
+              }
+              onClick={() => onToast("Arraste para a grade para reservar um horário")}
             >
-              <span className="t">{ev.title}</span>
-              <span className="h">
-                {hh(ev.start)} – {hh(ev.end)}
-              </span>
-            </div>
+              {t.titulo}
+            </span>
           ))}
-          {now !== null && now >= H0 && now <= H1 && (
-            <div className="nowline" style={{ top: (now - H0) * ROW }} />
-          )}
+          <span className="empty-hint" style={{ margin: 0 }}>← arraste para a grade</span>
         </div>
-      </div>
+      )}
+
+      <TimeGrid
+        dias={[hoje]}
+        hoje={hoje}
+        blocos={blocos}
+        onSlotClick={logged ? onSlotClick : (_, h) => onToast(`Entre para criar um evento às ${hhmm(h)}`)}
+        onDrop={logged ? onDrop : undefined}
+        onBlocoClick={clicarBloco}
+        onBlocoDblClick={(b) => logged && b.tipo === "tarefa" && !b.feita && onConcluirTarefa(b.id)}
+      />
     </div>
   );
 }
