@@ -5,35 +5,52 @@ import type { Session } from "@supabase/supabase-js";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import DayView from "@/components/DayView";
+import WeekView from "@/components/WeekView";
 import ComingSoon from "@/components/ComingSoon";
 import AuthBar from "@/components/AuthBar";
 import TasksView from "@/components/TasksView";
 import TriageModal from "@/components/TriageModal";
 import NewContainerModal from "@/components/NewContainerModal";
+import EventoModal, { type EventoForm } from "@/components/EventoModal";
+import PrioModal from "@/components/PrioModal";
+import { isoDe, type DropInfo } from "@/components/TimeGrid";
+import type { PrioItem } from "@/components/PrioRow";
 import { ROADMAP, VIEWS, type ViewId } from "@/lib/demo";
 import { encontraContainer, parseCapture, resolveDataCaptura } from "@/lib/parser";
 import { supabase } from "@/lib/supabase";
 import {
+  agendarTarefa,
+  atualizarEvento,
   capturar,
   createContainer,
+  criarEvento,
   criarTarefa,
+  definirPrioridades,
+  excluirEvento,
   hojeISO,
   listContainers,
+  listEventos,
   listInbox,
   listPessoas,
+  listPrioridades,
   listTarefas,
   mudarStatusTarefa,
+  segundaDe,
   sequenciaCheck,
+  somaDias,
   type Container,
+  type EscopoPrio,
+  type Evento,
   type InboxItem,
   type Kind,
   type Pessoa,
+  type Prioridade,
   type Tarefa,
 } from "@/lib/db";
 
 const TITLES: Record<ViewId, [string, string]> = {
   dia: ["Hoje", "o dia é o ponto de entrada"],
-  semana: ["Semana", "em construção — Marco 5"],
+  semana: ["Semana", "eventos e blocos de tarefa arrastáveis"],
   mes: ["Mês", "em construção — Marco 5"],
   ano: ["Ano", "em construção — Marco 5"],
   tarefas: ["Tarefas", "capturar → organizar → fazer"],
@@ -56,9 +73,16 @@ export default function AppShell() {
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const [eventosHoje, setEventosHoje] = useState<Evento[]>([]);
+  const [eventosSemana, setEventosSemana] = useState<Evento[]>([]);
+  const [weekStart, setWeekStart] = useState<string>(() => segundaDe(hojeISO()));
+  const [prioDia, setPrioDia] = useState<Prioridade[]>([]);
+  const [prioSemana, setPrioSemana] = useState<Prioridade[]>([]);
   const [seq, setSeq] = useState(0);
   const [triaging, setTriaging] = useState(false);
   const [newKind, setNewKind] = useState<Kind | null>(null);
+  const [eventoForm, setEventoForm] = useState<EventoForm | null>(null);
+  const [prioEscopo, setPrioEscopo] = useState<EscopoPrio | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -77,19 +101,28 @@ export default function AppShell() {
 
   const refresh = useCallback(async () => {
     if (!session) return;
-    const [cs, ps, inb, ts, sq] = await Promise.all([
+    const hoje = hojeISO();
+    const [cs, ps, inb, ts, sq, evH, evS, pd, psem] = await Promise.all([
       listContainers(),
       listPessoas(),
       listInbox(),
       listTarefas(),
       sequenciaCheck(),
+      listEventos(hoje, somaDias(hoje, 1)),
+      listEventos(weekStart, somaDias(weekStart, 7)),
+      listPrioridades("dia", hoje),
+      listPrioridades("semana", weekStart),
     ]);
     setContainers(cs);
     setPessoas(ps);
     setInboxItems(inb);
     setTarefas(ts);
     setSeq(sq);
-  }, [session]);
+    setEventosHoje(evH);
+    setEventosSemana(evS);
+    setPrioDia(pd);
+    setPrioSemana(psem);
+  }, [session, weekStart]);
 
   useEffect(() => {
     if (session) {
@@ -98,6 +131,10 @@ export default function AppShell() {
       setContainers([]);
       setInboxItems([]);
       setTarefas([]);
+      setEventosHoje([]);
+      setEventosSemana([]);
+      setPrioDia([]);
+      setPrioSemana([]);
       setSeq(0);
       setTriaging(false);
     }
@@ -182,6 +219,97 @@ export default function AppShell() {
     [session, newKind, showToast],
   );
 
+  // ── Marco 5: eventos, agendamento por arrasto e prioridades ──
+
+  const abrirNovoEvento = useCallback((dataISO: string, hora: number) => {
+    setEventoForm({ titulo: "", dataISO, hIni: hora, hFim: hora + 1, container_id: null });
+  }, []);
+
+  const abrirEvento = useCallback(
+    (id: string) => {
+      const ev = [...eventosHoje, ...eventosSemana].find((e) => e.id === id);
+      if (!ev) return;
+      const i = new Date(ev.inicio);
+      const f = new Date(ev.fim);
+      setEventoForm({
+        id: ev.id,
+        titulo: ev.titulo,
+        dataISO: `${i.getFullYear()}-${String(i.getMonth() + 1).padStart(2, "0")}-${String(i.getDate()).padStart(2, "0")}`,
+        hIni: i.getHours() + i.getMinutes() / 60,
+        hFim: f.getHours() + f.getMinutes() / 60,
+        container_id: ev.container_id,
+      });
+    },
+    [eventosHoje, eventosSemana],
+  );
+
+  const salvarEvento = useCallback(
+    async (f: EventoForm) => {
+      if (!session) return;
+      const campos = {
+        titulo: f.titulo,
+        inicio: isoDe(f.dataISO, f.hIni),
+        fim: isoDe(f.dataISO, f.hFim),
+        container_id: f.container_id,
+      };
+      const err = f.id ? await atualizarEvento(f.id, campos) : await criarEvento(session.user.id, campos);
+      setEventoForm(null);
+      if (err) {
+        showToast(`Erro ao salvar: ${err}`);
+        return;
+      }
+      await refresh();
+      showToast(f.id ? "Evento atualizado ✓" : `Evento criado: "${f.titulo}" ✓`);
+    },
+    [session, refresh, showToast],
+  );
+
+  const apagarEvento = useCallback(async () => {
+    if (!eventoForm?.id) return;
+    const err = await excluirEvento(eventoForm.id);
+    setEventoForm(null);
+    if (err) {
+      showToast(`Erro ao excluir: ${err}`);
+      return;
+    }
+    await refresh();
+    showToast("Evento excluído ✓");
+  }, [eventoForm, refresh, showToast]);
+
+  const soltarNaGrade = useCallback(
+    async (info: DropInfo, dataISO: string, hora: number) => {
+      const inicio = isoDe(dataISO, hora);
+      const fim = isoDe(dataISO, hora + info.durMin / 60);
+      const err =
+        info.tipo === "evento"
+          ? await atualizarEvento(info.id, { inicio, fim })
+          : await agendarTarefa(info.id, inicio, fim, dataISO);
+      if (err) {
+        showToast(`Erro ao mover: ${err}`);
+        return;
+      }
+      await refresh();
+      showToast(info.tipo === "evento" ? "Evento movido ✓" : "Tarefa agendada — o prazo acompanha o dia ✓");
+    },
+    [refresh, showToast],
+  );
+
+  const salvarPrioridades = useCallback(
+    async (ids: string[]) => {
+      if (!session || !prioEscopo) return;
+      const data = prioEscopo === "dia" ? hojeISO() : weekStart;
+      const err = await definirPrioridades(session.user.id, prioEscopo, data, ids);
+      setPrioEscopo(null);
+      if (err) {
+        showToast(`Erro ao salvar: ${err}`);
+        return;
+      }
+      await refresh();
+      showToast(ids.length ? `Prioridades definidas (${Math.min(ids.length, 3)}) ★` : "Prioridades limpas");
+    },
+    [session, prioEscopo, weekStart, refresh, showToast],
+  );
+
   const logout = useCallback(async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -204,6 +332,26 @@ export default function AppShell() {
   const feitasHoje = tarefas.filter((t) => t.status === "concluida" && (t.concluida_em ?? "").slice(0, 10) === hoje).length;
   const paraHoje = tarefas.filter((t) => t.status !== "concluida" && t.status !== "algum_dia" && t.prazo !== null && t.prazo <= hoje).length;
   const placar = session ? { done: feitasHoje, total: Math.max(feitasHoje + paraHoje, 1) } : { done: 1, total: 3 };
+
+  const itensDePrio = (prios: Prioridade[]): PrioItem[] =>
+    prios
+      .map((p) => tarefas.find((t) => t.id === p.tarefa_id))
+      .filter((t): t is Tarefa => !!t)
+      .map((t) => ({ titulo: t.titulo, feita: t.status === "concluida" }));
+
+  // Candidatas do modal de prioridades: abertas, prazo mais próximo primeiro
+  const candidatas = tarefas
+    .filter((t) => t.status === "a_fazer" || t.status === "em_andamento")
+    .sort((a, b) => (a.prazo ?? "9999") < (b.prazo ?? "9999") ? -1 : 1)
+    .slice(0, 24);
+
+  // Kairós propõe: sem nada salvo, pré-seleciona as com prazo até a data-alvo
+  const iniciaisPrio = (escopo: EscopoPrio): string[] => {
+    const salvas = (escopo === "dia" ? prioDia : prioSemana).map((p) => p.tarefa_id);
+    if (salvas.length) return salvas;
+    const limite = escopo === "dia" ? hoje : somaDias(weekStart, 6);
+    return candidatas.filter((t) => t.prazo !== null && t.prazo <= limite).slice(0, 3).map((t) => t.id);
+  };
 
   return (
     <div className={`app${collapsed ? " nosb" : ""}`}>
@@ -236,11 +384,38 @@ export default function AppShell() {
           {view === "dia" ? (
             <DayView
               key="dia"
+              logged={!!session}
+              hoje={hoje}
               inboxCount={inboxCount}
               placar={placar}
               seq={seq}
+              eventos={eventosHoje}
+              tarefas={tarefas}
+              prioridades={itensDePrio(prioDia)}
               onCheck={openTriage}
               onToast={showToast}
+              onSlotClick={abrirNovoEvento}
+              onDrop={soltarNaGrade}
+              onEventoClick={abrirEvento}
+              onConcluirTarefa={conclude}
+              onDefinirPrio={() => setPrioEscopo("dia")}
+            />
+          ) : view === "semana" ? (
+            <WeekView
+              key="semana"
+              logged={!!session}
+              hoje={hoje}
+              weekStart={weekStart}
+              eventos={eventosSemana}
+              tarefas={tarefas}
+              prioridades={itensDePrio(prioSemana)}
+              onNav={(d) => setWeekStart(d === "hoje" ? segundaDe(hoje) : somaDias(weekStart, d * 7))}
+              onToast={showToast}
+              onSlotClick={abrirNovoEvento}
+              onDrop={soltarNaGrade}
+              onEventoClick={abrirEvento}
+              onConcluirTarefa={conclude}
+              onDefinirPrio={() => setPrioEscopo("semana")}
             />
           ) : view === "tarefas" ? (
             <TasksView
@@ -285,6 +460,27 @@ export default function AppShell() {
       )}
       {newKind && (
         <NewContainerModal kind={newKind} onCreate={criarNovoContainer} onClose={() => setNewKind(null)} />
+      )}
+      {eventoForm && session && (
+        <EventoModal
+          inicial={eventoForm}
+          containers={containers}
+          onSave={salvarEvento}
+          onDelete={eventoForm.id ? apagarEvento : undefined}
+          onClose={() => setEventoForm(null)}
+        />
+      )}
+      {prioEscopo && session && (
+        <PrioModal
+          titulo={prioEscopo === "dia" ? "Prioridades de hoje" : "Prioridades da semana"}
+          sub="Escolha até 3 — o Kairós propõe, você decide. Elas aparecem no topo do Dia e da Semana."
+          tarefas={candidatas}
+          containers={containers}
+          iniciais={iniciaisPrio(prioEscopo)}
+          onSave={salvarPrioridades}
+          onClose={() => setPrioEscopo(null)}
+          onToast={showToast}
+        />
       )}
 
       <div className={`toast${toast ? " show" : ""}`} role="status">
