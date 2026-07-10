@@ -39,5 +39,6 @@ A mistura do **poder de organização do Notion**, com as **notas livres e conec
 - [x] Validação do v5 → protótipo v6, fechamento do design (doc 06)
 - [x] Kickoff técnico da Fase 1 (doc 07)
 - [x] Fase 1 · Marco 1 — esqueleto do app real em `web/` (Next.js + TypeScript, build ok)
-- [ ] Provisionar Supabase (aguarda vaga de projeto gratuito) e Vercel (aguarda permissão do conector)
-- [ ] Fase 1 · Marcos 2–7 — auth, captura persistente, tarefas, calendário, check do dia, PWA
+- [x] Supabase provisionado (projeto mapa-de-sala, tabelas `kairos_*` com RLS) e Vercel com deploy contínuo
+- [x] Fase 1 · Marco 2 (parte) — login por link mágico · Marco 3 (parte) — captura persistente na Inbox
+- [ ] Fase 1 · restante — OAuth Google/Microsoft, triagem, tarefas, calendário, check do dia, PWA
