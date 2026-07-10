@@ -1,0 +1,691 @@
+<title>Jarvis — Protótipo v1</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #f6f7f6;
+    --surface: #ffffff;
+    --surface-2: #eff1f0;
+    --ink: #1c2422;
+    --ink-2: #5b6663;
+    --ink-3: #939c98;
+    --line: #e2e6e4;
+    --accent: #14685c;
+    --accent-soft: #e0edea;
+    --accent-ink: #0e5045;
+    --today: #b45309;
+    --today-soft: #f7ead8;
+    --google: #4285c8;
+    --outlook: #2f6bb0;
+    --task: #7c6ba8;
+    --shadow: 0 10px 30px rgba(28, 36, 34, 0.10);
+    --radius: 10px;
+    --sans: system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --serif: Georgia, "Times New Roman", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141817;
+      --surface: #1b2120;
+      --surface-2: #222927;
+      --ink: #e7ecea;
+      --ink-2: #a3ada9;
+      --ink-3: #6e7975;
+      --line: #2c3432;
+      --accent: #4cc2ae;
+      --accent-soft: #1d3330;
+      --accent-ink: #7fd8c8;
+      --today: #e5a04c;
+      --today-soft: #362a1a;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7f6; --surface: #ffffff; --surface-2: #eff1f0;
+    --ink: #1c2422; --ink-2: #5b6663; --ink-3: #939c98; --line: #e2e6e4;
+    --accent: #14685c; --accent-soft: #e0edea; --accent-ink: #0e5045;
+    --today: #b45309; --today-soft: #f7ead8;
+    --shadow: 0 10px 30px rgba(28, 36, 34, 0.10);
+  }
+  :root[data-theme="dark"] {
+    --bg: #141817; --surface: #1b2120; --surface-2: #222927;
+    --ink: #e7ecea; --ink-2: #a3ada9; --ink-3: #6e7975; --line: #2c3432;
+    --accent: #4cc2ae; --accent-soft: #1d3330; --accent-ink: #7fd8c8;
+    --today: #e5a04c; --today-soft: #362a1a;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: var(--sans); background: var(--bg); color: var(--ink);
+    font-size: 14px; line-height: 1.45;
+  }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  button:focus-visible, input:focus-visible, a:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px;
+  }
+
+  .app { display: grid; grid-template-columns: 240px 1fr; height: 100vh; }
+
+  /* ── Sidebar (PARA) ─────────────────────────────── */
+  .sidebar {
+    background: var(--surface); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 4px; padding: 16px 12px;
+    overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 14px; }
+  .brand-mark {
+    width: 26px; height: 26px; border-radius: 8px; background: var(--accent);
+    color: var(--surface); display: grid; place-items: center;
+    font-weight: 700; font-size: 13px; letter-spacing: 0;
+  }
+  .brand-name { font-weight: 650; font-size: 15px; letter-spacing: 0.01em; }
+  .brand-sub { font-size: 10.5px; color: var(--ink-3); display: block; margin-top: -2px; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 9px; width: 100%;
+    padding: 7px 10px; border-radius: 8px; color: var(--ink-2); text-align: left;
+  }
+  .nav-item:hover { background: var(--surface-2); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+  .nav-item .count {
+    margin-left: auto; font-size: 11.5px; color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .nav-item.active .count { color: var(--accent-ink); }
+  .nav-ico { width: 16px; text-align: center; flex: none; font-size: 13px; }
+
+  .para-label {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--ink-3); padding: 14px 10px 5px; font-weight: 650;
+  }
+  .proj-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .sidebar-foot { margin-top: auto; padding: 12px 8px 2px; border-top: 1px solid var(--line); }
+  .theme-toggle { font-size: 12px; color: var(--ink-3); padding: 6px 4px; }
+  .theme-toggle:hover { color: var(--ink); }
+
+  /* ── Main column ───────────────────────────────── */
+  .main { display: flex; flex-direction: column; min-width: 0; }
+
+  .topbar {
+    display: flex; align-items: center; gap: 14px; padding: 12px 20px;
+    border-bottom: 1px solid var(--line); background: var(--surface); flex-wrap: wrap;
+  }
+  .date-title { font-size: 17px; font-weight: 650; text-wrap: balance; }
+  .date-title small { display: block; font-size: 11.5px; font-weight: 400; color: var(--ink-3); }
+  .nav-arrows { display: flex; align-items: center; gap: 2px; }
+  .nav-arrows button {
+    padding: 5px 9px; border-radius: 7px; color: var(--ink-2); font-size: 13px;
+  }
+  .nav-arrows button:hover { background: var(--surface-2); }
+  .btn-hoje {
+    border: 1px solid var(--line); border-radius: 7px; padding: 4px 11px;
+    font-size: 12.5px; color: var(--ink-2);
+  }
+
+  .views { display: flex; background: var(--surface-2); border-radius: 9px; padding: 3px; gap: 2px; }
+  .views button {
+    padding: 5px 13px; border-radius: 7px; font-size: 12.5px; color: var(--ink-2);
+  }
+  .views button.active {
+    background: var(--surface); color: var(--ink); font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+  .views kbd {
+    font-family: inherit; font-size: 10px; color: var(--ink-3);
+    margin-left: 6px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px;
+  }
+
+  /* Captura rápida */
+  .capture { position: relative; flex: 1; min-width: 200px; max-width: 440px; margin-left: auto; }
+  .capture input {
+    width: 100%; padding: 8px 12px 8px 34px; border: 1px solid var(--line);
+    border-radius: 9px; background: var(--bg); color: var(--ink); font: inherit; font-size: 13px;
+  }
+  .capture input::placeholder { color: var(--ink-3); }
+  .capture input:focus { border-color: var(--accent); outline: none; }
+  .capture .plus {
+    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+    color: var(--accent); font-size: 16px; font-weight: 600; pointer-events: none;
+  }
+  .capture-chips {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 9px;
+    box-shadow: var(--shadow); padding: 9px 11px; display: none;
+  }
+  .capture-chips.show { display: block; }
+  .chip {
+    display: inline-block; font-size: 11.5px; border-radius: 6px; padding: 2px 8px;
+    margin: 2px 4px 2px 0; background: var(--accent-soft); color: var(--accent-ink); font-weight: 600;
+  }
+  .chip.muted { background: var(--surface-2); color: var(--ink-2); font-weight: 400; }
+  .capture-hint { font-size: 11px; color: var(--ink-3); margin-top: 5px; }
+
+  /* ── Canvas das visões ─────────────────────────── */
+  .canvas { flex: 1; overflow: auto; padding: 18px 20px; }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* Dia + Semana: grade de horas */
+  .timegrid { display: grid; grid-template-columns: 52px 1fr; }
+  .timegrid.week { grid-template-columns: 52px repeat(7, 1fr); }
+  .hourlabel {
+    grid-column: 1; height: 52px; font-size: 10.5px; color: var(--ink-3);
+    text-align: right; padding-right: 10px; transform: translateY(-6px);
+    font-variant-numeric: tabular-nums;
+  }
+  .daycol { position: relative; border-left: 1px solid var(--line); }
+  .hourline { height: 52px; border-bottom: 1px solid var(--line); }
+  .hourline:first-child { border-top: 1px solid var(--line); }
+
+  .evt {
+    position: absolute; left: 5px; right: 5px; border-radius: 7px;
+    padding: 4px 8px; font-size: 12px; overflow: hidden; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    transition: box-shadow 0.12s;
+  }
+  .evt:hover { box-shadow: var(--shadow); z-index: 5; }
+  .evt .t { font-weight: 600; display: block; line-height: 1.25; }
+  .evt .h { color: var(--ink-3); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .evt.g { border-left-color: var(--google); }
+  .evt.o { border-left-color: var(--outlook); }
+  .evt.task { border-left-color: var(--task); border-style: dashed; background: var(--surface-2); }
+  .evt.task .t::before { content: "☐ "; color: var(--task); }
+  .src-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
+
+  .nowline {
+    position: absolute; left: 0; right: 0; height: 2px; background: var(--today); z-index: 6;
+    pointer-events: none;
+  }
+  .nowline::before {
+    content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--today);
+  }
+
+  .weekhead { display: grid; grid-template-columns: 52px repeat(7, 1fr); margin-bottom: 6px; }
+  .weekhead .wd { text-align: center; font-size: 12px; color: var(--ink-2); padding: 4px 0; }
+  .weekhead .wd b { display: block; font-size: 16px; font-weight: 600; color: var(--ink); }
+  .weekhead .wd.today b {
+    background: var(--today); color: #fff; width: 28px; height: 28px; line-height: 28px;
+    border-radius: 50%; margin: 2px auto 0;
+  }
+
+  /* Mês */
+  .monthgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .monthgrid .wd {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-3); text-align: center; padding-bottom: 2px;
+  }
+  .mday {
+    min-height: 92px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 7px; font-size: 11.5px;
+  }
+  .mday.out { opacity: 0.35; }
+  .mday .n { font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .mday.today { border-color: var(--today); background: var(--today-soft); }
+  .mday.today .n { color: var(--today); }
+  .mevt {
+    margin-top: 3px; padding: 1px 6px; border-radius: 5px; background: var(--accent-soft);
+    color: var(--accent-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    cursor: pointer; font-size: 11px;
+  }
+  .mevt.g { background: color-mix(in srgb, var(--google) 14%, var(--surface)); color: var(--ink-2); }
+  .mevt.o { background: color-mix(in srgb, var(--outlook) 14%, var(--surface)); color: var(--ink-2); }
+  .mmore { color: var(--ink-3); font-size: 10.5px; margin-top: 2px; }
+
+  /* Ano linear */
+  .year-note { font-size: 12px; color: var(--ink-3); margin: 0 0 12px; }
+  .yearrow { display: grid; grid-template-columns: 44px 1fr; align-items: center; margin-bottom: 7px; }
+  .yearrow .mn {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-2);
+    font-weight: 650;
+  }
+  .yeardays { display: grid; grid-template-columns: repeat(37, 1fr); gap: 3px; }
+  .yd {
+    aspect-ratio: 1; border-radius: 4px; background: var(--surface-2);
+    position: relative; cursor: default;
+  }
+  .yd.empty { background: transparent; }
+  .yd.wknd { background: var(--surface); border: 1px solid var(--line); }
+  .yd.d1 { background: color-mix(in srgb, var(--accent) 30%, var(--surface-2)); }
+  .yd.d2 { background: color-mix(in srgb, var(--accent) 55%, var(--surface-2)); }
+  .yd.d3 { background: var(--accent); }
+  .yd.today { outline: 2px solid var(--today); outline-offset: 1px; }
+  .yearlegend { display: flex; gap: 14px; align-items: center; margin-top: 14px; font-size: 11px; color: var(--ink-3); }
+  .yearlegend .yd { width: 12px; aspect-ratio: 1; display: inline-block; }
+
+  /* ── Painel de detalhe ─────────────────────────── */
+  .detail {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 92vw; z-index: 40;
+    background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--shadow);
+    transform: translateX(105%); transition: transform 0.22s ease; display: flex; flex-direction: column;
+  }
+  @media (prefers-reduced-motion: reduce) { .detail { transition: none; } }
+  .detail.open { transform: translateX(0); }
+  .detail-head { display: flex; align-items: flex-start; gap: 10px; padding: 18px 20px 10px; }
+  .detail-head h2 { font-size: 17px; margin: 0; font-weight: 650; text-wrap: balance; }
+  .detail-close { margin-left: auto; color: var(--ink-3); font-size: 18px; padding: 2px 8px; }
+  .detail-body { padding: 0 20px 24px; overflow-y: auto; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 14px; }
+  .meta .chip { margin: 0; }
+  .detail h3 {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--ink-3);
+    margin: 18px 0 8px; font-weight: 650;
+  }
+  .note {
+    font-family: var(--serif); font-size: 14.5px; line-height: 1.62; color: var(--ink);
+    max-width: 62ch;
+  }
+  .note p { margin: 0 0 10px; }
+  .wikilink {
+    color: var(--accent-ink); background: var(--accent-soft); border-radius: 4px;
+    padding: 0 3px; text-decoration: none; cursor: pointer;
+  }
+  .wikilink:hover { text-decoration: underline; }
+  .backlink {
+    display: block; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+    margin-bottom: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; text-align: left; width: 100%;
+  }
+  .backlink:hover { background: var(--surface-2); }
+  .backlink b { color: var(--ink); display: block; font-size: 13px; }
+  .tasklist { list-style: none; margin: 0; padding: 0; }
+  .tasklist li { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; font-size: 13px; }
+  .tasklist .box { color: var(--task); }
+
+  .scrim {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.25); z-index: 35;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .scrim.show { opacity: 1; pointer-events: auto; }
+
+  .toast {
+    position: fixed; bottom: 78px; left: 50%; transform: translate(-50%, 16px);
+    background: var(--ink); color: var(--bg); border-radius: 9px; padding: 9px 16px;
+    font-size: 13px; opacity: 0; transition: all 0.25s; z-index: 60; pointer-events: none;
+    max-width: 88vw;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ── Mobile ────────────────────────────────────── */
+  .bottomnav { display: none; }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .topbar { padding: 10px 12px; gap: 8px; }
+    .date-title { font-size: 15px; }
+    .views kbd { display: none; }
+    .capture { order: 10; max-width: none; flex-basis: 100%; }
+    .canvas { padding: 12px 10px 84px; }
+    .detail { width: 100%; max-width: none; }
+    .timegrid { grid-template-columns: 40px 1fr; }
+    .timegrid.week { grid-template-columns: 40px repeat(7, 1fr); }
+    .weekhead { grid-template-columns: 40px repeat(7, 1fr); }
+    .mday { min-height: 56px; padding: 4px; }
+    .mevt, .mmore { display: none; }
+    .mday .dots { display: flex; gap: 2px; margin-top: 3px; }
+    .yeardays { grid-template-columns: repeat(37, 1fr); gap: 1.5px; }
+    .yd { border-radius: 2px; }
+    .bottomnav {
+      display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+      background: var(--surface); border-top: 1px solid var(--line);
+      padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    }
+    .bottomnav button {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
+      font-size: 10.5px; color: var(--ink-3); padding: 4px 0;
+    }
+    .bottomnav button.active { color: var(--accent-ink); font-weight: 600; }
+    .bottomnav .ico { font-size: 17px; }
+  }
+  @media (min-width: 901px) {
+    .mday .dots { display: none; }
+  }
+</style>
+
+<div class="app">
+  <!-- ══ Sidebar PARA ══ -->
+  <nav class="sidebar" aria-label="Navegação PARA">
+    <div class="brand">
+      <div class="brand-mark">J</div>
+      <div>
+        <span class="brand-name">Jarvis</span>
+        <span class="brand-sub">seu planner central</span>
+      </div>
+    </div>
+
+    <button class="nav-item active"><span class="nav-ico">◉</span> Hoje <span class="count">6</span></button>
+    <button class="nav-item"><span class="nav-ico">↓</span> Inbox <span class="count" id="inboxCount">3</span></button>
+    <button class="nav-item"><span class="nav-ico">✎</span> Notas <span class="count">128</span></button>
+
+    <div class="para-label">Projetos</div>
+    <button class="nav-item"><span class="proj-dot" style="background:var(--accent)"></span> Relatório anual 2026 <span class="count">8</span></button>
+    <button class="nav-item"><span class="proj-dot" style="background:var(--task)"></span> Sistema de atendimento <span class="count">12</span></button>
+    <button class="nav-item"><span class="proj-dot" style="background:var(--today)"></span> Mudança de sede <span class="count">5</span></button>
+
+    <div class="para-label">Áreas</div>
+    <button class="nav-item"><span class="nav-ico">▣</span> Equipe</button>
+    <button class="nav-item"><span class="nav-ico">▣</span> Atendimentos</button>
+    <button class="nav-item"><span class="nav-ico">▣</span> Financeiro</button>
+
+    <div class="para-label">Recursos</div>
+    <button class="nav-item"><span class="nav-ico">◈</span> Gestão de projetos</button>
+    <button class="nav-item"><span class="nav-ico">◈</span> Leituras</button>
+
+    <div class="para-label">&nbsp;</div>
+    <button class="nav-item"><span class="nav-ico">▤</span> Arquivo</button>
+
+    <div class="sidebar-foot">
+      <button class="theme-toggle" id="themeToggle">◐ Alternar tema</button>
+    </div>
+  </nav>
+
+  <!-- ══ Main ══ -->
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <div class="date-title" id="dateTitle">Quinta-feira, 9 de julho
+          <small>Semana 28 · julho de 2026</small>
+        </div>
+      </div>
+      <div class="nav-arrows">
+        <button aria-label="Anterior">‹</button>
+        <button class="btn-hoje">Hoje</button>
+        <button aria-label="Próximo">›</button>
+      </div>
+      <div class="views" role="tablist" aria-label="Visões do calendário">
+        <button role="tab" data-view="dia" class="active">Dia <kbd>1</kbd></button>
+        <button role="tab" data-view="semana">Semana <kbd>2</kbd></button>
+        <button role="tab" data-view="mes">Mês <kbd>3</kbd></button>
+        <button role="tab" data-view="ano">Ano <kbd>4</kbd></button>
+      </div>
+      <div class="capture">
+        <span class="plus">+</span>
+        <input id="captureInput" type="text"
+          placeholder="Capturar… ex.: parecer do contrato sexta 14h #Sede"
+          autocomplete="off">
+        <div class="capture-chips" id="captureChips"></div>
+      </div>
+    </header>
+
+    <div class="canvas">
+      <!-- ── DIA ── -->
+      <section class="view active" id="view-dia" role="tabpanel">
+        <div class="timegrid" id="dayGrid"></div>
+      </section>
+
+      <!-- ── SEMANA ── -->
+      <section class="view" id="view-semana" role="tabpanel">
+        <div class="weekhead" id="weekHead"></div>
+        <div class="timegrid week" id="weekGrid"></div>
+      </section>
+
+      <!-- ── MÊS ── -->
+      <section class="view" id="view-mes" role="tabpanel">
+        <div class="monthgrid" id="monthGrid"></div>
+      </section>
+
+      <!-- ── ANO (linear) ── -->
+      <section class="view" id="view-ano" role="tabpanel">
+        <p class="year-note">Calendário linear de 2026 — cada linha é um mês, alinhado por dia da semana. A cor mostra a densidade de compromissos.</p>
+        <div id="yearGrid"></div>
+        <div class="yearlegend">
+          <span>menos</span>
+          <span class="yd"></span><span class="yd d1"></span><span class="yd d2"></span><span class="yd d3"></span>
+          <span>mais</span>
+          <span style="margin-left:12px">■ contorno âmbar = hoje</span>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ══ Painel de detalhe ══ -->
+<div class="scrim" id="scrim"></div>
+<aside class="detail" id="detail" aria-label="Detalhe do item">
+  <div class="detail-head">
+    <h2 id="detailTitle">Reunião de equipe</h2>
+    <button class="detail-close" id="detailClose" aria-label="Fechar">×</button>
+  </div>
+  <div class="detail-body">
+    <div class="meta" id="detailMeta">
+      <span class="chip muted">10:00 – 11:00</span>
+      <span class="chip muted"><span class="src-dot" style="background:var(--google)"></span>Google Agenda</span>
+      <span class="chip">Área · Equipe</span>
+    </div>
+
+    <h3>Nota de reunião</h3>
+    <div class="note" id="detailNote">
+      <p>Priorizamos o cronograma do <a class="wikilink">[[Sistema de atendimento]]</a> para o segundo semestre. A Ana assume o levantamento de requisitos e apresenta na próxima segunda.</p>
+      <p>Ficou definido que o orçamento segue o modelo discutido em <a class="wikilink">[[Planejamento 2026]]</a> — ver também <a class="wikilink">[[Critérios de priorização]]</a>.</p>
+    </div>
+
+    <h3>Ações extraídas</h3>
+    <ul class="tasklist">
+      <li><span class="box">☐</span> Revisar requisitos enviados pela Ana <span class="count" style="margin-left:auto;color:var(--ink-3)">seg</span></li>
+      <li><span class="box">☐</span> Consolidar orçamento do semestre <span class="count" style="margin-left:auto;color:var(--ink-3)">sex</span></li>
+    </ul>
+
+    <h3>Backlinks — notas que apontam para cá</h3>
+    <button class="backlink"><b>Planejamento 2026</b> "…as decisões da reunião de equipe de julho orientam o Q3…"</button>
+    <button class="backlink"><b>Diário · 02/07</b> "…preparar pauta para a reunião de equipe de quinta…"</button>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══ Navegação mobile ══ -->
+<nav class="bottomnav" aria-label="Navegação">
+  <button class="active"><span class="ico">◉</span>Hoje</button>
+  <button><span class="ico">▦</span>Agenda</button>
+  <button><span class="ico">↓</span>Inbox</button>
+  <button><span class="ico">✎</span>Notas</button>
+</nav>
+
+<script>
+  // ── Dados de demonstração (semana de 6 a 12 de julho de 2026; hoje = quinta 9) ──
+  const TODAY_DOW = 3; // 0 = segunda … 6 = domingo
+  const H0 = 8, H1 = 19; // grade de 8h às 19h
+
+  const EVENTS = [
+    { dow: 0, s: 9,    e: 9.5,  title: "Alinhamento semanal",        cal: "g", area: "Equipe" },
+    { dow: 0, s: 14,   e: 15.5, title: "Atendimento — Sr. Almeida",  cal: "o", area: "Atendimentos" },
+    { dow: 1, s: 10,   e: 11,   title: "Análise de contratos",       cal: "task", area: "Financeiro" },
+    { dow: 1, s: 15,   e: 16,   title: "Reunião fornecedor da sede", cal: "o", area: "Mudança de sede" },
+    { dow: 2, s: 9,    e: 12,   title: "Bloco de foco — relatório",  cal: "task", area: "Relatório anual 2026" },
+    { dow: 2, s: 16,   e: 17,   title: "1:1 com a Ana",              cal: "g", area: "Equipe" },
+    { dow: 3, s: 8.5,  e: 9.25, title: "Revisar inbox e prioridades",cal: "task", area: "Hoje" },
+    { dow: 3, s: 10,   e: 11,   title: "Reunião de equipe",          cal: "g", area: "Equipe", featured: true },
+    { dow: 3, s: 11.5, e: 12.5, title: "Parecer do contrato 114",    cal: "task", area: "Financeiro" },
+    { dow: 3, s: 14,   e: 15,   title: "Atendimento — Dna. Célia",   cal: "o", area: "Atendimentos" },
+    { dow: 3, s: 16,   e: 17.5, title: "Rascunho do relatório anual",cal: "task", area: "Relatório anual 2026" },
+    { dow: 4, s: 9,    e: 10,   title: "Revisão semanal (PARA)",     cal: "task", area: "Rotina" },
+    { dow: 4, s: 11,   e: 12,   title: "Reunião de diretoria",       cal: "o", area: "Equipe" },
+    { dow: 4, s: 14,   e: 14.75,title: "Parecer do contrato — envio",cal: "task", area: "Mudança de sede" },
+  ];
+
+  const WD_SHORT = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
+  const WEEK_DATES = [6, 7, 8, 9, 10, 11, 12];
+
+  const $ = (s) => document.querySelector(s);
+
+  // ── Grades de hora (dia e semana) ──
+  function renderTimeGrid(el, days) {
+    let html = "";
+    for (let h = H0; h < H1; h++) html += `<div class="hourlabel" style="grid-row:${h - H0 + 1}">${h}:00</div>`;
+    days.forEach((dow) => {
+      let col = `<div class="daycol" style="grid-row:1 / span ${H1 - H0}; grid-column:auto">`;
+      for (let h = H0; h < H1; h++) col += `<div class="hourline"></div>`;
+      EVENTS.filter((ev) => ev.dow === dow).forEach((ev) => {
+        const top = (ev.s - H0) * 52, height = (ev.e - ev.s) * 52 - 3;
+        const hh = (t) => `${Math.floor(t)}:${String(Math.round((t % 1) * 60)).padStart(2, "0")}`;
+        col += `<div class="evt ${ev.cal}" data-title="${ev.title}" data-area="${ev.area}" data-cal="${ev.cal}"
+          style="top:${top}px;height:${height}px" tabindex="0" role="button">
+          <span class="t">${ev.title}</span><span class="h">${hh(ev.s)} – ${hh(ev.e)}</span></div>`;
+      });
+      if (dow === TODAY_DOW) {
+        const now = new Date();
+        let nowH = now.getHours() + now.getMinutes() / 60;
+        if (nowH < H0 || nowH > H1) nowH = 11.2; // fora da grade → posição ilustrativa
+        col += `<div class="nowline" style="top:${(nowH - H0) * 52}px"></div>`;
+      }
+      col += `</div>`;
+      html += col;
+    });
+    el.innerHTML = html;
+  }
+
+  renderTimeGrid($("#dayGrid"), [TODAY_DOW]);
+  renderTimeGrid($("#weekGrid"), [0, 1, 2, 3, 4, 5, 6]);
+
+  $("#weekHead").innerHTML =
+    `<div></div>` +
+    WEEK_DATES.map((d, i) =>
+      `<div class="wd ${i === TODAY_DOW ? "today" : ""}">${WD_SHORT[i]}<b>${d}</b></div>`).join("");
+
+  // ── Mês (julho de 2026 — dia 1 é quarta) ──
+  (function renderMonth() {
+    const el = $("#monthGrid");
+    let html = WD_SHORT.map((w) => `<div class="wd">${w}</div>`).join("");
+    const firstOffset = 2, daysInMonth = 31; // qua = índice 2 (semana começa na segunda)
+    for (let i = 0; i < firstOffset; i++) html += `<div class="mday out"><span class="n">${29 + i}</span></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dow = (firstOffset + d - 1) % 7;
+      const inWeek = d >= 6 && d <= 12;
+      const evts = inWeek ? EVENTS.filter((e) => e.dow === WEEK_DATES.indexOf(d)) : [];
+      const fake = !inWeek && dow < 5 && d % 3 !== 0 ? [{ title: d % 2 ? "Atendimento" : "Reunião", cal: d % 2 ? "o" : "g" }] : [];
+      const shown = evts.length ? evts : fake;
+      html += `<div class="mday ${d === 9 ? "today" : ""}"><span class="n">${d}</span>` +
+        shown.slice(0, 2).map((e) => `<div class="mevt ${e.cal}" data-title="${e.title}" data-area="${e.area || ""}" data-cal="${e.cal}" role="button" tabindex="0">${e.title}</div>`).join("") +
+        (shown.length > 2 ? `<div class="mmore">+ ${shown.length - 2} itens</div>` : ``) +
+        `<div class="dots">` + shown.slice(0, 3).map(() => `<span class="proj-dot" style="background:var(--accent);width:5px;height:5px"></span>`).join("") + `</div>` +
+        `</div>`;
+    }
+    el.innerHTML = html;
+  })();
+
+  // ── Ano linear de 2026 ──
+  (function renderYear() {
+    const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+    const el = $("#yearGrid");
+    let html = "";
+    for (let m = 0; m < 12; m++) {
+      const first = new Date(2026, m, 1);
+      const offset = (first.getDay() + 6) % 7; // semana começa na segunda
+      const dim = new Date(2026, m + 1, 0).getDate();
+      let cells = "";
+      for (let i = 0; i < offset; i++) cells += `<div class="yd empty"></div>`;
+      for (let d = 1; d <= dim; d++) {
+        const dow = (offset + d - 1) % 7;
+        const isToday = m === 6 && d === 9;
+        // densidade pseudoaleatória, porém estável, para ilustrar
+        const seed = (m * 31 + d) % 7;
+        let cls = dow >= 5 ? "wknd" : seed < 2 ? "" : seed < 4 ? "d1" : seed < 6 ? "d2" : "d3";
+        if (m === 6 && d >= 6 && d <= 10) cls = "d2";
+        cells += `<div class="yd ${cls} ${isToday ? "today" : ""}" title="${d} ${MONTHS[m]}"></div>`;
+      }
+      for (let i = offset + dim; i < 37; i++) cells += `<div class="yd empty"></div>`;
+      html += `<div class="yearrow"><div class="mn">${MONTHS[m]}</div><div class="yeardays">${cells}</div></div>`;
+    }
+    el.innerHTML = html;
+  })();
+
+  // ── Troca de visões ──
+  const TITLES = {
+    dia:    ["Quinta-feira, 9 de julho", "Semana 28 · julho de 2026"],
+    semana: ["6 – 12 de julho",          "Semana 28 · julho de 2026"],
+    mes:    ["Julho de 2026",            "31 dias · 22 úteis"],
+    ano:    ["2026",                     "Visão linear do ano"],
+  };
+  function setView(v) {
+    document.querySelectorAll(".views [data-view]").forEach((b) =>
+      b.classList.toggle("active", b.dataset.view === v));
+    document.querySelectorAll(".view").forEach((s) =>
+      s.classList.toggle("active", s.id === "view-" + v));
+    $("#dateTitle").innerHTML = `${TITLES[v][0]}<small>${TITLES[v][1]}</small>`;
+  }
+  document.querySelectorAll(".views [data-view]").forEach((b) =>
+    b.addEventListener("click", () => setView(b.dataset.view)));
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT") return;
+    const map = { 1: "dia", 2: "semana", 3: "mes", 4: "ano" };
+    if (map[e.key]) setView(map[e.key]);
+  });
+
+  // ── Painel de detalhe ──
+  const CAL_LABEL = { g: "Google Agenda", o: "Outlook", task: "Tarefa · Jarvis" };
+  const CAL_COLOR = { g: "var(--google)", o: "var(--outlook)", task: "var(--task)" };
+  function openDetail(title, area, cal) {
+    $("#detailTitle").textContent = title;
+    $("#detailMeta").innerHTML =
+      `<span class="chip muted"><span class="src-dot" style="background:${CAL_COLOR[cal] || "var(--accent)"}"></span>${CAL_LABEL[cal] || "Evento"}</span>` +
+      (area ? `<span class="chip">${area}</span>` : "");
+    $("#detail").classList.add("open");
+    $("#scrim").classList.add("show");
+  }
+  function closeDetail() {
+    $("#detail").classList.remove("open");
+    $("#scrim").classList.remove("show");
+  }
+  document.addEventListener("click", (e) => {
+    const evt = e.target.closest(".evt, .mevt");
+    if (evt) openDetail(evt.dataset.title, evt.dataset.area, evt.dataset.cal);
+    if (e.target.closest(".wikilink")) showToast("Abriria a nota conectada — protótipo");
+    if (e.target.closest(".backlink")) showToast("Abriria a nota de origem — protótipo");
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeDetail();
+    if (e.key === "Enter" && e.target.closest && e.target.closest(".evt, .mevt")) {
+      const t = e.target.closest(".evt, .mevt");
+      openDetail(t.dataset.title, t.dataset.area, t.dataset.cal);
+    }
+  });
+  $("#detailClose").addEventListener("click", closeDetail);
+  $("#scrim").addEventListener("click", closeDetail);
+
+  // ── Captura rápida com linguagem natural (simulada) ──
+  const input = $("#captureInput"), chips = $("#captureChips");
+  const DATE_RX = /\b(hoje|amanhã|segunda|seg|terça|ter|quarta|qua|quinta|qui|sexta|sex|sábado|sab|domingo|dom)\b/i;
+  const TIME_RX = /\b(\d{1,2})h(\d{2})?\b/;
+  input.addEventListener("input", () => {
+    const v = input.value.trim();
+    if (!v) { chips.classList.remove("show"); return; }
+    const d = v.match(DATE_RX), t = v.match(TIME_RX), g = v.match(/#(\S+)/);
+    let title = v.replace(DATE_RX, "").replace(TIME_RX, "").replace(/#\S+/, "").trim() || "Nova tarefa";
+    chips.innerHTML =
+      `<span class="chip muted">${title}</span>` +
+      (d ? `<span class="chip">📅 ${d[1].toLowerCase()}</span>` : "") +
+      (t ? `<span class="chip">🕐 ${t[1]}h${t[2] || ""}</span>` : "") +
+      (g ? `<span class="chip">${g[1]}</span>` : `<span class="chip muted">→ Inbox</span>`) +
+      `<div class="capture-hint">Enter para capturar · a classificação PARA pode ficar para depois</div>`;
+    chips.classList.add("show");
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && input.value.trim()) {
+      const c = $("#inboxCount");
+      c.textContent = String(Number(c.textContent) + 1);
+      showToast(`Capturado: "${input.value.trim().slice(0, 48)}"`);
+      input.value = "";
+      chips.classList.remove("show");
+    }
+    if (e.key === "Escape") { input.blur(); chips.classList.remove("show"); }
+  });
+  input.addEventListener("blur", () => setTimeout(() => chips.classList.remove("show"), 150));
+
+  let toastTimer;
+  function showToast(msg) {
+    const t = $("#toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2400);
+  }
+
+  // ── Tema ──
+  $("#themeToggle").addEventListener("click", () => {
+    const root = document.documentElement;
+    const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+    const cur = root.dataset.theme || (dark ? "dark" : "light");
+    root.dataset.theme = cur === "dark" ? "light" : "dark";
+  });
+</script>

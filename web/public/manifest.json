@@ -1,0 +1,11 @@
+{
+  "name": "Kairós — o tempo certo",
+  "short_name": "Kairós",
+  "description": "Planner pessoal centrado no calendário: PARA, GTD, CODE e Zettelkasten.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f7f6",
+  "theme_color": "#14685c",
+  "lang": "pt-BR",
+  "icons": []
+}

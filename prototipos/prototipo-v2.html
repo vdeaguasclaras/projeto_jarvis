@@ -1,0 +1,1424 @@
+<title>Kairós — Protótipo v2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #f6f7f6;
+    --surface: #ffffff;
+    --surface-2: #eff1f0;
+    --ink: #1c2422;
+    --ink-2: #5b6663;
+    --ink-3: #939c98;
+    --line: #e2e6e4;
+    --accent: #14685c;
+    --accent-soft: #e0edea;
+    --accent-ink: #0e5045;
+    --today: #b45309;
+    --today-soft: #f7ead8;
+    --google: #4285c8;
+    --outlook: #2f6bb0;
+    --task: #7c6ba8;
+    --task-soft: #ece8f4;
+    --shadow: 0 10px 30px rgba(28, 36, 34, 0.10);
+    --shadow-lg: 0 24px 60px rgba(28, 36, 34, 0.18);
+    --sans: system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --serif: Georgia, "Times New Roman", serif;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141817; --surface: #1b2120; --surface-2: #222927;
+      --ink: #e7ecea; --ink-2: #a3ada9; --ink-3: #6e7975; --line: #2c3432;
+      --accent: #4cc2ae; --accent-soft: #1d3330; --accent-ink: #7fd8c8;
+      --today: #e5a04c; --today-soft: #362a1a; --task-soft: #2a2634;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f7f6; --surface: #ffffff; --surface-2: #eff1f0;
+    --ink: #1c2422; --ink-2: #5b6663; --ink-3: #939c98; --line: #e2e6e4;
+    --accent: #14685c; --accent-soft: #e0edea; --accent-ink: #0e5045;
+    --today: #b45309; --today-soft: #f7ead8; --task-soft: #ece8f4;
+    --shadow: 0 10px 30px rgba(28, 36, 34, 0.10);
+    --shadow-lg: 0 24px 60px rgba(28, 36, 34, 0.18);
+  }
+  :root[data-theme="dark"] {
+    --bg: #141817; --surface: #1b2120; --surface-2: #222927;
+    --ink: #e7ecea; --ink-2: #a3ada9; --ink-3: #6e7975; --line: #2c3432;
+    --accent: #4cc2ae; --accent-soft: #1d3330; --accent-ink: #7fd8c8;
+    --today: #e5a04c; --today-soft: #362a1a; --task-soft: #2a2634;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: var(--sans); background: var(--bg); color: var(--ink);
+    font-size: 14px; line-height: 1.45; overflow: hidden;
+  }
+  button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+  input, textarea { font: inherit; color: var(--ink); }
+  button:focus-visible, input:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px;
+  }
+
+  .app { display: grid; grid-template-columns: 248px 1fr; height: 100vh; }
+
+  /* ── Sidebar (PARA) ─────────────────────────────── */
+  .sidebar {
+    background: var(--surface); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 3px; padding: 16px 12px;
+    overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 14px; }
+  .brand-mark {
+    width: 28px; height: 28px; border-radius: 9px; background: var(--accent);
+    color: var(--surface); display: grid; place-items: center;
+    font-weight: 700; font-size: 14px; transition: transform 0.4s var(--ease);
+  }
+  .brand:hover .brand-mark { transform: rotate(-8deg) scale(1.06); }
+  .brand-name { font-weight: 650; font-size: 15px; }
+  .brand-sub { font-size: 10.5px; color: var(--ink-3); display: block; margin-top: -2px; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 9px; width: 100%;
+    padding: 7px 10px; border-radius: 8px; color: var(--ink-2); text-align: left;
+    transition: background 0.15s, transform 0.2s var(--ease);
+  }
+  .nav-item:hover { background: var(--surface-2); transform: translateX(2px); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+  .nav-item .count {
+    margin-left: auto; font-size: 11.5px; color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .nav-item.active .count { color: var(--accent-ink); }
+  .nav-ico { width: 16px; text-align: center; flex: none; font-size: 13px; }
+  .nav-item .due-chip {
+    margin-left: auto; font-size: 10px; background: var(--today-soft); color: var(--today);
+    border-radius: 5px; padding: 1px 6px; font-weight: 650;
+  }
+
+  .para-row { display: flex; align-items: center; padding: 14px 10px 5px; }
+  .para-label {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--ink-3); font-weight: 650;
+  }
+  .para-add {
+    margin-left: auto; width: 18px; height: 18px; border-radius: 5px; color: var(--ink-3);
+    display: grid; place-items: center; font-size: 13px; line-height: 1;
+    transition: all 0.15s;
+  }
+  .para-add:hover { background: var(--accent-soft); color: var(--accent-ink); }
+  .proj-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .sidebar-foot { margin-top: auto; padding: 12px 8px 2px; border-top: 1px solid var(--line); }
+  .theme-toggle { font-size: 12px; color: var(--ink-3); padding: 6px 4px; }
+  .theme-toggle:hover { color: var(--ink); }
+
+  /* ── Main / topbar ─────────────────────────────── */
+  .main { display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    display: flex; align-items: center; gap: 14px; padding: 12px 20px;
+    border-bottom: 1px solid var(--line); background: var(--surface); flex-wrap: wrap;
+  }
+  .date-title { font-size: 17px; font-weight: 650; text-wrap: balance; min-width: 180px; }
+  .date-title small { display: block; font-size: 11.5px; font-weight: 400; color: var(--ink-3); }
+  .nav-arrows { display: flex; align-items: center; gap: 2px; }
+  .nav-arrows button { padding: 5px 9px; border-radius: 7px; color: var(--ink-2); font-size: 13px; }
+  .nav-arrows button:hover { background: var(--surface-2); }
+  .btn-hoje { border: 1px solid var(--line); border-radius: 7px; padding: 4px 11px; font-size: 12.5px; color: var(--ink-2); }
+
+  .views {
+    position: relative; display: flex; background: var(--surface-2);
+    border-radius: 9px; padding: 3px; gap: 2px;
+  }
+  .views .pill {
+    position: absolute; top: 3px; bottom: 3px; border-radius: 7px; background: var(--surface);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12); z-index: 0;
+    transition: transform 0.35s var(--ease), width 0.35s var(--ease);
+  }
+  .views button {
+    position: relative; z-index: 1; padding: 5px 12px; border-radius: 7px;
+    font-size: 12.5px; color: var(--ink-2); white-space: nowrap;
+    transition: color 0.2s;
+  }
+  .views button.active { color: var(--ink); font-weight: 600; }
+  .views kbd {
+    font-family: inherit; font-size: 10px; color: var(--ink-3);
+    margin-left: 5px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px;
+  }
+
+  /* Captura rápida */
+  .capture { position: relative; flex: 1; min-width: 200px; max-width: 440px; margin-left: auto; }
+  .capture input {
+    width: 100%; padding: 8px 12px 8px 34px; border: 1px solid var(--line);
+    border-radius: 9px; background: var(--bg); font-size: 13px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .capture input::placeholder { color: var(--ink-3); }
+  .capture input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .capture .plus {
+    position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+    color: var(--accent); font-size: 16px; font-weight: 600; pointer-events: none;
+  }
+  .capture-chips {
+    position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: var(--shadow); padding: 9px 11px;
+    opacity: 0; transform: translateY(-4px); pointer-events: none;
+    transition: opacity 0.18s, transform 0.18s var(--ease);
+  }
+  .capture-chips.show { opacity: 1; transform: none; pointer-events: auto; }
+  .chip {
+    display: inline-block; font-size: 11.5px; border-radius: 6px; padding: 2px 8px;
+    margin: 2px 4px 2px 0; background: var(--accent-soft); color: var(--accent-ink); font-weight: 600;
+  }
+  .chip.muted { background: var(--surface-2); color: var(--ink-2); font-weight: 400; }
+  .chip.person { background: var(--today-soft); color: var(--today); }
+  .chip.file { background: var(--surface-2); color: var(--ink-2); font-weight: 500; cursor: pointer; }
+  .chip.file:hover { background: var(--accent-soft); color: var(--accent-ink); }
+  .capture-hint { font-size: 11px; color: var(--ink-3); margin-top: 5px; }
+
+  /* ── Canvas e transições entre visões ──────────── */
+  .canvas { flex: 1; overflow: auto; padding: 18px 20px; }
+  .view { display: none; --dx: 0px; }
+  .view.active { display: block; animation: viewIn 0.38s var(--ease) both; }
+  @keyframes viewIn {
+    from { opacity: 0; transform: translateX(var(--dx)) translateY(8px) scale(0.988); filter: blur(2px); }
+    to   { opacity: 1; transform: none; filter: none; }
+  }
+  .view.active .stagger { animation: rise 0.45s var(--ease) both; animation-delay: calc(var(--i, 0) * 40ms); }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  /* Check do dia */
+  .daycheck {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+    background: linear-gradient(120deg, var(--today-soft), var(--surface));
+    border: 1px solid var(--line); border-left: 3px solid var(--today);
+    border-radius: 10px; padding: 10px 14px;
+  }
+  .daycheck .ttl { font-weight: 650; font-size: 13px; }
+  .daycheck .sub { font-size: 12px; color: var(--ink-2); }
+  .daycheck .go {
+    margin-left: auto; background: var(--today); color: #fff; border-radius: 8px;
+    padding: 6px 14px; font-size: 12.5px; font-weight: 600; flex: none;
+    transition: transform 0.2s var(--ease), box-shadow 0.2s;
+  }
+  .daycheck .go:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+  .daycheck.done { border-left-color: var(--accent); background: linear-gradient(120deg, var(--accent-soft), var(--surface)); }
+
+  /* Grades de hora */
+  .timegrid { display: grid; grid-template-columns: 52px 1fr; }
+  .timegrid.week { grid-template-columns: 52px repeat(7, 1fr); }
+  .hourlabel {
+    grid-column: 1; height: 52px; font-size: 10.5px; color: var(--ink-3);
+    text-align: right; padding-right: 10px; transform: translateY(-6px);
+    font-variant-numeric: tabular-nums;
+  }
+  .daycol { position: relative; border-left: 1px solid var(--line); }
+  .hourline { height: 52px; border-bottom: 1px solid var(--line); }
+  .hourline:first-child { border-top: 1px solid var(--line); }
+  .evt {
+    position: absolute; left: 5px; right: 5px; border-radius: 7px;
+    padding: 4px 8px; font-size: 12px; overflow: hidden; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--line);
+    border-left: 3px solid var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    transition: box-shadow 0.15s, transform 0.15s var(--ease);
+  }
+  .evt:hover { box-shadow: var(--shadow); transform: translateY(-1px); z-index: 5; }
+  .evt .t { font-weight: 600; display: block; line-height: 1.25; }
+  .evt .h { color: var(--ink-3); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .evt.g { border-left-color: var(--google); }
+  .evt.o { border-left-color: var(--outlook); }
+  .evt.task { border-left-color: var(--task); border-style: dashed; background: var(--surface-2); }
+  .evt.task .t::before { content: "☐ "; color: var(--task); }
+  .evt.prop {
+    border: 1.5px dashed var(--today); border-left-width: 3px; background: var(--today-soft);
+  }
+  .evt.prop .t::before { content: "✦ "; color: var(--today); }
+  .evt.prop .h::after { content: " · proposto — clique para aceitar"; color: var(--today); }
+  .src-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
+  .nowline { position: absolute; left: 0; right: 0; height: 2px; background: var(--today); z-index: 6; pointer-events: none; }
+  .nowline::before {
+    content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--today);
+  }
+  .weekhead { display: grid; grid-template-columns: 52px repeat(7, 1fr); margin-bottom: 6px; }
+  .weekhead .wd { text-align: center; font-size: 12px; color: var(--ink-2); padding: 4px 0; }
+  .weekhead .wd b { display: block; font-size: 16px; font-weight: 600; color: var(--ink); }
+  .weekhead .wd.today b {
+    background: var(--today); color: #fff; width: 28px; height: 28px; line-height: 28px;
+    border-radius: 50%; margin: 2px auto 0;
+  }
+
+  /* Mês */
+  .monthgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .monthgrid .wd {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-3); text-align: center; padding-bottom: 2px;
+  }
+  .mday {
+    min-height: 92px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px 7px; font-size: 11.5px;
+    transition: transform 0.18s var(--ease), box-shadow 0.18s;
+  }
+  .mday:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .mday.out { opacity: 0.35; }
+  .mday .n { font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .mday.today { border-color: var(--today); background: var(--today-soft); }
+  .mday.today .n { color: var(--today); }
+  .mevt {
+    margin-top: 3px; padding: 1px 6px; border-radius: 5px; background: var(--accent-soft);
+    color: var(--accent-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    cursor: pointer; font-size: 11px;
+  }
+  .mevt.g { background: color-mix(in srgb, var(--google) 14%, var(--surface)); color: var(--ink-2); }
+  .mevt.o { background: color-mix(in srgb, var(--outlook) 14%, var(--surface)); color: var(--ink-2); }
+  .mmore { color: var(--ink-3); font-size: 10.5px; margin-top: 2px; }
+
+  /* Ano: densidade + linha do tempo */
+  .yeartabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .yeartabs button {
+    border: 1px solid var(--line); border-radius: 8px; padding: 5px 14px; font-size: 12.5px; color: var(--ink-2);
+    transition: all 0.2s;
+  }
+  .yeartabs button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .year-note { font-size: 12px; color: var(--ink-3); margin: 0 0 12px; }
+  .yearmode { display: none; }
+  .yearmode.active { display: block; animation: viewIn 0.3s var(--ease) both; }
+  .yearrow { display: grid; grid-template-columns: 44px 1fr; align-items: center; margin-bottom: 7px; }
+  .yearrow .mn { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-2); font-weight: 650; }
+  .yeardays { display: grid; grid-template-columns: repeat(37, 1fr); gap: 3px; }
+  .yd { aspect-ratio: 1; border-radius: 4px; background: var(--surface-2); }
+  .yd.empty { background: transparent; }
+  .yd.wknd { background: var(--surface); border: 1px solid var(--line); }
+  .yd.d1 { background: color-mix(in srgb, var(--accent) 30%, var(--surface-2)); }
+  .yd.d2 { background: color-mix(in srgb, var(--accent) 55%, var(--surface-2)); }
+  .yd.d3 { background: var(--accent); }
+  .yd.today { outline: 2px solid var(--today); outline-offset: 1px; }
+  .yearlegend { display: flex; gap: 14px; align-items: center; margin-top: 14px; font-size: 11px; color: var(--ink-3); }
+  .yearlegend .yd { width: 12px; aspect-ratio: 1; display: inline-block; }
+
+  .tl { position: relative; --tl-lbl: 170px; }
+  .tl-months { display: grid; grid-template-columns: var(--tl-lbl) repeat(12, 1fr); margin-bottom: 4px; }
+  .tl-months span {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--ink-3); text-align: center; padding: 2px 0; border-left: 1px solid var(--line);
+  }
+  .tl-months span:first-child { border-left: none; }
+  .tl-row { display: grid; grid-template-columns: var(--tl-lbl) 1fr; align-items: center; min-height: 34px; }
+  .tl-row .lbl { font-size: 12.5px; color: var(--ink-2); padding-right: 12px; display: flex; align-items: center; gap: 7px; }
+  .tl-row .lbl.sub { padding-left: 18px; font-size: 11.5px; color: var(--ink-3); }
+  .tl-track {
+    position: relative; height: 26px; border-radius: 6px;
+    background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px calc(100% / 12));
+  }
+  .tl-bar {
+    position: absolute; top: 4px; bottom: 4px; border-radius: 6px; cursor: pointer;
+    transform-origin: left center; animation: grow 0.7s var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 90ms);
+    display: flex; align-items: center; padding: 0 8px; font-size: 10.5px; color: #fff;
+    white-space: nowrap; overflow: hidden;
+  }
+  @keyframes grow { from { transform: scaleX(0); opacity: 0; } }
+  .tl-bar.thin { top: 8px; bottom: 8px; opacity: 0.75; }
+  .tl-today {
+    position: absolute; top: 0; bottom: 0; width: 2px; background: var(--today); z-index: 3;
+  }
+  .tl-today::after {
+    content: "hoje"; position: absolute; top: -18px; left: -14px; font-size: 10px;
+    color: var(--today); font-weight: 650;
+  }
+
+  /* Tarefas (GTD) */
+  .gtd { max-width: 720px; }
+  .gtd h3 {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--ink-3);
+    margin: 20px 0 8px; font-weight: 650; display: flex; gap: 8px; align-items: baseline;
+  }
+  .gtd h3:first-child { margin-top: 0; }
+  .gtd h3 .count { font-variant-numeric: tabular-nums; }
+  .todo {
+    display: flex; align-items: center; gap: 11px; padding: 9px 12px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 9px; margin-bottom: 6px;
+    transition: transform 0.2s var(--ease), opacity 0.35s, box-shadow 0.15s;
+  }
+  .todo:hover { box-shadow: var(--shadow); }
+  .todo .box {
+    width: 18px; height: 18px; border: 1.5px solid var(--ink-3); border-radius: 6px; flex: none;
+    display: grid; place-items: center; color: transparent; font-size: 12px;
+    transition: all 0.2s var(--ease); cursor: pointer;
+  }
+  .todo .box:hover { border-color: var(--accent); }
+  .todo.done { opacity: 0.45; }
+  .todo.done .box { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .todo.done .txt { text-decoration: line-through; }
+  .todo .txt { flex: 1; min-width: 0; }
+  .todo .chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+  .todo .chip { margin: 0; font-size: 10.5px; padding: 1px 7px; }
+
+  /* Grafo */
+  .graphwrap { position: relative; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+  #graph { display: block; width: 100%; height: min(62vh, 560px); cursor: grab; }
+  #graph:active { cursor: grabbing; }
+  .graphlegend {
+    position: absolute; left: 12px; bottom: 10px; display: flex; gap: 12px; font-size: 11px; color: var(--ink-2);
+    background: color-mix(in srgb, var(--surface) 82%, transparent); border-radius: 8px; padding: 5px 10px;
+    backdrop-filter: blur(4px);
+  }
+  .graphlegend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+
+  /* Página de projeto (estilo Notion) */
+  .pagewrap { max-width: 760px; }
+  .page-back { color: var(--ink-3); font-size: 12.5px; margin-bottom: 14px; padding: 4px 8px; border-radius: 6px; }
+  .page-back:hover { background: var(--surface-2); color: var(--ink); }
+  .page-head h1 { font-size: 26px; margin: 0 0 4px; font-weight: 700; letter-spacing: -0.01em; }
+  .page-props { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; }
+  .page-desc { font-family: var(--serif); font-size: 15px; color: var(--ink-2); max-width: 62ch; margin: 12px 0 0; line-height: 1.6; }
+  .progress { height: 6px; border-radius: 3px; background: var(--surface-2); margin: 16px 0 4px; overflow: hidden; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; transition: width 0.9s var(--ease) 0.2s; }
+  .progress-lbl { font-size: 11px; color: var(--ink-3); }
+  .page-cols { display: grid; grid-template-columns: 1.4fr 1fr; gap: 26px; margin-top: 10px; }
+  .page-sec h3 {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--ink-3);
+    margin: 18px 0 8px; font-weight: 650;
+  }
+  .goal { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; font-size: 13px; color: var(--ink-2); }
+  .goal.ok { color: var(--ink-3); text-decoration: line-through; }
+  .goal .m { color: var(--accent); flex: none; }
+  .linknote {
+    display: block; width: 100%; text-align: left; padding: 8px 10px; border: 1px solid var(--line);
+    border-radius: 8px; margin-bottom: 6px; font-size: 12.5px; color: var(--ink-2);
+  }
+  .linknote:hover { background: var(--surface-2); }
+  .linknote b { color: var(--ink); display: block; font-size: 13px; }
+
+  /* ── Painel de detalhe ─────────────────────────── */
+  .detail {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 94vw; z-index: 40;
+    background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--shadow-lg);
+    transform: translateX(105%); transition: transform 0.32s var(--ease);
+    display: flex; flex-direction: column;
+  }
+  .detail.open { transform: translateX(0); }
+  .detail-head { display: flex; align-items: flex-start; gap: 10px; padding: 18px 20px 10px; }
+  .detail-head h2 { font-size: 17px; margin: 0; font-weight: 650; text-wrap: balance; }
+  .detail-close { margin-left: auto; color: var(--ink-3); font-size: 18px; padding: 2px 8px; }
+  .detail-body { padding: 0 20px 24px; overflow-y: auto; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 14px; }
+  .meta .chip { margin: 0; }
+  .detail h3 {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--ink-3);
+    margin: 18px 0 8px; font-weight: 650;
+  }
+  .note { font-family: var(--serif); font-size: 14.5px; line-height: 1.62; max-width: 62ch; }
+  .note p { margin: 0 0 10px; }
+  .note mark {
+    background: color-mix(in srgb, var(--today) 22%, transparent); color: inherit;
+    border-radius: 3px; padding: 0 2px;
+  }
+  .wikilink {
+    color: var(--accent-ink); background: var(--accent-soft); border-radius: 4px;
+    padding: 0 3px; text-decoration: none; cursor: pointer;
+  }
+  .wikilink:hover { text-decoration: underline; }
+  .embed {
+    border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 8px 0;
+  }
+  .embed .ph {
+    aspect-ratio: 16/9; display: grid; place-items: center; color: #fff; font-size: 12px;
+    background:
+      radial-gradient(circle at 30% 35%, color-mix(in srgb, var(--accent) 80%, #000) 0, transparent 55%),
+      radial-gradient(circle at 75% 70%, color-mix(in srgb, var(--task) 70%, #000) 0, transparent 50%),
+      var(--ink);
+  }
+  .embed .ph.video { position: relative; }
+  .embed .ph.video::before {
+    content: "▶"; position: absolute; width: 44px; height: 44px; border-radius: 50%;
+    background: rgba(255,255,255,0.92); color: #1c2422; display: grid; place-items: center; font-size: 15px;
+    padding-left: 3px;
+  }
+  .embed figcaption { font-size: 11px; color: var(--ink-3); padding: 6px 10px; }
+  .backlink {
+    display: block; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+    margin-bottom: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; text-align: left; width: 100%;
+  }
+  .backlink:hover { background: var(--surface-2); }
+  .backlink b { color: var(--ink); display: block; font-size: 13px; }
+  .tasklist { list-style: none; margin: 0; padding: 0; }
+  .tasklist li { display: flex; gap: 8px; align-items: baseline; padding: 4px 0; font-size: 13px; }
+  .tasklist .bx { color: var(--task); }
+
+  /* ── Modais ────────────────────────────────────── */
+  .scrim {
+    position: fixed; inset: 0; background: rgba(15, 20, 18, 0.35); z-index: 45;
+    opacity: 0; pointer-events: none; transition: opacity 0.25s; backdrop-filter: blur(2px);
+  }
+  .scrim.show { opacity: 1; pointer-events: auto; }
+  .modal-wrap {
+    position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px;
+    pointer-events: none;
+  }
+  .modal {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+    box-shadow: var(--shadow-lg); width: 100%; max-width: 540px; max-height: 86vh; overflow-y: auto;
+    opacity: 0; transform: translateY(18px) scale(0.965);
+    transition: opacity 0.28s, transform 0.34s var(--ease); pointer-events: none;
+  }
+  .modal.open { opacity: 1; transform: none; pointer-events: auto; }
+  .modal-pad { padding: 22px 24px; }
+  .modal h2 { font-size: 18px; margin: 0 0 2px; font-weight: 650; }
+  .modal .sub { font-size: 12.5px; color: var(--ink-3); margin: 0 0 16px; }
+  .code-steps { display: flex; gap: 4px; margin: 0 0 16px; }
+  .code-steps span {
+    flex: 1; text-align: center; font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 5px 2px; border-radius: 7px; background: var(--surface-2); color: var(--ink-3); font-weight: 600;
+  }
+  .code-steps span.on { background: var(--accent-soft); color: var(--accent-ink); }
+
+  .triage-card {
+    border: 1px solid var(--line); border-radius: 12px; padding: 16px;
+    animation: cardIn 0.35s var(--ease) both;
+  }
+  @keyframes cardIn { from { opacity: 0; transform: translateX(26px); } }
+  .triage-card.out { animation: cardOut 0.28s var(--ease) both; }
+  @keyframes cardOut { to { opacity: 0; transform: translateX(-30px); } }
+  .triage-src { font-size: 11px; color: var(--ink-3); margin-bottom: 5px; }
+  .triage-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .triage-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tri-btn {
+    border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; font-size: 12.5px;
+    text-align: left; color: var(--ink-2); transition: all 0.15s;
+  }
+  .tri-btn b { display: block; color: var(--ink); font-size: 13px; }
+  .tri-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .tri-btn.warm:hover { border-color: var(--today); background: var(--today-soft); }
+  .triage-progress { font-size: 11.5px; color: var(--ink-3); margin-top: 14px; text-align: center; font-variant-numeric: tabular-nums; }
+  .allclear { text-align: center; padding: 26px 10px 14px; }
+  .allclear .big { font-size: 34px; }
+  .allclear h4 { margin: 8px 0 4px; font-size: 16px; }
+  .allclear p { font-size: 12.5px; color: var(--ink-2); margin: 0; }
+
+  .wk-step { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); align-items: flex-start; }
+  .wk-step:last-of-type { border-bottom: none; }
+  .wk-num {
+    width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-ink);
+    display: grid; place-items: center; font-size: 11px; font-weight: 700; flex: none; margin-top: 1px;
+  }
+  .wk-step b { display: block; font-size: 13.5px; }
+  .wk-step p { margin: 2px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .wk-step .chip { margin-top: 6px; }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 11.5px; color: var(--ink-2); margin-bottom: 4px; font-weight: 600; }
+  .field input, .field textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+    background: var(--bg); font-size: 13px;
+  }
+  .field input:focus, .field textarea:focus { border-color: var(--accent); outline: none; }
+  .modal-foot { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  .btn {
+    border-radius: 9px; padding: 8px 16px; font-size: 13px; font-weight: 600;
+    transition: transform 0.15s var(--ease);
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary { background: var(--accent); color: var(--surface); }
+  .btn.ghost { color: var(--ink-2); border: 1px solid var(--line); }
+
+  .toast {
+    position: fixed; bottom: 78px; left: 50%; transform: translate(-50%, 16px);
+    background: var(--ink); color: var(--bg); border-radius: 10px; padding: 9px 16px;
+    font-size: 13px; opacity: 0; transition: all 0.3s var(--ease); z-index: 70; pointer-events: none;
+    max-width: 88vw; box-shadow: var(--shadow-lg);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ── Mobile ────────────────────────────────────── */
+  .bottomnav { display: none; }
+  @media (max-width: 900px) {
+    body { overflow: auto; }
+    .app { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+    .sidebar { display: none; }
+    .topbar { padding: 10px 12px; gap: 8px; }
+    .date-title { font-size: 15px; min-width: 0; }
+    .views { overflow-x: auto; max-width: 100%; }
+    .views kbd { display: none; }
+    .capture { order: 10; max-width: none; flex-basis: 100%; }
+    .canvas { padding: 12px 10px 92px; }
+    .detail { width: 100%; max-width: none; }
+    .timegrid { grid-template-columns: 40px 1fr; }
+    .timegrid.week { grid-template-columns: 40px repeat(7, 1fr); }
+    .weekhead { grid-template-columns: 40px repeat(7, 1fr); }
+    .mday { min-height: 56px; padding: 4px; }
+    .mevt, .mmore { display: none; }
+    .mday .dots { display: flex; gap: 2px; margin-top: 3px; }
+    .page-cols { grid-template-columns: 1fr; gap: 4px; }
+    .tl { --tl-lbl: 90px; }
+    .tl-row .lbl { font-size: 11px; }
+    .tl-bar { font-size: 0; }
+    .yd { border-radius: 2px; }
+    .triage-actions { grid-template-columns: 1fr; }
+    .bottomnav {
+      display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+      background: var(--surface); border-top: 1px solid var(--line);
+      padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    }
+    .bottomnav button {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
+      font-size: 10.5px; color: var(--ink-3); padding: 4px 0;
+    }
+    .bottomnav button.active { color: var(--accent-ink); font-weight: 600; }
+    .bottomnav .ico { font-size: 17px; }
+  }
+  @media (min-width: 901px) { .mday .dots { display: none; } }
+</style>
+
+<div class="app">
+  <!-- ══ Sidebar PARA ══ -->
+  <nav class="sidebar" aria-label="Navegação PARA">
+    <div class="brand">
+      <div class="brand-mark">K</div>
+      <div>
+        <span class="brand-name">Kairós</span>
+        <span class="brand-sub">o tempo certo · protótipo v2</span>
+      </div>
+    </div>
+
+    <button class="nav-item active"><span class="nav-ico">◉</span> Hoje <span class="count">6</span></button>
+    <button class="nav-item" id="navInbox"><span class="nav-ico">↓</span> Inbox <span class="count" id="inboxCount">3</span></button>
+    <button class="nav-item"><span class="nav-ico">✎</span> Notas <span class="count">128</span></button>
+    <button class="nav-item" id="navWeekly"><span class="nav-ico">⟳</span> Revisão semanal <span class="due-chip">dom</span></button>
+
+    <div class="para-row"><span class="para-label">Projetos</span><button class="para-add" data-kind="Projeto" aria-label="Novo projeto">+</button></div>
+    <div id="projList">
+      <button class="nav-item proj-open" data-proj="sede"><span class="proj-dot" style="background:var(--today)"></span> Mudança de sede <span class="count">5</span></button>
+      <button class="nav-item proj-open" data-proj="rel"><span class="proj-dot" style="background:var(--accent)"></span> Relatório anual 2026 <span class="count">8</span></button>
+      <button class="nav-item proj-open" data-proj="sist"><span class="proj-dot" style="background:var(--task)"></span> Sistema de atendimento <span class="count">12</span></button>
+    </div>
+
+    <div class="para-row"><span class="para-label">Áreas</span><button class="para-add" data-kind="Área" aria-label="Nova área">+</button></div>
+    <div id="areaList">
+      <button class="nav-item"><span class="nav-ico">▣</span> Equipe</button>
+      <button class="nav-item"><span class="nav-ico">▣</span> Atendimentos</button>
+      <button class="nav-item"><span class="nav-ico">▣</span> Financeiro</button>
+    </div>
+
+    <div class="para-row"><span class="para-label">Recursos</span><button class="para-add" data-kind="Recurso" aria-label="Novo recurso">+</button></div>
+    <div id="recList">
+      <button class="nav-item"><span class="nav-ico">◈</span> Gestão de projetos</button>
+      <button class="nav-item"><span class="nav-ico">◈</span> Leituras</button>
+    </div>
+
+    <div class="para-row"><span class="para-label">&nbsp;</span></div>
+    <button class="nav-item"><span class="nav-ico">▤</span> Arquivo</button>
+
+    <div class="sidebar-foot">
+      <button class="theme-toggle" id="themeToggle">◐ Alternar tema</button>
+    </div>
+  </nav>
+
+  <!-- ══ Main ══ -->
+  <main class="main">
+    <header class="topbar">
+      <div class="date-title" id="dateTitle">Quinta-feira, 9 de julho
+        <small>Semana 28 · julho de 2026</small>
+      </div>
+      <div class="nav-arrows">
+        <button aria-label="Anterior">‹</button>
+        <button class="btn-hoje">Hoje</button>
+        <button aria-label="Próximo">›</button>
+      </div>
+      <div class="views" role="tablist" aria-label="Visões" id="viewTabs">
+        <span class="pill" id="viewPill"></span>
+        <button role="tab" data-view="dia" class="active">Dia <kbd>1</kbd></button>
+        <button role="tab" data-view="semana">Semana <kbd>2</kbd></button>
+        <button role="tab" data-view="mes">Mês <kbd>3</kbd></button>
+        <button role="tab" data-view="ano">Ano <kbd>4</kbd></button>
+        <button role="tab" data-view="tarefas">Tarefas <kbd>5</kbd></button>
+        <button role="tab" data-view="grafo">Grafo <kbd>6</kbd></button>
+      </div>
+      <div class="capture">
+        <span class="plus">+</span>
+        <input id="captureInput" type="text"
+          placeholder="Capturar… ex.: revisar edital sexta 14h @Ana #Sede"
+          autocomplete="off">
+        <div class="capture-chips" id="captureChips"></div>
+      </div>
+    </header>
+
+    <div class="canvas">
+      <!-- ── DIA ── -->
+      <section class="view active" id="view-dia" role="tabpanel">
+        <div class="daycheck stagger" id="daycheck" style="--i:0">
+          <div>
+            <div class="ttl">◉ Check do dia</div>
+            <div class="sub">Sua Inbox tem <b id="dcCount">3</b> itens esperando triagem — etapa <b>Organizar</b> do CODE.</div>
+          </div>
+          <button class="go" id="dcGo">Fazer o check</button>
+        </div>
+        <div class="timegrid stagger" id="dayGrid" style="--i:1"></div>
+      </section>
+
+      <!-- ── SEMANA ── -->
+      <section class="view" id="view-semana" role="tabpanel">
+        <div class="weekhead stagger" id="weekHead" style="--i:0"></div>
+        <div class="timegrid week stagger" id="weekGrid" style="--i:1"></div>
+      </section>
+
+      <!-- ── MÊS ── -->
+      <section class="view" id="view-mes" role="tabpanel">
+        <div class="monthgrid" id="monthGrid"></div>
+      </section>
+
+      <!-- ── ANO ── -->
+      <section class="view" id="view-ano" role="tabpanel">
+        <div class="yeartabs stagger" style="--i:0">
+          <button class="active" data-ymode="dens">Densidade</button>
+          <button data-ymode="tl">Linhas do tempo</button>
+        </div>
+
+        <div class="yearmode active" id="ymode-dens">
+          <p class="year-note">Cada linha é um mês, alinhado por dia da semana. A cor mostra a densidade de compromissos.</p>
+          <div id="yearGrid"></div>
+          <div class="yearlegend">
+            <span>menos</span>
+            <span class="yd"></span><span class="yd d1"></span><span class="yd d2"></span><span class="yd d3"></span>
+            <span>mais</span>
+            <span style="margin-left:12px">■ contorno âmbar = hoje</span>
+          </div>
+        </div>
+
+        <div class="yearmode" id="ymode-tl">
+          <p class="year-note">Projetos e ações longas como barras contínuas ao longo de 2026. Clique numa barra para abrir o projeto.</p>
+          <div class="tl">
+            <div class="tl-months" id="tlMonths"></div>
+            <div id="tlRows" style="position:relative"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── TAREFAS (GTD) ── -->
+      <section class="view" id="view-tarefas" role="tabpanel">
+        <div class="gtd" id="gtdList"></div>
+      </section>
+
+      <!-- ── GRAFO ── -->
+      <section class="view" id="view-grafo" role="tabpanel">
+        <p class="year-note stagger" style="--i:0">Conexões entre notas, projetos, recursos e pessoas. Arraste os nós para reorganizar.</p>
+        <div class="graphwrap stagger" style="--i:1">
+          <canvas id="graph"></canvas>
+          <div class="graphlegend">
+            <span><i style="background:var(--accent)"></i>Nota</span>
+            <span><i style="background:var(--task)"></i>Projeto</span>
+            <span><i style="background:var(--today)"></i>Pessoa</span>
+            <span><i style="background:var(--ink-3)"></i>Recurso</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── PÁGINA DE PROJETO ── -->
+      <section class="view" id="view-projeto" role="tabpanel">
+        <div class="pagewrap">
+          <button class="page-back" id="pageBack">← Voltar ao calendário</button>
+          <div class="page-head">
+            <h1 id="pjTitle">Mudança de sede</h1>
+            <div class="page-props" id="pjProps"></div>
+            <p class="page-desc" id="pjDesc"></p>
+            <div class="progress"><i id="pjProg"></i></div>
+            <div class="progress-lbl" id="pjProgLbl"></div>
+          </div>
+          <div class="page-cols">
+            <div class="page-sec">
+              <h3>Objetivos</h3>
+              <div id="pjGoals"></div>
+              <h3>Tarefas do projeto</h3>
+              <div id="pjTasks"></div>
+            </div>
+            <div class="page-sec">
+              <h3>Pessoas</h3>
+              <div id="pjPeople"></div>
+              <h3>Notas vinculadas</h3>
+              <div id="pjNotes"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ══ Painel de detalhe ══ -->
+<div class="scrim" id="scrim"></div>
+<aside class="detail" id="detail" aria-label="Detalhe do item">
+  <div class="detail-head">
+    <h2 id="detailTitle">Reunião de equipe</h2>
+    <button class="detail-close" id="detailClose" aria-label="Fechar">×</button>
+  </div>
+  <div class="detail-body">
+    <div class="meta" id="detailMeta"></div>
+
+    <h3>Participantes</h3>
+    <div><span class="chip person">@Ana</span> <span class="chip person">@Marcos</span> <span class="chip person">@Raul</span></div>
+
+    <h3>Nota de reunião <span style="float:right;letter-spacing:0;text-transform:none;font-weight:400">✧ destilar = destacar</span></h3>
+    <div class="note">
+      <p>Priorizamos o cronograma do <a class="wikilink">[[Sistema de atendimento]]</a> para o segundo semestre. <mark>A <a class="wikilink">@Ana</a> assume o levantamento de requisitos</mark> e apresenta na próxima segunda.</p>
+      <p>Ficou definido que o orçamento segue o modelo discutido em <a class="wikilink">[[Planejamento 2026]]</a> — ver também <a class="wikilink">[[Critérios de priorização]]</a>.</p>
+      <figure class="embed" style="margin-left:0;margin-right:0">
+        <div class="ph">foto embutida · quadro do planejamento</div>
+        <figcaption>Imagens e vídeos entram direto na nota (Markdown <code>![...]</code>)</figcaption>
+      </figure>
+    </div>
+
+    <h3>Arquivos vinculados</h3>
+    <div>
+      <span class="chip file">📄 Cronograma-2026.gsheet · Drive</span>
+      <span class="chip file">📄 Ata-junho.docx · OneDrive</span>
+    </div>
+
+    <h3>Ações extraídas</h3>
+    <ul class="tasklist">
+      <li><span class="bx">☐</span> Revisar requisitos enviados pela @Ana <span style="margin-left:auto;color:var(--ink-3);font-size:11.5px">seg</span></li>
+      <li><span class="bx">☐</span> Consolidar orçamento do semestre <span style="margin-left:auto;color:var(--ink-3);font-size:11.5px">sex</span></li>
+    </ul>
+
+    <h3>Backlinks — notas que apontam para cá</h3>
+    <button class="backlink"><b>Planejamento 2026</b> "…as decisões da reunião de equipe de julho orientam o Q3…"</button>
+    <button class="backlink"><b>Diário · 02/07</b> "…preparar pauta para a reunião de equipe de quinta…"</button>
+  </div>
+</aside>
+
+<!-- ══ Modal: Check do dia (triagem CODE) ══ -->
+<div class="modal-wrap">
+  <div class="modal" id="modalTriage" role="dialog" aria-label="Check do dia">
+    <div class="modal-pad">
+      <h2>Check do dia</h2>
+      <p class="sub">Quinta, 9 de julho · triagem da Inbox, um item por vez</p>
+      <div class="code-steps">
+        <span>Capturar</span><span class="on">Organizar</span><span>Destilar</span><span>Expressar</span>
+      </div>
+      <div id="triageBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Revisão semanal ══ -->
+<div class="modal-wrap">
+  <div class="modal" id="modalWeekly" role="dialog" aria-label="Revisão semanal">
+    <div class="modal-pad">
+      <h2>Revisão semanal</h2>
+      <p class="sub">Domingo, 12 de julho · olhando para a semana 29</p>
+
+      <div class="wk-step">
+        <span class="wk-num">1</span>
+        <div><b>2 tarefas venceram sem conclusão</b>
+          <p>"Enviar proposta revisada" (ter) e "Ligar para o cartório" (qua).</p>
+          <span class="chip" style="cursor:pointer" data-toast="Tarefas reagendadas para segunda e terça">Reagendar as duas →</span>
+        </div>
+      </div>
+      <div class="wk-step">
+        <span class="wk-num">2</span>
+        <div><b>A semana que entra tem 11 compromissos</b>
+          <p>Terça está com 6h de reuniões — sobra pouco espaço de foco. Quer proteger um bloco na quarta de manhã?</p>
+          <span class="chip" style="cursor:pointer" data-toast="Bloco de foco reservado: quarta, 9h–12h">Proteger bloco de foco →</span>
+        </div>
+      </div>
+      <div class="wk-step">
+        <span class="wk-num">3</span>
+        <div><b>1 projeto sem movimento há 12 dias</b>
+          <p>"Sistema de atendimento" não tem tarefa concluída nem nota nova desde 27/06.</p>
+          <span class="chip" style="cursor:pointer" data-toast="Tarefa criada: definir próximo passo do Sistema de atendimento">Definir próximo passo →</span>
+        </div>
+      </div>
+      <div class="wk-step">
+        <span class="wk-num">4</span>
+        <div><b>Inbox em dia</b>
+          <p>Nenhum item esperando triagem. 1 ideia incubada volta em 07/10.</p>
+        </div>
+      </div>
+
+      <div class="modal-foot">
+        <button class="btn ghost" data-close>Depois</button>
+        <button class="btn primary" id="wkDone">Concluir revisão ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Novo Projeto/Área/Recurso ══ -->
+<div class="modal-wrap">
+  <div class="modal" id="modalNew" role="dialog" aria-label="Criar item">
+    <div class="modal-pad">
+      <h2 id="newTitle">Novo projeto</h2>
+      <p class="sub">Só o nome é obrigatório — o resto pode vir depois.</p>
+      <div class="field"><label for="nfName">Nome</label><input id="nfName" type="text" placeholder="ex.: Curso de formação da equipe"></div>
+      <div class="field"><label for="nfDesc">Descrição</label><textarea id="nfDesc" rows="2" placeholder="Do que se trata, em uma ou duas frases"></textarea></div>
+      <div class="field" id="nfDeadlineWrap"><label for="nfDeadline">Prazo</label><input id="nfDeadline" type="text" placeholder="ex.: 30/09/2026"></div>
+      <div class="field"><label for="nfGoal">Objetivo</label><input id="nfGoal" type="text" placeholder="Como você sabe que terminou?"></div>
+      <div class="modal-foot">
+        <button class="btn ghost" data-close>Cancelar</button>
+        <button class="btn primary" id="nfSave">Criar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══ Navegação mobile ══ -->
+<nav class="bottomnav" aria-label="Navegação">
+  <button class="active" data-mview="dia"><span class="ico">◉</span>Hoje</button>
+  <button data-mview="semana"><span class="ico">▦</span>Agenda</button>
+  <button data-mview="tarefas"><span class="ico">☑</span>Tarefas</button>
+  <button data-mview="grafo"><span class="ico">✳</span>Grafo</button>
+</nav>
+
+<script>
+  // ═══ Dados de demonstração (semana de 6 a 12 de julho de 2026; hoje = quinta 9) ═══
+  const TODAY_DOW = 3, H0 = 8, H1 = 19;
+  const EVENTS = [
+    { dow: 0, s: 9,    e: 9.5,  title: "Alinhamento semanal",         cal: "g",    area: "Equipe" },
+    { dow: 0, s: 14,   e: 15.5, title: "Atendimento — Sr. Almeida",   cal: "o",    area: "Atendimentos" },
+    { dow: 1, s: 10,   e: 11,   title: "Análise de contratos",        cal: "task", area: "Financeiro" },
+    { dow: 1, s: 15,   e: 16,   title: "Reunião fornecedor da sede",  cal: "o",    area: "Mudança de sede" },
+    { dow: 2, s: 9,    e: 12,   title: "Bloco de foco — relatório",   cal: "task", area: "Relatório anual 2026" },
+    { dow: 2, s: 16,   e: 17,   title: "1:1 com a @Ana",              cal: "g",    area: "Equipe" },
+    { dow: 3, s: 8.5,  e: 9.25, title: "Check do dia + prioridades",  cal: "task", area: "Rotina" },
+    { dow: 3, s: 10,   e: 11,   title: "Reunião de equipe",           cal: "g",    area: "Equipe" },
+    { dow: 3, s: 11.5, e: 12.5, title: "Parecer do contrato 114",     cal: "task", area: "Financeiro" },
+    { dow: 3, s: 14,   e: 15,   title: "Atendimento — Dna. Célia",    cal: "o",    area: "Atendimentos" },
+    { dow: 3, s: 15.5, e: 16.25,title: "Preparar revisão de sexta",   cal: "prop", area: "Rotina" },
+    { dow: 3, s: 16.5, e: 18,   title: "Rascunho do relatório anual", cal: "task", area: "Relatório anual 2026" },
+    { dow: 4, s: 9,    e: 10,   title: "Revisão da semana (PARA)",    cal: "task", area: "Rotina" },
+    { dow: 4, s: 11,   e: 12,   title: "Reunião de diretoria",        cal: "o",    area: "Equipe" },
+    { dow: 4, s: 14,   e: 14.75,title: "Parecer do contrato — envio", cal: "task", area: "Mudança de sede" },
+  ];
+  const WD_SHORT = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
+  const WEEK_DATES = [6, 7, 8, 9, 10, 11, 12];
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => [...document.querySelectorAll(s)];
+
+  let toastTimer;
+  function showToast(msg) {
+    const t = $("#toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  // ═══ Grades de hora ═══
+  function renderTimeGrid(el, days) {
+    let html = "";
+    for (let h = H0; h < H1; h++) html += `<div class="hourlabel" style="grid-row:${h - H0 + 1}">${h}:00</div>`;
+    days.forEach((dow) => {
+      let col = `<div class="daycol" style="grid-row:1 / span ${H1 - H0}; grid-column:auto">`;
+      for (let h = H0; h < H1; h++) col += `<div class="hourline"></div>`;
+      EVENTS.filter((ev) => ev.dow === dow).forEach((ev) => {
+        const top = (ev.s - H0) * 52, height = (ev.e - ev.s) * 52 - 3;
+        const hh = (t) => `${Math.floor(t)}:${String(Math.round((t % 1) * 60)).padStart(2, "0")}`;
+        col += `<div class="evt ${ev.cal}" data-title="${ev.title}" data-area="${ev.area}" data-cal="${ev.cal}"
+          style="top:${top}px;height:${height}px" tabindex="0" role="button">
+          <span class="t">${ev.title}</span><span class="h">${hh(ev.s)} – ${hh(ev.e)}</span></div>`;
+      });
+      if (dow === TODAY_DOW) {
+        const now = new Date();
+        let nowH = now.getHours() + now.getMinutes() / 60;
+        if (nowH < H0 || nowH > H1) nowH = 11.2;
+        col += `<div class="nowline" style="top:${(nowH - H0) * 52}px"></div>`;
+      }
+      col += `</div>`;
+      html += col;
+    });
+    el.innerHTML = html;
+  }
+  renderTimeGrid($("#dayGrid"), [TODAY_DOW]);
+  renderTimeGrid($("#weekGrid"), [0, 1, 2, 3, 4, 5, 6]);
+  $("#weekHead").innerHTML = `<div></div>` +
+    WEEK_DATES.map((d, i) => `<div class="wd ${i === TODAY_DOW ? "today" : ""}">${WD_SHORT[i]}<b>${d}</b></div>`).join("");
+
+  // ═══ Mês (julho/2026) ═══
+  (function renderMonth() {
+    let html = WD_SHORT.map((w) => `<div class="wd">${w}</div>`).join("");
+    const firstOffset = 2, daysInMonth = 31;
+    for (let i = 0; i < firstOffset; i++) html += `<div class="mday out"><span class="n">${29 + i}</span></div>`;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dow = (firstOffset + d - 1) % 7;
+      const inWeek = d >= 6 && d <= 12;
+      const evts = inWeek ? EVENTS.filter((e) => e.dow === WEEK_DATES.indexOf(d)) : [];
+      const fake = !inWeek && dow < 5 && d % 3 !== 0 ? [{ title: d % 2 ? "Atendimento" : "Reunião", cal: d % 2 ? "o" : "g" }] : [];
+      const shown = evts.length ? evts : fake;
+      html += `<div class="mday stagger ${d === 9 ? "today" : ""}" style="--i:${Math.floor(d / 8)}"><span class="n">${d}</span>` +
+        shown.slice(0, 2).map((e) => `<div class="mevt ${e.cal}" data-title="${e.title}" data-area="${e.area || ""}" data-cal="${e.cal}" role="button" tabindex="0">${e.title}</div>`).join("") +
+        (shown.length > 2 ? `<div class="mmore">+ ${shown.length - 2} itens</div>` : ``) +
+        `<div class="dots">` + shown.slice(0, 3).map(() => `<span class="proj-dot" style="background:var(--accent);width:5px;height:5px"></span>`).join("") + `</div></div>`;
+    }
+    $("#monthGrid").innerHTML = html;
+  })();
+
+  // ═══ Ano — densidade ═══
+  const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+  (function renderYear() {
+    let html = "";
+    for (let m = 0; m < 12; m++) {
+      const offset = (new Date(2026, m, 1).getDay() + 6) % 7;
+      const dim = new Date(2026, m + 1, 0).getDate();
+      let cells = "";
+      for (let i = 0; i < offset; i++) cells += `<div class="yd empty"></div>`;
+      for (let d = 1; d <= dim; d++) {
+        const dow = (offset + d - 1) % 7;
+        const seed = (m * 31 + d) % 7;
+        let cls = dow >= 5 ? "wknd" : seed < 2 ? "" : seed < 4 ? "d1" : seed < 6 ? "d2" : "d3";
+        if (m === 6 && d >= 6 && d <= 10) cls = "d2";
+        cells += `<div class="yd ${cls} ${m === 6 && d === 9 ? "today" : ""}" title="${d} ${MONTHS[m]}"></div>`;
+      }
+      for (let i = offset + dim; i < 37; i++) cells += `<div class="yd empty"></div>`;
+      html += `<div class="yearrow stagger" style="--i:${Math.floor(m / 3)}"><div class="mn">${MONTHS[m]}</div><div class="yeardays">${cells}</div></div>`;
+    }
+    $("#yearGrid").innerHTML = html;
+  })();
+
+  // ═══ Ano — linhas do tempo ═══
+  const TL_ROWS = [
+    { lbl: "Sistema de atendimento", proj: "sist", from: 0,   to: 8,    color: "var(--task)" },
+    { lbl: "Relatório anual 2026",   proj: "rel",  from: 2,   to: 11,   color: "var(--accent)" },
+    { lbl: "Mudança de sede",        proj: "sede", from: 5,   to: 9,    color: "var(--today)" },
+    { lbl: "Licitação da sede",      proj: "sede", from: 6,   to: 7.7,  color: "var(--today)", sub: true },
+    { lbl: "Rascunho do relatório",  proj: "rel",  from: 6.1, to: 6.95, color: "var(--accent)", sub: true },
+  ];
+  (function renderTimeline() {
+    $("#tlMonths").innerHTML = `<span style="border:none"></span>` + MONTHS.map((m) => `<span>${m}</span>`).join("");
+    const todayPct = ((6 + 8 / 31) / 12) * 100;
+    $("#tlRows").innerHTML = TL_ROWS.map((r, i) => {
+      const l = (r.from / 12) * 100, w = ((r.to - r.from) / 12) * 100;
+      return `<div class="tl-row">
+        <div class="lbl ${r.sub ? "sub" : ""}">${r.sub ? "↳" : `<span class="proj-dot" style="background:${r.color}"></span>`} ${r.lbl}</div>
+        <div class="tl-track"><div class="tl-bar ${r.sub ? "thin" : ""}" data-proj="${r.proj}" style="--i:${i};left:${l}%;width:${w}%;background:${r.color}" role="button" tabindex="0">${r.sub ? "" : r.lbl}</div></div>
+      </div>`;
+    }).join("") + `<div class="tl-today" style="left:calc(var(--tl-lbl) + (100% - var(--tl-lbl)) * ${todayPct / 100})"></div>`;
+  })();
+  $$(".yeartabs button").forEach((b) => b.addEventListener("click", () => {
+    $$(".yeartabs button").forEach((x) => x.classList.toggle("active", x === b));
+    $("#ymode-dens").classList.toggle("active", b.dataset.ymode === "dens");
+    $("#ymode-tl").classList.toggle("active", b.dataset.ymode === "tl");
+  }));
+
+  // ═══ Tarefas (GTD) ═══
+  const GTD = [
+    { grp: "Hoje", items: [
+      { t: "Check do dia + prioridades", done: true, chips: ["Rotina"] },
+      { t: "Parecer do contrato 114", chips: ["Financeiro", "@Marcos", "hoje 11:30"] },
+      { t: "Rascunho do relatório anual", chips: ["Relatório anual 2026", "90 min"] },
+    ]},
+    { grp: "Próximas ações", items: [
+      { t: "Revisar requisitos enviados pela @Ana", chips: ["Sistema de atendimento", "@Ana", "seg"] },
+      { t: "Consolidar orçamento do semestre", chips: ["Financeiro", "sex"] },
+      { t: "Agendar visita à sede nova", chips: ["Mudança de sede"] },
+    ]},
+    { grp: "Em espera", items: [
+      { t: "Proposta do fornecedor — aguardando retorno", chips: ["Mudança de sede", "@Marcos", "desde 07/07"] },
+    ]},
+    { grp: "Algum dia / incubadas", items: [
+      { t: "Oficina de escrita para a equipe", chips: ["incubada · volta em 07/10"] },
+    ]},
+  ];
+  (function renderGTD() {
+    $("#gtdList").innerHTML = GTD.map((g, gi) =>
+      `<h3 class="stagger" style="--i:${gi}">${g.grp} <span class="count">${g.items.length}</span></h3>` +
+      g.items.map((it, i) =>
+        `<div class="todo stagger ${it.done ? "done" : ""}" style="--i:${gi + i * 0.5}">
+          <span class="box" role="checkbox" aria-checked="${!!it.done}" tabindex="0">✓</span>
+          <div class="txt">${it.t}
+            <div class="chips">${it.chips.map((c) =>
+              `<span class="chip ${c.startsWith("@") ? "person" : "muted"}">${c}</span>`).join("")}</div>
+          </div>
+        </div>`).join("")
+    ).join("");
+  })();
+  document.addEventListener("click", (e) => {
+    const box = e.target.closest(".todo .box");
+    if (box) {
+      const todo = box.closest(".todo");
+      todo.classList.toggle("done");
+      box.setAttribute("aria-checked", todo.classList.contains("done"));
+      if (todo.classList.contains("done")) showToast("Tarefa concluída ✓");
+    }
+  });
+
+  // ═══ Grafo de conexões ═══
+  const NODES = [
+    { id: "plan",  label: "Planejamento 2026",       type: "nota" },
+    { id: "reun",  label: "Reunião de equipe 09/07", type: "nota" },
+    { id: "crit",  label: "Critérios de priorização",type: "nota" },
+    { id: "orc",   label: "Orçamento do semestre",   type: "nota" },
+    { id: "diar",  label: "Diário 02/07",            type: "nota" },
+    { id: "ofic",  label: "Ideia: oficina de escrita", type: "nota" },
+    { id: "sist",  label: "Sistema de atendimento",  type: "projeto" },
+    { id: "rel",   label: "Relatório anual 2026",    type: "projeto" },
+    { id: "sede",  label: "Mudança de sede",         type: "projeto" },
+    { id: "ana",   label: "@Ana",                    type: "pessoa" },
+    { id: "marc",  label: "@Marcos",                 type: "pessoa" },
+    { id: "gest",  label: "Gestão de projetos",      type: "recurso" },
+  ];
+  const EDGES = [
+    ["reun", "sist"], ["reun", "plan"], ["reun", "crit"], ["reun", "ana"], ["reun", "marc"],
+    ["plan", "rel"], ["plan", "orc"], ["crit", "gest"], ["orc", "sede"], ["diar", "reun"],
+    ["ana", "sist"], ["marc", "sede"], ["ofic", "gest"], ["rel", "orc"], ["sist", "gest"],
+  ];
+  (function graph() {
+    const cv = $("#graph"), ctx = cv.getContext("2d");
+    const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let W, H, dragging = null, hover = null, raf = null;
+    const nodes = NODES.map((n, i) => ({
+      ...n,
+      x: 0.5 + 0.36 * Math.cos((i / NODES.length) * Math.PI * 2),
+      y: 0.5 + 0.36 * Math.sin((i / NODES.length) * Math.PI * 2),
+      vx: 0, vy: 0,
+    }));
+    const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+    const edges = EDGES.map(([a, b]) => [byId[a], byId[b]]);
+
+    function colors() {
+      const cs = getComputedStyle(document.documentElement);
+      return {
+        nota: cs.getPropertyValue("--accent").trim(),
+        projeto: cs.getPropertyValue("--task").trim(),
+        pessoa: cs.getPropertyValue("--today").trim(),
+        recurso: cs.getPropertyValue("--ink-3").trim(),
+        line: cs.getPropertyValue("--line").trim(),
+        ink: cs.getPropertyValue("--ink-2").trim(),
+      };
+    }
+    function resize() {
+      const r = cv.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+      W = r.width; H = r.height;
+      cv.width = W * dpr; cv.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function tick() {
+      for (const n of nodes) {
+        if (n === dragging) continue;
+        let fx = (0.5 - n.x) * 0.0012, fy = (0.5 - n.y) * 0.0012;
+        for (const m of nodes) {
+          if (m === n) continue;
+          const dx = n.x - m.x, dy = n.y - m.y, d2 = dx * dx + dy * dy + 0.0005;
+          fx += (dx / d2) * 0.000045; fy += (dy / d2) * 0.000045;
+        }
+        n.vx = (n.vx + fx) * 0.86; n.vy = (n.vy + fy) * 0.86;
+      }
+      for (const [a, b] of edges) {
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d = Math.hypot(dx, dy) || 0.001, f = (d - 0.2) * 0.004;
+        if (a !== dragging) { a.vx += (dx / d) * f; a.vy += (dy / d) * f; }
+        if (b !== dragging) { b.vx -= (dx / d) * f; b.vy -= (dy / d) * f; }
+      }
+      for (const n of nodes) {
+        if (n === dragging) continue;
+        n.x = Math.min(0.96, Math.max(0.04, n.x + n.vx));
+        n.y = Math.min(0.94, Math.max(0.06, n.y + n.vy));
+      }
+    }
+    function draw() {
+      const C = colors();
+      ctx.clearRect(0, 0, W, H);
+      ctx.strokeStyle = C.line; ctx.lineWidth = 1.2;
+      for (const [a, b] of edges) {
+        ctx.beginPath(); ctx.moveTo(a.x * W, a.y * H); ctx.lineTo(b.x * W, b.y * H); ctx.stroke();
+      }
+      for (const n of nodes) {
+        const r = n.type === "projeto" ? 10 : n.type === "nota" ? 7.5 : 6.5;
+        ctx.beginPath(); ctx.arc(n.x * W, n.y * H, r + (n === hover ? 2.5 : 0), 0, Math.PI * 2);
+        ctx.fillStyle = C[n.type]; ctx.fill();
+        ctx.fillStyle = C.ink; ctx.font = `${n === hover ? "600 " : ""}11px system-ui`;
+        ctx.textAlign = "center";
+        ctx.fillText(n.label, n.x * W, n.y * H + r + 14);
+      }
+    }
+    function loop() { tick(); draw(); raf = requestAnimationFrame(loop); }
+    function start() {
+      resize();
+      if (REDUCED) { for (let i = 0; i < 400; i++) tick(); draw(); }
+      else if (!raf) loop();
+    }
+    function stop() { if (raf) cancelAnimationFrame(raf); raf = null; }
+    function pick(e) {
+      const r = cv.getBoundingClientRect();
+      const x = (e.clientX - r.left) / W, y = (e.clientY - r.top) / H;
+      return nodes.find((n) => Math.hypot(n.x - x, n.y - y) < 0.04);
+    }
+    cv.addEventListener("pointerdown", (e) => { dragging = pick(e); if (dragging) cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener("pointermove", (e) => {
+      const r = cv.getBoundingClientRect();
+      if (dragging) {
+        dragging.x = (e.clientX - r.left) / W; dragging.y = (e.clientY - r.top) / H;
+        if (REDUCED) draw();
+      } else { hover = pick(e); if (REDUCED) draw(); }
+    });
+    cv.addEventListener("pointerup", () => { dragging = null; });
+    addEventListener("resize", () => { if ($("#view-grafo").classList.contains("active")) start(); });
+    window.__graph = { start, stop };
+  })();
+
+  // ═══ Páginas de projeto ═══
+  const PROJECTS = {
+    sede: {
+      title: "Mudança de sede", color: "var(--today)", status: "Em andamento", prazo: "30/09/2026",
+      desc: "Transferir a operação para a sede nova até o fim de setembro, sem interromper os atendimentos e dentro do orçamento aprovado em maio.",
+      prog: 40,
+      goals: [["Fechar contrato de locação", true], ["Concluir licitação de mobiliário", false], ["Mudança física sem parar atendimentos", false]],
+      tasks: [["Parecer do contrato — envio", "sex"], ["Agendar visita à sede nova", ""], ["Proposta do fornecedor — em espera", "@Marcos"], ["Planta dos postos de trabalho", "ago"]],
+      people: ["@Raul", "@Marcos"],
+      notes: [["Reunião fornecedor da sede", "ter · 07/07"], ["Orçamento do semestre", "atualizada há 2 dias"]],
+    },
+    rel: {
+      title: "Relatório anual 2026", color: "var(--accent)", status: "Em andamento", prazo: "30/11/2026",
+      desc: "Consolidar os resultados do ano em um relatório único para a diretoria, com dados de atendimentos, financeiro e equipe.",
+      prog: 25,
+      goals: [["Estrutura aprovada", true], ["Rascunho dos capítulos 1–3", false], ["Versão final revisada", false]],
+      tasks: [["Rascunho do relatório anual", "hoje"], ["Bloco de foco — relatório", "qua"], ["Pedir dados ao financeiro", "@Ana"]],
+      people: ["@Raul", "@Ana"],
+      notes: [["Planejamento 2026", "atualizada ontem"], ["Critérios de priorização", "há 1 semana"]],
+    },
+    sist: {
+      title: "Sistema de atendimento", color: "var(--task)", status: "Atenção · 12 dias parado", prazo: "20/12/2026",
+      desc: "Implantar o novo fluxo de atendimento com registro único, fila por prioridade e histórico por pessoa atendida.",
+      prog: 15,
+      goals: [["Levantamento de requisitos", false], ["Escolha da ferramenta", false], ["Piloto com a equipe", false]],
+      tasks: [["Revisar requisitos enviados pela Ana", "seg"], ["Mapear fluxo atual", ""], ["Definir próximo passo", "da revisão semanal"]],
+      people: ["@Ana", "@Raul"],
+      notes: [["Reunião de equipe 09/07", "hoje"]],
+    },
+  };
+  function openProject(id) {
+    const p = PROJECTS[id];
+    if (!p) return;
+    $("#pjTitle").textContent = p.title;
+    $("#pjProps").innerHTML =
+      `<span class="chip" style="background:${p.color};color:#fff">${p.status}</span>` +
+      `<span class="chip muted">Prazo · ${p.prazo}</span><span class="chip muted">Projeto</span>`;
+    $("#pjDesc").textContent = p.desc;
+    $("#pjGoals").innerHTML = p.goals.map(([g, ok]) =>
+      `<div class="goal ${ok ? "ok" : ""}"><span class="m">${ok ? "✓" : "○"}</span>${g}</div>`).join("");
+    $("#pjTasks").innerHTML = p.tasks.map(([t, d]) =>
+      `<div class="todo"><span class="box" role="checkbox" aria-checked="false" tabindex="0">✓</span>
+       <div class="txt">${t}<div class="chips">${d ? `<span class="chip ${d.startsWith("@") ? "person" : "muted"}">${d}</span>` : ""}</div></div></div>`).join("");
+    $("#pjPeople").innerHTML = p.people.map((x) => `<span class="chip person">${x}</span>`).join(" ");
+    $("#pjNotes").innerHTML = p.notes.map(([n, d]) => `<button class="linknote"><b>${n}</b>${d}</button>`).join("");
+    setView("projeto");
+    requestAnimationFrame(() => { $("#pjProg").style.width = p.prog + "%"; });
+    $("#pjProgLbl").textContent = p.prog + "% concluído";
+  }
+  $$(".proj-open").forEach((b) => b.addEventListener("click", () => openProject(b.dataset.proj)));
+  $("#pageBack").addEventListener("click", () => setView("dia"));
+  document.addEventListener("click", (e) => {
+    const bar = e.target.closest(".tl-bar");
+    if (bar) openProject(bar.dataset.proj);
+  });
+
+  // ═══ Troca de visões (com direção) ═══
+  const ORDER = ["dia", "semana", "mes", "ano", "tarefas", "grafo", "projeto"];
+  const TITLES = {
+    dia:     ["Quinta-feira, 9 de julho", "Semana 28 · julho de 2026"],
+    semana:  ["6 – 12 de julho",          "Semana 28 · julho de 2026"],
+    mes:     ["Julho de 2026",            "31 dias · 22 úteis"],
+    ano:     ["2026",                     "Densidade e linhas do tempo"],
+    tarefas: ["Tarefas",                  "Só o que é ação — sem ruído"],
+    grafo:   ["Grafo",                    "Conexões entre notas, projetos e pessoas"],
+    projeto: ["Projeto",                  "Página do projeto"],
+  };
+  let current = "dia";
+  function movePill() {
+    const active = $("#viewTabs button.active");
+    const pill = $("#viewPill");
+    if (!active) { pill.style.width = "0"; return; }
+    pill.style.width = active.offsetWidth + "px";
+    pill.style.transform = `translateX(${active.offsetLeft - 3}px)`;
+  }
+  function setView(v) {
+    const oldIdx = ORDER.indexOf(current), newIdx = ORDER.indexOf(v);
+    const dir = newIdx >= oldIdx ? 26 : -26;
+    current = v;
+    $$("#viewTabs [data-view]").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
+    $$(".view").forEach((s) => {
+      const on = s.id === "view-" + v;
+      if (on) s.style.setProperty("--dx", dir + "px");
+      s.classList.toggle("active", on);
+    });
+    $("#dateTitle").innerHTML = `${TITLES[v][0]}<small>${TITLES[v][1]}</small>`;
+    movePill();
+    if (v === "grafo") window.__graph.start(); else window.__graph.stop();
+    $$(".bottomnav [data-mview]").forEach((b) => b.classList.toggle("active", b.dataset.mview === v));
+  }
+  $$("#viewTabs [data-view]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+  $$(".bottomnav [data-mview]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.mview)));
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+    const map = { 1: "dia", 2: "semana", 3: "mes", 4: "ano", 5: "tarefas", 6: "grafo" };
+    if (map[e.key]) setView(map[e.key]);
+  });
+  addEventListener("resize", movePill);
+  movePill();
+
+  // ═══ Painel de detalhe ═══
+  const CAL_LABEL = { g: "Google Agenda", o: "Outlook", task: "Tarefa · Kairós", prop: "Proposto · agenda assistida" };
+  const CAL_COLOR = { g: "var(--google)", o: "var(--outlook)", task: "var(--task)", prop: "var(--today)" };
+  function openDetail(title, area, cal) {
+    $("#detailTitle").textContent = title;
+    $("#detailMeta").innerHTML =
+      `<span class="chip muted"><span class="src-dot" style="background:${CAL_COLOR[cal] || "var(--accent)"}"></span>${CAL_LABEL[cal] || "Evento"}</span>` +
+      (area ? `<span class="chip">${area}</span>` : "");
+    $("#detail").classList.add("open");
+    $("#scrim").classList.add("show");
+  }
+  function closeAll() {
+    $("#detail").classList.remove("open");
+    $("#scrim").classList.remove("show");
+    $$(".modal").forEach((m) => m.classList.remove("open"));
+  }
+  document.addEventListener("click", (e) => {
+    const evt = e.target.closest(".evt, .mevt");
+    if (evt) {
+      if (evt.dataset.cal === "prop") {
+        evt.classList.remove("prop"); evt.classList.add("task"); evt.dataset.cal = "task";
+        showToast("Bloco aceito e agendado ✓ — a agenda assistida propõe, você decide");
+        return;
+      }
+      openDetail(evt.dataset.title, evt.dataset.area, evt.dataset.cal);
+    }
+    if (e.target.closest(".wikilink")) showToast("Abriria a nota conectada — protótipo");
+    if (e.target.closest(".backlink") || e.target.closest(".linknote")) showToast("Abriria a nota — protótipo");
+    if (e.target.closest(".chip.file")) showToast("Abriria o arquivo no Drive/OneDrive — sem duplicar nada");
+    const dt = e.target.closest("[data-toast]");
+    if (dt) showToast(dt.dataset.toast);
+    if (e.target.closest("[data-close]")) closeAll();
+    if (e.target === $("#scrim")) closeAll();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAll();
+    if (e.key === "Enter") {
+      const t = e.target.closest && e.target.closest(".evt, .mevt, .todo .box, .tl-bar");
+      if (t) t.click();
+    }
+  });
+  $("#detailClose").addEventListener("click", closeAll);
+
+  // ═══ Check do dia — triagem ═══
+  const INBOX = [
+    { src: "Captura rápida · ontem 22:14", title: "Ideia: oficina de escrita para a equipe" },
+    { src: "E-mail com estrela · Outlook", title: "Proposta do fornecedor de mobiliário" },
+    { src: "Captura rápida · hoje 08:02", title: "Ligar para a escola sobre a matrícula" },
+  ];
+  let triageIdx = 0;
+  function renderTriage() {
+    const body = $("#triageBody");
+    if (triageIdx >= INBOX.length) {
+      body.innerHTML = `<div class="allclear"><div class="big">✓</div>
+        <h4>Inbox zero</h4><p>Check do dia concluído. A ideia incubada volta em 07/10/2026.</p>
+        <div class="modal-foot" style="justify-content:center"><button class="btn primary" data-close>Fechar</button></div></div>`;
+      const dc = $("#daycheck");
+      dc.classList.add("done");
+      dc.innerHTML = `<div><div class="ttl">✓ Check do dia feito</div><div class="sub">Inbox zero — bom dia de trabalho.</div></div>`;
+      $("#inboxCount").textContent = "0";
+      return;
+    }
+    const it = INBOX[triageIdx];
+    body.innerHTML = `<div class="triage-card" id="triCard">
+      <div class="triage-src">${it.src}</div>
+      <div class="triage-title">${it.title}</div>
+      <div class="triage-actions">
+        <button class="tri-btn" data-act="Agendada para amanhã, 9h"><b>Agendar</b>vira bloco no calendário</button>
+        <button class="tri-btn" data-act="Movida para o projeto Mudança de sede"><b>→ Projeto</b>vira tarefa de projeto</button>
+        <button class="tri-btn" data-act="Guardada em Recursos"><b>→ Área / Recurso</b>referência, sem ação</button>
+        <button class="tri-btn warm" data-act="Incubada — volta à Inbox em 07/10/2026 (90 dias)"><b>Incubar ⏳</b>reaparece em 2–3 meses</button>
+        <button class="tri-btn" data-act="Arquivada"><b>Arquivar</b>concluída ou sem uso</button>
+        <button class="tri-btn" data-act="Descartada"><b>Descartar</b>sem dó — não era nada</button>
+      </div>
+      <div class="triage-progress">${triageIdx + 1} de ${INBOX.length}</div>
+    </div>`;
+    body.querySelectorAll(".tri-btn").forEach((b) => b.addEventListener("click", () => {
+      showToast(b.dataset.act);
+      $("#inboxCount").textContent = String(INBOX.length - triageIdx - 1);
+      $("#dcCount").textContent = String(INBOX.length - triageIdx - 1);
+      const card = $("#triCard");
+      card.classList.add("out");
+      setTimeout(() => { triageIdx++; renderTriage(); }, 240);
+    }));
+  }
+  function openModal(id) {
+    $("#scrim").classList.add("show");
+    $(id).classList.add("open");
+  }
+  $("#dcGo").addEventListener("click", () => { triageIdx = 0; renderTriage(); openModal("#modalTriage"); });
+  $("#navInbox").addEventListener("click", () => { triageIdx = 0; renderTriage(); openModal("#modalTriage"); });
+
+  // ═══ Revisão semanal ═══
+  $("#navWeekly").addEventListener("click", () => openModal("#modalWeekly"));
+  $("#wkDone").addEventListener("click", () => { closeAll(); showToast("Revisão semanal concluída — semana 29 organizada ✓"); });
+
+  // ═══ Novo Projeto/Área/Recurso ═══
+  let newKind = "Projeto";
+  $$(".para-add").forEach((b) => b.addEventListener("click", () => {
+    newKind = b.dataset.kind;
+    $("#newTitle").textContent = newKind === "Área" ? "Nova área" : "Novo " + newKind.toLowerCase();
+    $("#nfDeadlineWrap").style.display = newKind === "Projeto" ? "" : "none";
+    $("#nfName").value = ""; $("#nfDesc").value = ""; $("#nfDeadline").value = ""; $("#nfGoal").value = "";
+    openModal("#modalNew");
+    setTimeout(() => $("#nfName").focus(), 150);
+  }));
+  $("#nfSave").addEventListener("click", () => {
+    const name = $("#nfName").value.trim();
+    if (!name) { showToast("Dê um nome — só isso é obrigatório"); return; }
+    const target = newKind === "Projeto" ? "#projList" : newKind === "Área" ? "#areaList" : "#recList";
+    const el = document.createElement("button");
+    el.className = "nav-item";
+    el.innerHTML = newKind === "Projeto"
+      ? `<span class="proj-dot" style="background:var(--accent)"></span> ${name} <span class="count">0</span>`
+      : `<span class="nav-ico">${newKind === "Área" ? "▣" : "◈"}</span> ${name}`;
+    el.style.animation = "rise 0.4s var(--ease) both";
+    $(target).appendChild(el);
+    closeAll();
+    showToast(`${newKind} "${name}" criado ✓`);
+  });
+
+  // ═══ Captura rápida (linguagem natural + @menções) ═══
+  const input = $("#captureInput"), chips = $("#captureChips");
+  const DATE_RX = /\b(hoje|amanhã|segunda|seg|terça|ter|quarta|qua|quinta|qui|sexta|sex|sábado|sab|domingo|dom)\b/i;
+  const TIME_RX = /\b(\d{1,2})h(\d{2})?\b/;
+  input.addEventListener("input", () => {
+    const v = input.value.trim();
+    if (!v) { chips.classList.remove("show"); return; }
+    const d = v.match(DATE_RX), t = v.match(TIME_RX), g = v.match(/#(\S+)/);
+    const people = [...v.matchAll(/@([\wÀ-ú]+)/g)].map((m) => m[1]);
+    let title = v.replace(DATE_RX, "").replace(TIME_RX, "").replace(/#\S+/g, "").replace(/@[\wÀ-ú]+/g, "").trim() || "Nova captura";
+    chips.innerHTML =
+      `<span class="chip muted">${title}</span>` +
+      (d ? `<span class="chip">📅 ${d[1].toLowerCase()}</span>` : "") +
+      (t ? `<span class="chip">🕐 ${t[1]}h${t[2] || ""}</span>` : "") +
+      people.map((p) => `<span class="chip person">@${p}</span>`).join("") +
+      (g ? `<span class="chip">${g[1]}</span>` : `<span class="chip muted">→ Inbox</span>`) +
+      `<div class="capture-hint">Enter captura (C do CODE) · organizar fica para o check do dia</div>`;
+    chips.classList.add("show");
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && input.value.trim()) {
+      const c = $("#inboxCount");
+      c.textContent = String(Number(c.textContent) + 1);
+      $("#dcCount").textContent = c.textContent;
+      showToast(`Capturado: "${input.value.trim().slice(0, 48)}"`);
+      input.value = "";
+      chips.classList.remove("show");
+    }
+    if (e.key === "Escape") { input.blur(); chips.classList.remove("show"); }
+  });
+  input.addEventListener("blur", () => setTimeout(() => chips.classList.remove("show"), 150));
+
+  // ═══ Tema ═══
+  $("#themeToggle").addEventListener("click", () => {
+    const root = document.documentElement;
+    const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+    const cur = root.dataset.theme || (dark ? "dark" : "light");
+    root.dataset.theme = cur === "dark" ? "light" : "dark";
+  });
+</script>
