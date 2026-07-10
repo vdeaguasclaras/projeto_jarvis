@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DAY_EVENTS, DAY_PRIORITIES } from "@/lib/demo";
+import { DAY_EVENTS } from "@/lib/demo";
 
 const H0 = 8;
 const H1 = 19;
@@ -11,9 +11,15 @@ function hh(t: number) {
   return `${Math.floor(t)}:${String(Math.round((t % 1) * 60)).padStart(2, "0")}`;
 }
 
-type Props = { inboxCount: number; onToast: (msg: string) => void };
+type Props = {
+  inboxCount: number;
+  placar: { done: number; total: number };
+  seq: number;
+  onCheck: () => void;
+  onToast: (msg: string) => void;
+};
 
-export default function DayView({ inboxCount, onToast }: Props) {
+export default function DayView({ inboxCount, placar, seq, onCheck, onToast }: Props) {
   const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
@@ -27,7 +33,7 @@ export default function DayView({ inboxCount, onToast }: Props) {
   }, []);
 
   const hours = Array.from({ length: H1 - H0 }, (_, i) => H0 + i);
-  const done = DAY_PRIORITIES.filter((p) => p.done).length;
+  const pct = Math.min(100, Math.round((placar.done / Math.max(placar.total, 1)) * 100));
 
   return (
     <div className="view-in">
@@ -35,29 +41,37 @@ export default function DayView({ inboxCount, onToast }: Props) {
         <div style={{ flex: 1 }}>
           <div className="ttl">◉ Check do dia</div>
           <div className="sub">
-            Sua Inbox tem <b>{inboxCount}</b> itens esperando triagem — etapa <b>Organizar</b> do CODE.
+            {inboxCount > 0 ? (
+              <>
+                Sua Inbox tem <b>{inboxCount}</b> {inboxCount === 1 ? "item esperando" : "itens esperando"} triagem —
+                etapa <b>Organizar</b> do CODE.
+              </>
+            ) : (
+              <>Inbox zero — capture à vontade, a triagem organiza depois.</>
+            )}
           </div>
           <div className="game-row">
             <div className="gamebar">
-              <i style={{ width: `${(done / DAY_PRIORITIES.length) * 100}%` }} />
+              <i style={{ width: `${pct}%` }} />
             </div>
             <span className="game-lbl">
-              Placar de hoje: <b>{done} de {DAY_PRIORITIES.length}</b> · 🔥 sequência começa hoje
+              Placar de hoje: <b>{placar.done} de {placar.total}</b>
+              {" · 🔥 "}
+              {seq > 1 ? (
+                <>
+                  <b>{seq} dias</b> de check em sequência
+                </>
+              ) : seq === 1 ? (
+                <b>check de hoje feito</b>
+              ) : (
+                <>a sequência começa hoje</>
+              )}
             </span>
           </div>
         </div>
-        <button className="go" onClick={() => onToast("Triagem GTD/CODE — chega no Marco 6 da fase")}>
+        <button className="go" onClick={onCheck}>
           Fazer o check
         </button>
-      </div>
-
-      <div className="prio-row stagger" style={{ ["--i" as string]: 0.5 }}>
-        <span className="plabel">Prioridades de hoje</span>
-        {DAY_PRIORITIES.map((p) => (
-          <span key={p.label} className={`prio-chip${p.done ? " done" : ""}`}>
-            {p.label}
-          </span>
-        ))}
       </div>
 
       <div className="timegrid stagger" style={{ ["--i" as string]: 1 }}>
@@ -77,7 +91,7 @@ export default function DayView({ inboxCount, onToast }: Props) {
               style={{ top: (ev.start - H0) * ROW, height: (ev.end - ev.start) * ROW - 3 }}
               role="button"
               tabIndex={0}
-              onClick={() => onToast(`${ev.title} · ${ev.container} — detalhe chega no Marco 5`)}
+              onClick={() => onToast(`${ev.title} · ${ev.container} — agenda de exemplo; eventos reais chegam no Marco 5`)}
             >
               <span className="t">{ev.title}</span>
               <span className="h">

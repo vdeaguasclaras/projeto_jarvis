@@ -7,16 +7,33 @@ import Topbar from "@/components/Topbar";
 import DayView from "@/components/DayView";
 import ComingSoon from "@/components/ComingSoon";
 import AuthBar from "@/components/AuthBar";
+import TasksView from "@/components/TasksView";
+import TriageModal from "@/components/TriageModal";
+import NewContainerModal from "@/components/NewContainerModal";
 import { ROADMAP, VIEWS, type ViewId } from "@/lib/demo";
 import { parseCapture } from "@/lib/parser";
 import { supabase } from "@/lib/supabase";
+import {
+  capturar,
+  createContainer,
+  hojeISO,
+  listContainers,
+  listInbox,
+  listTarefas,
+  mudarStatusTarefa,
+  sequenciaCheck,
+  type Container,
+  type InboxItem,
+  type Kind,
+  type Tarefa,
+} from "@/lib/db";
 
 const TITLES: Record<ViewId, [string, string]> = {
   dia: ["Hoje", "o dia é o ponto de entrada"],
   semana: ["Semana", "em construção — Marco 5"],
   mes: ["Mês", "em construção — Marco 5"],
   ano: ["Ano", "em construção — Marco 5"],
-  tarefas: ["Tarefas", "em construção — Marco 4"],
+  tarefas: ["Tarefas", "capturar → organizar → fazer"],
   grafo: ["Grafo", "chega na Fase 3"],
   notas: ["Notas", "chega na Fase 3"],
 };
@@ -31,7 +48,13 @@ export default function AppShell() {
   const [view, setView] = useState<ViewId>("dia");
   const [collapsed, setCollapsed] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
-  const [inbox, setInbox] = useState<string[]>(DEMO_INBOX);
+  const [demoInbox, setDemoInbox] = useState<string[]>(DEMO_INBOX);
+  const [containers, setContainers] = useState<Container[]>([]);
+  const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
+  const [tarefas, setTarefas] = useState<Tarefa[]>([]);
+  const [seq, setSeq] = useState(0);
+  const [triaging, setTriaging] = useState(false);
+  const [newKind, setNewKind] = useState<Kind | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -41,7 +64,6 @@ export default function AppShell() {
     toastTimer.current = setTimeout(() => setToast(null), 2600);
   }, []);
 
-  // Sessão (link mágico persiste no navegador; RLS isola os dados por usuário)
   useEffect(() => {
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -49,44 +71,80 @@ export default function AppShell() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  // Inbox real (kairos_inbox) quando logado; demo quando não
-  const loadInbox = useCallback(async () => {
-    if (!supabase || !session) return;
-    const { data, error } = await supabase
-      .from("kairos_inbox")
-      .select("texto")
-      .is("triado_em", null)
-      .order("criado_em");
-    if (!error && data) setInbox(data.map((r: { texto: string }) => r.texto));
+  const refresh = useCallback(async () => {
+    if (!session) return;
+    const [cs, inb, ts, sq] = await Promise.all([listContainers(), listInbox(), listTarefas(), sequenciaCheck()]);
+    setContainers(cs);
+    setInboxItems(inb);
+    setTarefas(ts);
+    setSeq(sq);
   }, [session]);
 
   useEffect(() => {
     if (session) {
-      loadInbox();
+      refresh();
     } else {
-      setInbox(DEMO_INBOX);
+      setContainers([]);
+      setInboxItems([]);
+      setTarefas([]);
+      setSeq(0);
+      setTriaging(false);
     }
-  }, [session, loadInbox]);
+  }, [session, refresh]);
 
   const capture = useCallback(
     async (text: string) => {
       const c = parseCapture(text);
-      if (supabase && session) {
-        const { error } = await supabase
-          .from("kairos_inbox")
-          .insert({ user_id: session.user.id, texto: text.trim() });
-        if (error) {
-          showToast(`Erro ao salvar: ${error.message}`);
+      if (session) {
+        const err = await capturar(session.user.id, text.trim());
+        if (err) {
+          showToast(`Erro ao salvar: ${err}`);
           return;
         }
-        await loadInbox();
-        showToast(`Capturado: "${c.title.slice(0, 48)}" → Inbox (salvo na nuvem ✓)`);
+        setInboxItems(await listInbox());
+        showToast(`Capturado: "${c.title.slice(0, 48)}" → Inbox ✓`);
       } else {
-        setInbox((prev) => [...prev, c.title]);
-        showToast(`Capturado: "${c.title.slice(0, 48)}" → Inbox (só nesta aba — entre para salvar)`);
+        setDemoInbox((prev) => [...prev, c.title]);
+        showToast(`Capturado: "${c.title.slice(0, 48)}" (só nesta aba — entre para salvar)`);
       }
     },
-    [session, showToast, loadInbox],
+    [session, showToast],
+  );
+
+  const openTriage = useCallback(() => {
+    if (!session) {
+      showToast("Entre com seu e-mail para triar a Inbox de verdade");
+      return;
+    }
+    if (!inboxItems.length) {
+      showToast("Inbox zero — nada para triar 🎉");
+      return;
+    }
+    setTriaging(true);
+  }, [session, inboxItems.length, showToast]);
+
+  const conclude = useCallback(
+    async (id: string) => {
+      await mudarStatusTarefa(id, "concluida");
+      setTarefas(await listTarefas());
+      showToast("Concluída ✓ +1 no placar de hoje");
+    },
+    [showToast],
+  );
+
+  const criarNovoContainer = useCallback(
+    async (nome: string) => {
+      if (!session || !newKind) return;
+      const c = await createContainer(session.user.id, newKind, nome);
+      setNewKind(null);
+      if (c) {
+        setContainers(await listContainers());
+        showToast(`${newKind === "area" ? "Área" : newKind === "projeto" ? "Projeto" : "Recurso"} "${nome}" criado ✓`);
+      } else {
+        showToast("Não foi possível criar — tente de novo");
+      }
+    },
+    [session, newKind, showToast],
   );
 
   const logout = useCallback(async () => {
@@ -106,13 +164,25 @@ export default function AppShell() {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  const inboxCount = session ? inboxItems.length : demoInbox.length;
+  const hoje = hojeISO();
+  const feitasHoje = tarefas.filter((t) => t.status === "concluida" && (t.concluida_em ?? "").slice(0, 10) === hoje).length;
+  const paraHoje = tarefas.filter((t) => t.status !== "concluida" && t.status !== "algum_dia" && t.prazo !== null && t.prazo <= hoje).length;
+  const placar = session ? { done: feitasHoje, total: Math.max(feitasHoje + paraHoje, 1) } : { done: 1, total: 3 };
+
   return (
     <div className={`app${collapsed ? " nosb" : ""}`}>
       <Sidebar
-        inboxCount={inbox.length}
+        inboxCount={inboxCount}
         activeToday={view === "dia"}
+        activeTasks={view === "tarefas"}
         userEmail={session?.user.email ?? null}
+        containers={session ? containers : null}
+        tarefas={tarefas}
         onToday={() => setView("dia")}
+        onTasks={() => setView("tarefas")}
+        onInbox={openTriage}
+        onNew={(kind) => (session ? setNewKind(kind) : showToast("Entre para criar os seus de verdade"))}
         onLogout={logout}
         onSoon={(what) => showToast(`${what} — em construção nesta fase`)}
       />
@@ -127,32 +197,59 @@ export default function AppShell() {
         <div className="canvas">
           {!session && <AuthBar onToast={showToast} />}
           {view === "dia" ? (
-            <DayView key="dia" inboxCount={inbox.length} onToast={showToast} />
+            <DayView
+              key="dia"
+              inboxCount={inboxCount}
+              placar={placar}
+              seq={seq}
+              onCheck={openTriage}
+              onToast={showToast}
+            />
+          ) : view === "tarefas" ? (
+            <TasksView
+              key="tarefas"
+              tarefas={tarefas}
+              containers={containers}
+              logged={!!session}
+              onConclude={conclude}
+              onToast={showToast}
+            />
           ) : (
             <ComingSoon key={view} title={TITLES[view][0]} info={ROADMAP[view]} />
           )}
         </div>
       </main>
       <nav className="bottomnav" aria-label="Navegação">
-        {[
-          ["dia", "◉", "Hoje"],
-          ["projetos", "▶", "Projetos"],
-          ["areas", "▣", "Áreas"],
-          ["recursos", "◈", "Recursos"],
-          ["arquivo", "▤", "Arquivo"],
-        ].map(([id, ico, label]) => (
-          <button
-            key={id}
-            className={id === "dia" && view === "dia" ? "active" : ""}
-            onClick={() =>
-              id === "dia" ? setView("dia") : showToast(`${label} — em construção nesta fase`)
-            }
-          >
+        {(
+          [
+            ["dia", "◉", "Hoje", () => setView("dia")],
+            ["tarefas", "☑", "Tarefas", () => setView("tarefas")],
+            ["inbox", "↓", "Inbox", openTriage],
+            ["projetos", "▶", "Projetos", () => showToast("Páginas PARA — em construção nesta fase")],
+            ["arquivo", "▤", "Arquivo", () => showToast("Arquivo — em construção nesta fase")],
+          ] as [string, string, string, () => void][]
+        ).map(([id, ico, label, fn]) => (
+          <button key={id} className={(id === "dia" && view === "dia") || (id === "tarefas" && view === "tarefas") ? "active" : ""} onClick={fn}>
             <span className="ico">{ico}</span>
             {label}
           </button>
         ))}
       </nav>
+
+      {triaging && session && (
+        <TriageModal
+          userId={session.user.id}
+          items={inboxItems}
+          containers={containers}
+          onClose={() => setTriaging(false)}
+          onChanged={refresh}
+          onToast={showToast}
+        />
+      )}
+      {newKind && (
+        <NewContainerModal kind={newKind} onCreate={criarNovoContainer} onClose={() => setNewKind(null)} />
+      )}
+
       <div className={`toast${toast ? " show" : ""}`} role="status">
         {toast}
       </div>
