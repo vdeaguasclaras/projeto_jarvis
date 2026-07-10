@@ -389,6 +389,11 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   .capture input { box-shadow: var(--shadow); background: var(--surface); }
   .capture-chips { top: auto; bottom: calc(100% + 6px); }
   .canvas { padding: 12px 10px 150px; }
+  /* O box do check quebra linha: texto em cima, botão embaixo (sem estourar a tela) */
+  .daycheck { flex-wrap: wrap; }
+  .daycheck > div { flex-basis: 100%; min-width: 0; }
+  .daycheck .go { margin-left: auto; }
+  .game-lbl { white-space: normal; }
   .timegrid { grid-template-columns: 40px 1fr; }
   .timegrid.week { grid-template-columns: 40px repeat(7, 1fr); }
   .weekhead { grid-template-columns: 40px repeat(7, 1fr); }
