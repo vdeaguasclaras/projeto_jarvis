@@ -26,7 +26,7 @@ function prazoChip(prazo: string | null): { txt: string; late: boolean } | null 
 }
 
 export default function TasksView({ tarefas, containers, logged, onConclude, onToast }: Props) {
-  const nomeDe = (id: string | null) => containers.find((c) => c.id === id)?.nome ?? null;
+  const containerDe = (id: string | null) => containers.find((c) => c.id === id) ?? null;
   const hoje = hojeISO();
 
   if (!logged) {
@@ -66,7 +66,7 @@ export default function TasksView({ tarefas, containers, logged, onConclude, onT
             )}
             {itens.map((t) => {
               const pc = prazoChip(t.prazo);
-              const nome = nomeDe(t.container_id);
+              const cont = containerDe(t.container_id);
               const feita = t.status === "concluida";
               return (
                 <div key={t.id} className={`todo${feita ? " done" : ""}`}>
@@ -81,7 +81,12 @@ export default function TasksView({ tarefas, containers, logged, onConclude, onT
                   <div className="txt">
                     {t.titulo}
                     <div className="chips">
-                      {nome && <span className="chip">{nome}</span>}
+                      {cont && (
+                        <span className="chip">
+                          {cont.emoji ? `${cont.emoji} ` : ""}
+                          {cont.nome}
+                        </span>
+                      )}
                       {pc && (
                         <span className="chip muted" style={pc.late ? { color: "var(--today)" } : undefined}>
                           {pc.late ? `venceu ${pc.txt}` : pc.txt}

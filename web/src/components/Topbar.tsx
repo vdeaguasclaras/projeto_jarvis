@@ -2,11 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { VIEWS, type ViewId } from "@/lib/demo";
-import { parseCapture } from "@/lib/parser";
+import { normalizar, parseCapture, tokenDe } from "@/lib/parser";
+import type { Container, Pessoa } from "@/lib/db";
 
 type Props = {
   view: ViewId;
   title: [string, string];
+  containers: Container[];
+  pessoas: Pessoa[];
   onView: (v: ViewId) => void;
   onToggleSidebar: () => void;
   onCapture: (text: string) => void;
@@ -15,7 +18,9 @@ type Props = {
 const WEEKDAYS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
 const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
-export default function Topbar({ view, title, onView, onToggleSidebar, onCapture }: Props) {
+type Sugestao = { insere: string; mostra: string; tipo: string };
+
+export default function Topbar({ view, title, containers, pessoas, onView, onToggleSidebar, onCapture }: Props) {
   const [text, setText] = useState("");
   const parsed = useMemo(() => (text.trim() ? parseCapture(text) : null), [text]);
 
@@ -23,6 +28,32 @@ export default function Topbar({ view, title, onView, onToggleSidebar, onCapture
     const d = new Date();
     return `${WEEKDAYS[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`;
   }, []);
+
+  // Autocompletar: sugestões para o token em digitação (@pessoa, #projeto, /área)
+  const ac = useMemo(() => {
+    const m = text.match(/(^|\s)([@#\/])([\wÀ-ú-]*)$/);
+    if (!m) return null;
+    const [, , trigger, partial] = m;
+    const alvo = normalizar(partial);
+    let cands: Sugestao[] = [];
+    if (trigger === "@") {
+      cands = pessoas
+        .filter((p) => normalizar(p.nome).startsWith(alvo))
+        .map((p) => ({ insere: tokenDe(p.nome), mostra: p.nome, tipo: "pessoa" }));
+    } else {
+      const kind = trigger === "#" ? "projeto" : "area";
+      cands = containers
+        .filter((c) => c.kind === kind && (alvo === "" || normalizar(c.nome).includes(alvo)))
+        .map((c) => ({ insere: tokenDe(c.nome), mostra: `${c.emoji ? c.emoji + " " : ""}${c.nome}`, tipo: kind === "area" ? "área" : kind }));
+    }
+    if (!cands.length) return null;
+    return { start: m.index! + m[1].length, trigger, itens: cands.slice(0, 4) };
+  }, [text, containers, pessoas]);
+
+  const completar = (s: Sugestao) => {
+    if (!ac) return;
+    setText(text.slice(0, ac.start) + ac.trigger + s.insere + " ");
+  };
 
   const submit = () => {
     if (!text.trim()) return;
@@ -50,12 +81,7 @@ export default function Topbar({ view, title, onView, onToggleSidebar, onCapture
       </div>
       <div className="views" role="tablist" aria-label="Visões">
         {VIEWS.map((v) => (
-          <button
-            key={v.id}
-            role="tab"
-            className={view === v.id ? "active" : ""}
-            onClick={() => onView(v.id)}
-          >
+          <button key={v.id} role="tab" className={view === v.id ? "active" : ""} onClick={() => onView(v.id)}>
             {v.label} <kbd>{v.key}</kbd>
           </button>
         ))}
@@ -66,6 +92,11 @@ export default function Topbar({ view, title, onView, onToggleSidebar, onCapture
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
+            if (e.key === "Tab" && ac) {
+              e.preventDefault();
+              completar(ac.itens[0]);
+              return;
+            }
             if (e.key === "Enter") submit();
             if (e.key === "Escape") setText("");
           }}
@@ -82,11 +113,31 @@ export default function Topbar({ view, title, onView, onToggleSidebar, onCapture
                 @{p}
               </span>
             ))}
-            {parsed.project && <span className="chip">▶ {parsed.project}</span>}
-            {parsed.area && <span className="chip">▣ {parsed.area}</span>}
+            {parsed.project && <span className="chip">▶ {parsed.project.replace(/-/g, " ")}</span>}
+            {parsed.area && <span className="chip">▣ {parsed.area.replace(/-/g, " ")}</span>}
             {!parsed.project && !parsed.area && <span className="chip muted">→ Inbox</span>}
+            {ac && (
+              <div className="ac-list">
+                {ac.itens.map((s, i) => (
+                  <button
+                    key={s.insere}
+                    className={`ac-item${i === 0 ? " sel" : ""}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      completar(s);
+                    }}
+                  >
+                    {ac.trigger}
+                    {s.mostra}
+                    <span className="k">{s.tipo}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="capture-hint">
-              Enter captura · @pessoa · #projeto · /área · datas: sexta, 24/07, dia 24
+              {ac
+                ? "Tab completa a primeira sugestão"
+                : "Enter captura · com #projeto ou /área vira tarefa direto, sem passar pela Inbox"}
             </div>
           </div>
         )}

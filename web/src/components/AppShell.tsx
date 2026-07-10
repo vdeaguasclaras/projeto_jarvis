@@ -11,20 +11,23 @@ import TasksView from "@/components/TasksView";
 import TriageModal from "@/components/TriageModal";
 import NewContainerModal from "@/components/NewContainerModal";
 import { ROADMAP, VIEWS, type ViewId } from "@/lib/demo";
-import { parseCapture } from "@/lib/parser";
+import { encontraContainer, parseCapture, resolveDataCaptura } from "@/lib/parser";
 import { supabase } from "@/lib/supabase";
 import {
   capturar,
   createContainer,
+  criarTarefa,
   hojeISO,
   listContainers,
   listInbox,
+  listPessoas,
   listTarefas,
   mudarStatusTarefa,
   sequenciaCheck,
   type Container,
   type InboxItem,
   type Kind,
+  type Pessoa,
   type Tarefa,
 } from "@/lib/db";
 
@@ -50,6 +53,7 @@ export default function AppShell() {
   const [session, setSession] = useState<Session | null>(null);
   const [demoInbox, setDemoInbox] = useState<string[]>(DEMO_INBOX);
   const [containers, setContainers] = useState<Container[]>([]);
+  const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
   const [seq, setSeq] = useState(0);
@@ -73,8 +77,15 @@ export default function AppShell() {
 
   const refresh = useCallback(async () => {
     if (!session) return;
-    const [cs, inb, ts, sq] = await Promise.all([listContainers(), listInbox(), listTarefas(), sequenciaCheck()]);
+    const [cs, ps, inb, ts, sq] = await Promise.all([
+      listContainers(),
+      listPessoas(),
+      listInbox(),
+      listTarefas(),
+      sequenciaCheck(),
+    ]);
     setContainers(cs);
+    setPessoas(ps);
     setInboxItems(inb);
     setTarefas(ts);
     setSeq(sq);
@@ -96,19 +107,41 @@ export default function AppShell() {
     async (text: string) => {
       const c = parseCapture(text);
       if (session) {
+        // Com #projeto ou /área reconhecidos, vira tarefa direto — a Inbox é só para o não classificado
+        const alvo =
+          encontraContainer(c.project, containers, ["projeto"]) ??
+          encontraContainer(c.area, containers, ["area"]);
+        if (alvo) {
+          const prazo = resolveDataCaptura(c.date);
+          const err = await criarTarefa(session.user.id, {
+            titulo: c.title,
+            status: "a_fazer",
+            prazo,
+            container_id: alvo.id,
+          });
+          if (err) {
+            showToast(`Erro ao salvar: ${err}`);
+            return;
+          }
+          setTarefas(await listTarefas());
+          showToast(
+            `Virou tarefa em ${alvo.emoji ? alvo.emoji + " " : ""}${alvo.nome}${prazo ? ` · ${c.date}` : ""} — direto, sem Inbox ✓`,
+          );
+          return;
+        }
         const err = await capturar(session.user.id, text.trim());
         if (err) {
           showToast(`Erro ao salvar: ${err}`);
           return;
         }
         setInboxItems(await listInbox());
-        showToast(`Capturado: "${c.title.slice(0, 48)}" → Inbox ✓`);
+        showToast(`Capturado: "${c.title.slice(0, 48)}" → Inbox ✓ (triagem no check do dia)`);
       } else {
         setDemoInbox((prev) => [...prev, c.title]);
         showToast(`Capturado: "${c.title.slice(0, 48)}" (só nesta aba — entre para salvar)`);
       }
     },
-    [session, showToast],
+    [session, containers, showToast],
   );
 
   const openTriage = useCallback(() => {
@@ -133,13 +166,15 @@ export default function AppShell() {
   );
 
   const criarNovoContainer = useCallback(
-    async (nome: string) => {
+    async (nome: string, emoji: string | null) => {
       if (!session || !newKind) return;
-      const c = await createContainer(session.user.id, newKind, nome);
+      const c = await createContainer(session.user.id, newKind, nome, emoji);
       setNewKind(null);
       if (c) {
         setContainers(await listContainers());
-        showToast(`${newKind === "area" ? "Área" : newKind === "projeto" ? "Projeto" : "Recurso"} "${nome}" criado ✓`);
+        showToast(
+          `${newKind === "area" ? "Área" : newKind === "projeto" ? "Projeto" : "Recurso"} ${emoji ? emoji + " " : ""}"${nome}" criado ✓`,
+        );
       } else {
         showToast("Não foi possível criar — tente de novo");
       }
@@ -190,6 +225,8 @@ export default function AppShell() {
         <Topbar
           view={view}
           title={TITLES[view]}
+          containers={containers}
+          pessoas={pessoas}
           onView={setView}
           onToggleSidebar={() => setCollapsed((c) => !c)}
           onCapture={capture}
