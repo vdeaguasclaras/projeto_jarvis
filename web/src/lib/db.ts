@@ -13,6 +13,7 @@ export type Tarefa = {
   status: TarefaStatus;
   prazo: string | null;
   container_id: string | null;
+  criada_em: string;
   concluida_em: string | null;
   agendada_inicio: string | null;
   agendada_fim: string | null;
@@ -132,7 +133,7 @@ export async function listTarefas(): Promise<Tarefa[]> {
   if (!supabase) return [];
   const { data } = await supabase
     .from("kairos_tarefas")
-    .select("id, titulo, status, prazo, container_id, concluida_em, agendada_inicio, agendada_fim, duracao_min")
+    .select("id, titulo, status, prazo, container_id, criada_em, concluida_em, agendada_inicio, agendada_fim, duracao_min")
     .order("criada_em", { ascending: false });
   return (data as Tarefa[]) ?? [];
 }
@@ -303,6 +304,73 @@ export async function definirPrioridades(
     tarefaIds.slice(0, 3).map((tarefa_id, ordem) => ({ user_id: userId, escopo, data: dataISO, tarefa_id, ordem })),
   );
   return error ? error.message : null;
+}
+
+/** Muda só o prazo da tarefa (reagendamento da revisão semanal). */
+export async function mudarPrazoTarefa(id: string, prazoISO: string): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase.from("kairos_tarefas").update({ prazo: prazoISO }).eq("id", id);
+  return error ? error.message : null;
+}
+
+/** Quantos itens da Inbox foram triados no intervalo [deISO, ateISO) — datas locais. */
+export async function contarTriadasEntre(deISO: string, ateISO: string): Promise<number> {
+  if (!supabase) return 0;
+  const de = new Date(`${deISO}T00:00`).toISOString();
+  const ate = new Date(`${ateISO}T00:00`).toISOString();
+  const { count } = await supabase
+    .from("kairos_inbox")
+    .select("id", { count: "exact", head: true })
+    .gte("triado_em", de)
+    .lt("triado_em", ate);
+  return count ?? 0;
+}
+
+/** Ideias incubadas ainda dormindo: total e a data da que volta primeiro. */
+export async function incubadasDormindo(): Promise<{ total: number; volta: string | null }> {
+  if (!supabase) return { total: 0, volta: null };
+  const { data, count } = await supabase
+    .from("kairos_inbox")
+    .select("incubada_ate", { count: "exact" })
+    .is("triado_em", null)
+    .gt("incubada_ate", hojeISO())
+    .order("incubada_ate")
+    .limit(1);
+  return { total: count ?? 0, volta: (data?.[0]?.incubada_ate as string | undefined) ?? null };
+}
+
+/** Sequência de semanas consecutivas (antes da atual) com revisão semanal feita. */
+export async function sequenciaRevisoes(): Promise<number> {
+  if (!supabase) return 0;
+  const { data } = await supabase
+    .from("kairos_rituais")
+    .select("data")
+    .eq("tipo", "revisao_semana")
+    .order("data", { ascending: false })
+    .limit(60);
+  if (!data?.length) return 0;
+  const semanas = new Set(data.map((r: { data: string }) => segundaDe(r.data)));
+  const atual = segundaDe(hojeISO());
+  let seq = 0;
+  for (let i = 1; i <= 60; i++) {
+    if (semanas.has(somaDias(atual, -7 * i))) seq++;
+    else break;
+  }
+  return seq;
+}
+
+/** A revisão da semana atual já foi registrada? */
+export async function revisaoDaSemanaFeita(): Promise<boolean> {
+  if (!supabase) return false;
+  const seg = segundaDe(hojeISO());
+  const { data } = await supabase
+    .from("kairos_rituais")
+    .select("id")
+    .eq("tipo", "revisao_semana")
+    .gte("data", seg)
+    .lte("data", somaDias(seg, 6))
+    .limit(1);
+  return !!data?.length;
 }
 
 /** Sequência de dias consecutivos (até hoje) com check do dia feito. */

@@ -15,6 +15,9 @@ type Props = {
   onTasks: () => void;
   onInbox: () => void;
   onNew: (kind: Kind) => void;
+  onWeekly: () => void;
+  /** revisão da semana atual já registrada */
+  weeklyDone: boolean;
   onLogout: () => void;
   onSoon: (what: string) => void;
 };
@@ -94,8 +97,8 @@ export default function Sidebar(p: Props) {
       <button className="nav-item" onClick={() => p.onSoon("Notas (Zettelkasten)")}>
         <span className="nav-ico">✎</span> Notas
       </button>
-      <button className="nav-item" onClick={() => p.onSoon("Revisão semanal")}>
-        <span className="nav-ico">⟳</span> Revisão semanal <span className="due-chip">dom</span>
+      <button className="nav-item" onClick={p.onWeekly}>
+        <span className="nav-ico">⟳</span> Revisão semanal <span className="due-chip">{p.weeklyDone ? "✓" : "dom"}</span>
       </button>
 
       {grupo("projeto", "Projetos", "▶")}
