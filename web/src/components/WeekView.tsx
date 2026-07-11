@@ -1,7 +1,7 @@
 "use client";
 
 import { somaDias, type Evento, type Tarefa } from "@/lib/db";
-import TimeGrid, { blocoDeEvento, blocoDeTarefa, hhmm, type Bloco, type DropInfo } from "@/components/TimeGrid";
+import TimeGrid, { arrasteToque, blocoDeEvento, blocoDeTarefa, hhmm, type Bloco, type DropInfo } from "@/components/TimeGrid";
 import PrioRow, { type PrioItem } from "@/components/PrioRow";
 
 const MESES = [
@@ -115,6 +115,7 @@ export default function WeekView({
                   JSON.stringify({ tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 60 } satisfies DropInfo),
                 )
               }
+              onPointerDown={(e) => arrasteToque(e, { tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 60 }, t.titulo, onDrop)}
               onClick={() => onToast("Arraste para um dia da grade — o prazo acompanha")}
             >
               {t.titulo}

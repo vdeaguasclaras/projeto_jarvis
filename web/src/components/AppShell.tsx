@@ -6,6 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import DayView from "@/components/DayView";
 import WeekView from "@/components/WeekView";
+import MonthView from "@/components/MonthView";
 import ComingSoon from "@/components/ComingSoon";
 import AuthBar from "@/components/AuthBar";
 import TasksView from "@/components/TasksView";
@@ -14,6 +15,7 @@ import NewContainerModal from "@/components/NewContainerModal";
 import EventoModal, { type EventoForm } from "@/components/EventoModal";
 import PrioModal from "@/components/PrioModal";
 import RevisaoModal from "@/components/RevisaoModal";
+import Pwa from "@/components/Pwa";
 import { isoDe, type DropInfo } from "@/components/TimeGrid";
 import type { PrioItem } from "@/components/PrioRow";
 import { ROADMAP, VIEWS, type ViewId } from "@/lib/demo";
@@ -53,7 +55,7 @@ import {
 const TITLES: Record<ViewId, [string, string]> = {
   dia: ["Hoje", "o dia é o ponto de entrada"],
   semana: ["Semana", "eventos e blocos de tarefa arrastáveis"],
-  mes: ["Mês", "em construção — Marco 5"],
+  mes: ["Mês", "eventos e prazos, dia a dia"],
   ano: ["Ano", "em construção — Marco 5"],
   tarefas: ["Tarefas", "capturar → organizar → fazer"],
   grafo: ["Grafo", "chega na Fase 3"],
@@ -371,6 +373,7 @@ export default function AppShell() {
 
   return (
     <div className={`app${collapsed ? " nosb" : ""}`}>
+      <Pwa logged={!!session} inboxCount={inboxItems.length} />
       <Sidebar
         inboxCount={inboxCount}
         activeToday={view === "dia"}
@@ -434,6 +437,17 @@ export default function AppShell() {
               onEventoClick={abrirEvento}
               onConcluirTarefa={conclude}
               onDefinirPrio={() => setPrioEscopo("semana")}
+            />
+          ) : view === "mes" ? (
+            <MonthView
+              key="mes"
+              logged={!!session}
+              tarefas={tarefas}
+              onDia={(dia) => {
+                setWeekStart(segundaDe(dia));
+                setView("semana");
+              }}
+              onToast={showToast}
             />
           ) : view === "tarefas" ? (
             <TasksView
