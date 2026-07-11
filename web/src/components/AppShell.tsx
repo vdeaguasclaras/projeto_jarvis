@@ -13,6 +13,7 @@ import TriageModal from "@/components/TriageModal";
 import NewContainerModal from "@/components/NewContainerModal";
 import EventoModal, { type EventoForm } from "@/components/EventoModal";
 import PrioModal from "@/components/PrioModal";
+import RevisaoModal from "@/components/RevisaoModal";
 import { isoDe, type DropInfo } from "@/components/TimeGrid";
 import type { PrioItem } from "@/components/PrioRow";
 import { ROADMAP, VIEWS, type ViewId } from "@/lib/demo";
@@ -35,6 +36,7 @@ import {
   listPrioridades,
   listTarefas,
   mudarStatusTarefa,
+  revisaoDaSemanaFeita,
   segundaDe,
   sequenciaCheck,
   somaDias,
@@ -80,6 +82,8 @@ export default function AppShell() {
   const [prioSemana, setPrioSemana] = useState<Prioridade[]>([]);
   const [seq, setSeq] = useState(0);
   const [triaging, setTriaging] = useState(false);
+  const [revisando, setRevisando] = useState(false);
+  const [revisaoFeita, setRevisaoFeita] = useState(false);
   const [newKind, setNewKind] = useState<Kind | null>(null);
   const [eventoForm, setEventoForm] = useState<EventoForm | null>(null);
   const [prioEscopo, setPrioEscopo] = useState<EscopoPrio | null>(null);
@@ -102,7 +106,7 @@ export default function AppShell() {
   const refresh = useCallback(async () => {
     if (!session) return;
     const hoje = hojeISO();
-    const [cs, ps, inb, ts, sq, evH, evS, pd, psem] = await Promise.all([
+    const [cs, ps, inb, ts, sq, evH, evS, pd, psem, rev] = await Promise.all([
       listContainers(),
       listPessoas(),
       listInbox(),
@@ -112,6 +116,7 @@ export default function AppShell() {
       listEventos(weekStart, somaDias(weekStart, 7)),
       listPrioridades("dia", hoje),
       listPrioridades("semana", weekStart),
+      revisaoDaSemanaFeita(),
     ]);
     setContainers(cs);
     setPessoas(ps);
@@ -122,6 +127,7 @@ export default function AppShell() {
     setEventosSemana(evS);
     setPrioDia(pd);
     setPrioSemana(psem);
+    setRevisaoFeita(rev);
   }, [session, weekStart]);
 
   useEffect(() => {
@@ -137,6 +143,8 @@ export default function AppShell() {
       setPrioSemana([]);
       setSeq(0);
       setTriaging(false);
+      setRevisando(false);
+      setRevisaoFeita(false);
     }
   }, [session, refresh]);
 
@@ -180,6 +188,14 @@ export default function AppShell() {
     },
     [session, containers, showToast],
   );
+
+  const openWeekly = useCallback(() => {
+    if (!session) {
+      showToast("Entre com seu e-mail para fazer a revisão semanal de verdade");
+      return;
+    }
+    setRevisando(true);
+  }, [session, showToast]);
 
   const openTriage = useCallback(() => {
     if (!session) {
@@ -366,6 +382,8 @@ export default function AppShell() {
         onTasks={() => setView("tarefas")}
         onInbox={openTriage}
         onNew={(kind) => (session ? setNewKind(kind) : showToast("Entre para criar os seus de verdade"))}
+        onWeekly={openWeekly}
+        weeklyDone={revisaoFeita}
         onLogout={logout}
         onSoon={(what) => showToast(`${what} — em construção nesta fase`)}
       />
@@ -448,6 +466,17 @@ export default function AppShell() {
         ))}
       </nav>
 
+      {revisando && session && (
+        <RevisaoModal
+          userId={session.user.id}
+          tarefas={tarefas}
+          containers={containers}
+          inboxCount={inboxItems.length}
+          onClose={() => setRevisando(false)}
+          onChanged={refresh}
+          onToast={showToast}
+        />
+      )}
       {triaging && session && (
         <TriageModal
           userId={session.user.id}

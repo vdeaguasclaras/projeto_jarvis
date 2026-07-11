@@ -36,8 +36,9 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Próximos passos (na ordem)
 
-1. **Marco 5** — calendário real: `kairos_eventos` no Dia/Semana, arrastar tarefa para o dia, prioridades do dia persistentes.
-2. **Revisão semanal** (domingo) com placar e decisões — espelhar o protótipo v6.
-3. **Marco 7** — PWA completo (service worker, notificação do check do dia).
-4. **OAuth Google/Microsoft** (Marco 2 restante) e **Fase 2** — sync Google Calendar/Outlook.
-5. **Fase 5** — importador do Todoist (conector MCP do Todoist já autorizado nesta conta).
+1. **Marco 7** — PWA completo (service worker, notificação do check do dia; melhorar o arrastar no toque).
+2. **OAuth Google/Microsoft** (Marco 2 restante) e **Fase 2** — sync Google Calendar/Outlook.
+3. **Fase 5** — importador do Todoist (conector MCP do Todoist já autorizado nesta conta).
+4. Mês/Ano do calendário (restante do Marco 5), se o Raul sentir falta.
+
+Feitos: Marcos 1–6 (exceto OAuth) e a **revisão semanal** (docs/09 e docs/10).
