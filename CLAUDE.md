@@ -36,9 +36,10 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Próximos passos (na ordem)
 
-1. **Marco 7** — PWA completo (service worker, notificação do check do dia; melhorar o arrastar no toque).
-2. **OAuth Google/Microsoft** (Marco 2 restante) e **Fase 2** — sync Google Calendar/Outlook.
-3. **Fase 5** — importador do Todoist (conector MCP do Todoist já autorizado nesta conta).
-4. Mês/Ano do calendário (restante do Marco 5), se o Raul sentir falta.
+1. **OAuth Google/Microsoft** — bloqueado nas credenciais que só o Raul cria (instruções em docs/11);
+   depois botões de login e **Fase 2** — sync Google Calendar/Outlook.
+2. **Fase 3** — Notas (Zettelkasten) e Grafo.
+3. Ano do calendário, se o Raul sentir falta.
 
-Feitos: Marcos 1–6 (exceto OAuth) e a **revisão semanal** (docs/09 e docs/10).
+Feitos: Marcos 1–7 (exceto OAuth), revisão semanal, Mês e o **importador do Todoist** (executado —
+idempotente via coluna `todoist_id`, migração 0004; ver docs/09–11).

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type DragEvent, type MouseEvent } from "react";
+import { useEffect, useState, type DragEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { Evento, Tarefa } from "@/lib/db";
 
 /** Grade de horas do Dia e da Semana — eventos reais + blocos de tarefa agendada. */
@@ -33,6 +33,66 @@ function dataLocalISO(d: Date): string {
 export function isoDe(dataISO: string, hora: number): string {
   const [a, m, d] = dataISO.split("-").map(Number);
   return new Date(a, m - 1, d, Math.floor(hora), Math.round((hora % 1) * 60)).toISOString();
+}
+
+/** Marco 7 — arrastar por toque (o drag & drop nativo não funciona em touch).
+ *  Segura e arrasta: um fantasma segue o dedo; soltar sobre uma coluna da grade
+ *  calcula o dia e a hora (encaixe em meias horas), como no arrasto com mouse. */
+export function arrasteToque(
+  e: ReactPointerEvent<HTMLElement>,
+  info: DropInfo,
+  titulo: string,
+  onDrop?: (info: DropInfo, dataISO: string, hora: number) => void,
+) {
+  if (!onDrop || e.pointerType !== "touch") return;
+  const x0 = e.clientX;
+  const y0 = e.clientY;
+  let ghost: HTMLElement | null = null;
+
+  const colunaEm = (x: number, y: number) =>
+    (document.elementFromPoint(x, y)?.closest(".daycol") as HTMLElement | null) ?? null;
+  const limpaAlvo = () =>
+    document.querySelectorAll(".daycol.dragover").forEach((el) => el.classList.remove("dragover"));
+
+  const mover = (ev: globalThis.PointerEvent) => {
+    if (!ghost) {
+      if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 10) return;
+      ghost = document.createElement("div");
+      ghost.className = "touchghost";
+      ghost.textContent = titulo;
+      document.body.appendChild(ghost);
+    }
+    ghost.style.left = `${ev.clientX}px`;
+    ghost.style.top = `${ev.clientY}px`;
+    limpaAlvo();
+    colunaEm(ev.clientX, ev.clientY)?.classList.add("dragover");
+  };
+
+  const terminar = (ev: globalThis.PointerEvent | null) => {
+    window.removeEventListener("pointermove", mover);
+    window.removeEventListener("pointerup", soltar);
+    window.removeEventListener("pointercancel", cancelar);
+    limpaAlvo();
+    if (!ghost) return false; // foi só um toque
+    ghost.remove();
+    ghost = null;
+    if (!ev) return true;
+    const col = colunaEm(ev.clientX, ev.clientY);
+    if (!col?.dataset.dia) return true;
+    const h0 = Number(col.dataset.h0);
+    const h1 = Number(col.dataset.h1);
+    const rect = col.getBoundingClientRect();
+    const bruta = h0 + (ev.clientY - rect.top) / ROW;
+    const hora = Math.max(h0, Math.min(Math.floor(bruta * 2) / 2, h1 - info.durMin / 60));
+    onDrop(info, col.dataset.dia, hora);
+    return true;
+  };
+  const soltar = (ev: globalThis.PointerEvent) => terminar(ev);
+  const cancelar = () => terminar(null);
+
+  window.addEventListener("pointermove", mover);
+  window.addEventListener("pointerup", soltar);
+  window.addEventListener("pointercancel", cancelar);
 }
 
 export function blocoDeEvento(ev: Evento): Bloco {
@@ -155,6 +215,9 @@ export default function TimeGrid({
             key={dia}
             className={`daycol${overDia === dia ? " dragover" : ""}`}
             style={{ gridRow: `1 / span ${H1 - H0}`, gridColumn: "auto" }}
+            data-dia={dia}
+            data-h0={H0}
+            data-h1={H1}
             onClick={clicarVaga(dia)}
             onDragOver={onDrop ? (e) => { e.preventDefault(); setOverDia(dia); } : undefined}
             onDragLeave={onDrop ? () => setOverDia(null) : undefined}
@@ -179,6 +242,7 @@ export default function TimeGrid({
                       JSON.stringify({ tipo: b.tipo, id: b.id, durMin: b.durMin } satisfies DropInfo),
                     )
                   }
+                  onPointerDown={(e) => arrasteToque(e, { tipo: b.tipo, id: b.id, durMin: b.durMin }, b.titulo, onDrop)}
                   onClick={(e) => {
                     e.stopPropagation();
                     onBlocoClick?.(b);

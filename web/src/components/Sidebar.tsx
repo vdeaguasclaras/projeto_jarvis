@@ -1,6 +1,7 @@
 "use client";
 
 import { AREAS, PROJECTS, RESOURCES } from "@/lib/demo";
+import { LembreteCheck } from "@/components/Pwa";
 import type { Container, Kind, Tarefa } from "@/lib/db";
 
 type Props = {
@@ -119,6 +120,7 @@ export default function Sidebar(p: Props) {
             <button onClick={p.onLogout}>Sair</button>
           </div>
         )}
+        <LembreteCheck />
         <button className="theme-toggle" onClick={toggleTheme}>
           ◐ Alternar tema
         </button>

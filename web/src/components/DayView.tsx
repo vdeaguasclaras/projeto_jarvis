@@ -2,7 +2,7 @@
 
 import { DAY_EVENTS, DAY_PRIORITIES } from "@/lib/demo";
 import type { Evento, Tarefa } from "@/lib/db";
-import TimeGrid, { blocoDeEvento, blocoDeTarefa, hhmm, type Bloco, type DropInfo } from "@/components/TimeGrid";
+import TimeGrid, { arrasteToque, blocoDeEvento, blocoDeTarefa, hhmm, type Bloco, type DropInfo } from "@/components/TimeGrid";
 import PrioRow, { type PrioItem } from "@/components/PrioRow";
 
 type Props = {
@@ -138,6 +138,9 @@ export default function DayView({
                   "application/json",
                   JSON.stringify({ tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 60 } satisfies DropInfo),
                 )
+              }
+              onPointerDown={(e) =>
+                arrasteToque(e, { tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 60 }, t.titulo, logged ? onDrop : undefined)
               }
               onClick={() => onToast("Arraste para a grade para reservar um horário")}
             >
