@@ -307,6 +307,120 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .btn.primary { background: var(--accent); color: var(--surface); }
 .btn.ghost { color: var(--ink-2); border: 1px solid var(--line); }
 
+/* Fase 3 — Notas (Zettelkasten), o módulo do protótipo v6 */
+.notes-wrap { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+.note-list-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.note-search {
+  flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 8px;
+  padding: 7px 10px; background: var(--surface); font-size: 12.5px;
+}
+.note-search:focus { border-color: var(--accent); outline: none; }
+.btn-newnote { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 12px; color: var(--accent-ink); font-weight: 600; flex: none; }
+.btn-newnote:hover { background: var(--accent-soft); }
+.note-group-h {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--ink-3); font-weight: 650; margin: 12px 2px 6px;
+}
+.note-item {
+  display: block; width: 100%; text-align: left; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; margin-bottom: 6px;
+  transition: transform 0.15s var(--ease), box-shadow 0.15s;
+}
+.note-item:hover { box-shadow: var(--shadow); }
+.note-item.active { border-color: var(--accent); background: var(--accent-soft); }
+.note-item b { display: block; font-size: 13px; }
+.note-item .snip { font-size: 11.5px; color: var(--ink-3); display: block; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.note-item .chips { margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap; }
+.note-item .chip { margin: 0; font-size: 10px; padding: 1px 6px; }
+.note-editor { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 22px; min-height: 420px; }
+.note-ed-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.note-title-in {
+  font-size: 19px; font-weight: 650; flex: 1; min-width: 140px; border: none;
+  background: transparent; color: var(--ink); border-radius: 6px; padding: 2px 4px;
+}
+.note-title-in:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.note-md {
+  width: 100%; min-height: 320px; border: 1px solid var(--line); border-radius: 9px;
+  padding: 12px 14px; background: var(--bg); color: var(--ink);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12.5px; line-height: 1.6; resize: vertical;
+}
+.note-md:focus { border-color: var(--accent); outline: none; }
+.note-tag { color: var(--task); background: var(--task-soft); border-radius: 4px; padding: 0 4px; font-size: 0.9em; }
+.note { font-family: var(--serif); font-size: 14.5px; line-height: 1.62; max-width: 62ch; }
+.note p { margin: 0 0 10px; }
+.wikilink { color: var(--accent-ink); background: var(--accent-soft); border-radius: 4px; padding: 0 3px; cursor: pointer; }
+.wikilink:hover { text-decoration: underline; }
+.note-render h1 { font-size: 20px; margin: 6px 0 10px; font-family: var(--sans); }
+.note-render h2 { font-size: 15px; margin: 16px 0 6px; font-family: var(--sans); }
+.note-render ul, .note-render ol { margin: 0 0 10px; padding-left: 20px; }
+.note-render li { margin: 3px 0; }
+.note-render blockquote {
+  border-left: 3px solid var(--accent); margin: 10px 0; padding: 6px 12px;
+  color: var(--ink-2); background: var(--surface-2); border-radius: 0 8px 8px 0;
+}
+.note-render li.mdtask { list-style: none; margin-left: -18px; }
+.note-render li.mdtask .bx { color: var(--task); margin-right: 4px; }
+.note-render .md-media { margin: 10px 0; max-width: 420px; }
+.note-render .md-media .ph {
+  border: 1px dashed var(--line); border-radius: 10px; padding: 22px 14px;
+  text-align: center; color: var(--ink-3); font-size: 12px; font-family: var(--sans);
+}
+.note-h3 {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--ink-3); margin: 18px 0 8px; font-weight: 650; font-family: var(--sans);
+}
+.chip.file { background: var(--surface-2); color: var(--ink-2); font-family: var(--sans); font-size: 0.85em; }
+.meta-pop {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--bg);
+  padding: 10px 12px; margin: 0 0 12px;
+}
+.backlink {
+  display: block; width: 100%; text-align: left; border: 1px solid var(--line);
+  border-radius: 9px; padding: 8px 11px; margin-bottom: 6px; font-size: 11.5px; color: var(--ink-3);
+}
+.backlink:hover { background: var(--surface-2); }
+.backlink b { color: var(--ink); display: block; font-size: 13px; }
+.ac-list { border: 1px solid var(--line); border-radius: 9px; margin-top: 6px; padding: 5px; background: var(--surface); }
+.ac-item { display: block; width: 100%; text-align: left; padding: 6px 8px; border-radius: 7px; font-size: 12.5px; color: var(--ink-2); }
+.ac-item:hover { background: var(--accent-soft); color: var(--accent-ink); }
+@media (max-width: 900px) {
+  .notes-wrap { grid-template-columns: 1fr; }
+  .note-editor { padding: 14px; }
+}
+
+/* Fase 3 — Grafo */
+.graphwrap { position: relative; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.graphcv { display: block; width: 100%; height: min(62vh, 560px); cursor: grab; touch-action: none; }
+.graphcv:active { cursor: grabbing; }
+.graphlegend {
+  position: absolute; left: 10px; bottom: 8px; display: flex; gap: 12px;
+  font-size: 11px; color: var(--ink-2); background: color-mix(in srgb, var(--surface) 82%, transparent);
+  border-radius: 8px; padding: 4px 8px;
+}
+.graphlegend i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+
+/* Ano — densidade */
+.year-note { font-size: 12px; color: var(--ink-3); margin: 0 0 12px; }
+.yeartabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.yeartabs button {
+  border: 1px solid var(--line); border-radius: 8px; padding: 5px 14px; font-size: 12.5px; color: var(--ink-2);
+  transition: all 0.2s;
+}
+.yeartabs button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.yearrow { display: grid; grid-template-columns: 44px 1fr; align-items: center; margin-bottom: 7px; }
+.yearrow .mn { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-2); font-weight: 650; }
+.yeardays { display: grid; grid-template-columns: repeat(37, 1fr); gap: 3px; }
+.yd { aspect-ratio: 1; border-radius: 4px; background: var(--surface-2); border: none; padding: 0; }
+.yd.empty { background: transparent; pointer-events: none; }
+.yd.wknd { background: var(--surface); border: 1px solid var(--line); }
+.yd.d1 { background: color-mix(in srgb, var(--accent) 30%, var(--surface-2)); }
+.yd.d2 { background: color-mix(in srgb, var(--accent) 55%, var(--surface-2)); }
+.yd.d3 { background: var(--accent); }
+.yd.today { outline: 2px solid var(--today); outline-offset: 1px; }
+.yearlegend { display: flex; gap: 14px; align-items: center; margin-top: 14px; font-size: 11px; color: var(--ink-3); }
+.yearlegend .yd { width: 12px; aspect-ratio: 1; display: inline-block; }
+
 /* Mês — grade mensal do protótipo v6 */
 .monthgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 .monthgrid .wd {

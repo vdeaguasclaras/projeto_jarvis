@@ -7,6 +7,9 @@ import Topbar from "@/components/Topbar";
 import DayView from "@/components/DayView";
 import WeekView from "@/components/WeekView";
 import MonthView from "@/components/MonthView";
+import YearView from "@/components/YearView";
+import NotesView from "@/components/NotesView";
+import GraphView from "@/components/GraphView";
 import ComingSoon from "@/components/ComingSoon";
 import AuthBar from "@/components/AuthBar";
 import TasksView from "@/components/TasksView";
@@ -27,7 +30,9 @@ import {
   capturar,
   createContainer,
   criarEvento,
+  criarNota,
   criarTarefa,
+  listNotas,
   definirPrioridades,
   excluirEvento,
   hojeISO,
@@ -47,6 +52,7 @@ import {
   type Evento,
   type InboxItem,
   type Kind,
+  type Nota,
   type Pessoa,
   type Prioridade,
   type Tarefa,
@@ -56,10 +62,10 @@ const TITLES: Record<ViewId, [string, string]> = {
   dia: ["Hoje", "o dia é o ponto de entrada"],
   semana: ["Semana", "eventos e blocos de tarefa arrastáveis"],
   mes: ["Mês", "eventos e prazos, dia a dia"],
-  ano: ["Ano", "em construção — Marco 5"],
+  ano: ["Ano", "densidade de compromissos, mês a mês"],
   tarefas: ["Tarefas", "capturar → organizar → fazer"],
-  grafo: ["Grafo", "chega na Fase 3"],
-  notas: ["Notas", "chega na Fase 3"],
+  grafo: ["Grafo", "os links estruturam, não as pastas"],
+  notas: ["Notas", "uma ideia por nota, ligadas por [[links]]"],
 };
 
 const DEMO_INBOX = [
@@ -82,6 +88,8 @@ export default function AppShell() {
   const [weekStart, setWeekStart] = useState<string>(() => segundaDe(hojeISO()));
   const [prioDia, setPrioDia] = useState<Prioridade[]>([]);
   const [prioSemana, setPrioSemana] = useState<Prioridade[]>([]);
+  const [notas, setNotas] = useState<Nota[]>([]);
+  const [notaAbrir, setNotaAbrir] = useState<string | null>(null);
   const [seq, setSeq] = useState(0);
   const [triaging, setTriaging] = useState(false);
   const [revisando, setRevisando] = useState(false);
@@ -108,7 +116,7 @@ export default function AppShell() {
   const refresh = useCallback(async () => {
     if (!session) return;
     const hoje = hojeISO();
-    const [cs, ps, inb, ts, sq, evH, evS, pd, psem, rev] = await Promise.all([
+    const [cs, ps, inb, ts, sq, evH, evS, pd, psem, rev, ns] = await Promise.all([
       listContainers(),
       listPessoas(),
       listInbox(),
@@ -119,6 +127,7 @@ export default function AppShell() {
       listPrioridades("dia", hoje),
       listPrioridades("semana", weekStart),
       revisaoDaSemanaFeita(),
+      listNotas(),
     ]);
     setContainers(cs);
     setPessoas(ps);
@@ -130,6 +139,7 @@ export default function AppShell() {
     setPrioDia(pd);
     setPrioSemana(psem);
     setRevisaoFeita(rev);
+    setNotas(ns);
   }, [session, weekStart]);
 
   useEffect(() => {
@@ -147,6 +157,8 @@ export default function AppShell() {
       setTriaging(false);
       setRevisando(false);
       setRevisaoFeita(false);
+      setNotas([]);
+      setNotaAbrir(null);
     }
   }, [session, refresh]);
 
@@ -312,6 +324,28 @@ export default function AppShell() {
     [refresh, showToast],
   );
 
+  // Regra do produto: a nota nasce do evento (vínculo é metadado, nada duplicado)
+  const criarNotaDoEvento = useCallback(async () => {
+    if (!session || !eventoForm?.id) return;
+    const [a, m, d] = eventoForm.dataISO.split("-");
+    const { id, err } = await criarNota(
+      session.user.id,
+      `${eventoForm.titulo} · ${d}/${m}/${a}`,
+      `Nota do evento **${eventoForm.titulo}** (${d}/${m}).\n\n`,
+      eventoForm.container_id,
+      eventoForm.id,
+    );
+    setEventoForm(null);
+    if (err || !id) {
+      showToast(`Erro ao criar a nota: ${err}`);
+      return;
+    }
+    await refresh();
+    setNotaAbrir(id);
+    setView("notas");
+    showToast("Nota criada a partir do evento ✎ — expressar é o E do CODE");
+  }, [session, eventoForm, refresh, showToast]);
+
   const salvarPrioridades = useCallback(
     async (ids: string[]) => {
       if (!session || !prioEscopo) return;
@@ -383,6 +417,7 @@ export default function AppShell() {
         tarefas={tarefas}
         onToday={() => setView("dia")}
         onTasks={() => setView("tarefas")}
+        onNotes={() => setView("notas")}
         onInbox={openTriage}
         onNew={(kind) => (session ? setNewKind(kind) : showToast("Entre para criar os seus de verdade"))}
         onWeekly={openWeekly}
@@ -449,6 +484,16 @@ export default function AppShell() {
               }}
               onToast={showToast}
             />
+          ) : view === "ano" ? (
+            <YearView
+              key="ano"
+              logged={!!session}
+              tarefas={tarefas}
+              onDia={(dia) => {
+                setWeekStart(segundaDe(dia));
+                setView("semana");
+              }}
+            />
           ) : view === "tarefas" ? (
             <TasksView
               key="tarefas"
@@ -456,6 +501,29 @@ export default function AppShell() {
               containers={containers}
               logged={!!session}
               onConclude={conclude}
+              onToast={showToast}
+            />
+          ) : view === "notas" ? (
+            <NotesView
+              key="notas"
+              logged={!!session}
+              userId={session?.user.id ?? null}
+              containers={containers}
+              abrirId={notaAbrir}
+              onToast={showToast}
+              onChanged={refresh}
+            />
+          ) : view === "grafo" ? (
+            <GraphView
+              key="grafo"
+              logged={!!session}
+              notas={notas}
+              containers={containers}
+              pessoas={pessoas}
+              onAbrirNota={(id) => {
+                setNotaAbrir(id);
+                setView("notas");
+              }}
               onToast={showToast}
             />
           ) : (
@@ -510,6 +578,7 @@ export default function AppShell() {
           containers={containers}
           onSave={salvarEvento}
           onDelete={eventoForm.id ? apagarEvento : undefined}
+          onNota={eventoForm.id ? criarNotaDoEvento : undefined}
           onClose={() => setEventoForm(null)}
         />
       )}
