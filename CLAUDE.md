@@ -38,8 +38,10 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 1. **OAuth Google/Microsoft** — bloqueado nas credenciais que só o Raul cria (instruções em docs/11);
    depois botões de login e **Fase 2** — sync Google Calendar/Outlook.
-2. **Fase 3** — Notas (Zettelkasten) e Grafo.
-3. Ano do calendário, se o Raul sentir falta.
+2. Páginas PARA (projeto/área/recurso com objetivos, tarefas e notas vinculadas — o protótipo define).
+3. Refino conforme o uso real do Raul.
 
-Feitos: Marcos 1–7 (exceto OAuth), revisão semanal, Mês e o **importador do Todoist** (executado —
-idempotente via coluna `todoist_id`, migração 0004; ver docs/09–11).
+Feitos: **tudo o que não depende do OAuth** — Marcos 1–7, revisão semanal, Mês/Ano, importador do
+Todoist (idempotente, migração 0004) e a Fase 3 completa: Notas Zettelkasten (markdown, [[links]] com
+autocompletar, backlinks, nota nasce do evento — migração 0005, encaminhamentos → tarefas) e Grafo.
+Ver docs/09–12.

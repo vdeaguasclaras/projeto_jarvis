@@ -27,10 +27,12 @@ type Props = {
   containers: Container[];
   onSave: (f: EventoForm) => void;
   onDelete?: () => void;
+  /** cria uma nota vinculada a este evento (regra: a nota nasce do evento) */
+  onNota?: () => void;
   onClose: () => void;
 };
 
-export default function EventoModal({ inicial, containers, onSave, onDelete, onClose }: Props) {
+export default function EventoModal({ inicial, containers, onSave, onDelete, onNota, onClose }: Props) {
   const [titulo, setTitulo] = useState(inicial.titulo);
   const [dataISO, setDataISO] = useState(inicial.dataISO);
   const [ini, setIni] = useState(paraInput(inicial.hIni));
@@ -93,6 +95,11 @@ export default function EventoModal({ inicial, containers, onSave, onDelete, onC
               {editando && onDelete && (
                 <button className="btn ghost" style={{ marginRight: "auto", color: "var(--today)" }} onClick={onDelete}>
                   Excluir
+                </button>
+              )}
+              {editando && onNota && (
+                <button className="btn ghost" title="A nota nasce do evento — vínculo sem duplicar" onClick={onNota}>
+                  ✎ Nota do evento
                 </button>
               )}
               <button className="btn ghost" onClick={onClose}>

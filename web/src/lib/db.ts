@@ -30,6 +30,15 @@ export type Evento = {
 };
 export type Prioridade = { id: string; tarefa_id: string; ordem: number };
 export type EscopoPrio = "dia" | "semana";
+export type Nota = {
+  id: string;
+  titulo: string;
+  md: string;
+  container_id: string | null;
+  evento_id: string | null;
+  criada_em: string;
+  atualizada_em: string;
+};
 
 export function hojeISO(): string {
   const d = new Date();
@@ -147,6 +156,7 @@ export async function criarTarefa(
     container_id?: string | null;
     responsavel_id?: string | null;
     descricao?: string | null;
+    nota_origem_id?: string | null;
     concluida?: boolean;
   },
 ): Promise<string | null> {
@@ -159,6 +169,7 @@ export async function criarTarefa(
     container_id: campos.container_id ?? null,
     responsavel_id: campos.responsavel_id ?? null,
     descricao: campos.descricao ?? null,
+    nota_origem_id: campos.nota_origem_id ?? null,
     concluida_em: campos.concluida ? new Date().toISOString() : null,
   });
   return error ? error.message : null;
@@ -187,14 +198,47 @@ export async function criarNota(
   titulo: string,
   md: string,
   containerId?: string | null,
+  eventoId?: string | null,
+): Promise<{ id: string | null; err: string | null }> {
+  if (!supabase) return { id: null, err: "sem banco" };
+  const { data, error } = await supabase
+    .from("kairos_notas")
+    .insert({
+      user_id: userId,
+      titulo,
+      md,
+      container_id: containerId ?? null,
+      evento_id: eventoId ?? null,
+    })
+    .select("id")
+    .single();
+  return { id: data?.id ?? null, err: error ? error.message : null };
+}
+
+export async function listNotas(): Promise<Nota[]> {
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("kairos_notas")
+    .select("id, titulo, md, container_id, evento_id, criada_em, atualizada_em")
+    .order("atualizada_em", { ascending: false });
+  return (data as Nota[]) ?? [];
+}
+
+export async function atualizarNota(
+  id: string,
+  campos: { titulo?: string; md?: string; container_id?: string | null },
 ): Promise<string | null> {
   if (!supabase) return "sem banco";
-  const { error } = await supabase.from("kairos_notas").insert({
-    user_id: userId,
-    titulo,
-    md,
-    container_id: containerId ?? null,
-  });
+  const { error } = await supabase
+    .from("kairos_notas")
+    .update({ ...campos, atualizada_em: new Date().toISOString() })
+    .eq("id", id);
+  return error ? error.message : null;
+}
+
+export async function excluirNota(id: string): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase.from("kairos_notas").delete().eq("id", id);
   return error ? error.message : null;
 }
 

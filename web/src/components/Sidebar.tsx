@@ -14,6 +14,7 @@ type Props = {
   tarefas: Tarefa[];
   onToday: () => void;
   onTasks: () => void;
+  onNotes: () => void;
   onInbox: () => void;
   onNew: (kind: Kind) => void;
   onWeekly: () => void;
@@ -95,7 +96,7 @@ export default function Sidebar(p: Props) {
         <span className="nav-ico">☑</span> Tarefas{" "}
         <span className="count">{p.tarefas.filter((t) => t.status !== "concluida").length || ""}</span>
       </button>
-      <button className="nav-item" onClick={() => p.onSoon("Notas (Zettelkasten)")}>
+      <button className="nav-item" onClick={p.onNotes}>
         <span className="nav-ico">✎</span> Notas
       </button>
       <button className="nav-item" onClick={p.onWeekly}>
