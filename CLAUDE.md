@@ -19,7 +19,7 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 - **Supabase**: projeto `mapa-de-sala` (id `budjzwlccrnxdnkaqtko`, região sa-east-1) — compartilhado com outro app do Raul (tabelas `jim_*`). As nossas são **`kairos_*`**, todas com RLS "dono" (`auth.uid() = user_id`). Migrações versionadas em `web/supabase/migrations/` e aplicadas via MCP `apply_migration`. Decisão: migrar para projeto próprio quando o Raul pagar/limpar o plano.
 - **Vercel**: projeto `projeto-jarvis` (team `team_zwdRohlmXrxBKP3dokznhfe3`), Root Directory `web`, produção em **https://projeto-jarvis-seven.vercel.app**. Deploy contínuo: merge na `main` publica. O Framework Preset do painel está "Other" — é o `web/vercel.json` (`"framework": "nextjs"`) que faz funcionar; **não remover**.
-- **Auth**: link mágico por e-mail (Supabase). Chave anon pública em `web/.env.production` (por design; segurança é o RLS). OAuth Google/Microsoft ainda não configurado (precisa de credenciais que só o Raul pode criar).
+- **Auth**: link mágico por e-mail + **Google OAuth** (o Raul criou as credenciais; login já pede o escopo `calendar.readonly`). Chave anon pública em `web/.env.production` (por design; segurança é o RLS). Microsoft/Azure ainda sem credenciais.
 
 ## Armadilhas conhecidas deste ambiente
 
@@ -36,12 +36,12 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Próximos passos (na ordem)
 
-1. **OAuth Google/Microsoft** — bloqueado nas credenciais que só o Raul cria (instruções em docs/11);
-   depois botões de login e **Fase 2** — sync Google Calendar/Outlook.
+1. Teste real do login Google + sync da agenda pelo Raul (checklist em docs/13).
 2. Páginas PARA (projeto/área/recurso com objetivos, tarefas e notas vinculadas — o protótipo define).
-3. Refino conforme o uso real do Raul.
+3. OAuth Microsoft + Outlook (fecha a Fase 2), quando o Raul criar as credenciais na Azure (docs/11).
+4. Refino conforme o uso real do Raul.
 
-Feitos: **tudo o que não depende do OAuth** — Marcos 1–7, revisão semanal, Mês/Ano, importador do
-Todoist (idempotente, migração 0004) e a Fase 3 completa: Notas Zettelkasten (markdown, [[links]] com
-autocompletar, backlinks, nota nasce do evento — migração 0005, encaminhamentos → tarefas) e Grafo.
-Ver docs/09–12.
+Feitos: Marcos 1–7 completos (login Google incluído), revisão semanal, Mês/Ano, importador do Todoist
+(migração 0004), Fase 3 completa (Notas Zettelkasten + Grafo, migração 0005) e **Fase 2 Google**:
+sync unidirecional do Google Calendar sem backend (espelho idempotente por `google_id`, migração 0006;
+Google é a fonte da verdade; `provider_token` vale ~1h por login). Ver docs/09–13.

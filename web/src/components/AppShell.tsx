@@ -23,6 +23,7 @@ import { isoDe, type DropInfo } from "@/components/TimeGrid";
 import type { PrioItem } from "@/components/PrioRow";
 import { ROADMAP, VIEWS, type ViewId } from "@/lib/demo";
 import { encontraContainer, parseCapture, resolveDataCaptura } from "@/lib/parser";
+import { sincronizarGoogleAgenda } from "@/lib/gcal";
 import { supabase } from "@/lib/supabase";
 import {
   agendarTarefa,
@@ -99,6 +100,7 @@ export default function AppShell() {
   const [prioEscopo, setPrioEscopo] = useState<EscopoPrio | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const syncFeito = useRef(false);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -159,6 +161,7 @@ export default function AppShell() {
       setRevisaoFeita(false);
       setNotas([]);
       setNotaAbrir(null);
+      syncFeito.current = false;
     }
   }, [session, refresh]);
 
@@ -202,6 +205,34 @@ export default function AppShell() {
     },
     [session, containers, showToast],
   );
+
+  // ── Fase 2: sync do Google Calendar ──
+  const syncAgenda = useCallback(
+    async (silencioso = false) => {
+      if (!session) return;
+      const r = await sincronizarGoogleAgenda(session.user.id);
+      if (r.ok) {
+        await refresh();
+        showToast(`Google Agenda sincronizada: ${r.importados} evento${r.importados === 1 ? "" : "s"} na janela de 67 dias ⇄`);
+      } else if (!silencioso) {
+        showToast(
+          r.motivo === "sem_token" || r.motivo === "expirado"
+            ? "Para sincronizar, entre com Google de novo (o acesso à agenda dura ~1h por login)"
+            : r.motivo === "api_desligada"
+              ? "Ative a Google Calendar API no console do Google Cloud (APIs & Services → Library)"
+              : `Erro no sync: ${r.detalhe ?? "desconhecido"}`,
+        );
+      }
+    },
+    [session, refresh, showToast],
+  );
+
+  // Ao entrar com Google, a agenda sincroniza sozinha (uma vez por sessão)
+  useEffect(() => {
+    if (!session || syncFeito.current) return;
+    syncFeito.current = true;
+    syncAgenda(true);
+  }, [session, syncAgenda]);
 
   const openWeekly = useCallback(() => {
     if (!session) {
@@ -259,6 +290,10 @@ export default function AppShell() {
     (id: string) => {
       const ev = [...eventosHoje, ...eventosSemana].find((e) => e.id === id);
       if (!ev) return;
+      if (ev.origem === "google") {
+        showToast(`"${ev.titulo}" vem do Google Agenda — edite lá; o sync espelha aqui ⇄`);
+        return;
+      }
       const i = new Date(ev.inicio);
       const f = new Date(ev.fim);
       setEventoForm({
@@ -308,6 +343,13 @@ export default function AppShell() {
 
   const soltarNaGrade = useCallback(
     async (info: DropInfo, dataISO: string, hora: number) => {
+      if (info.tipo === "evento") {
+        const ev = [...eventosHoje, ...eventosSemana].find((e) => e.id === info.id);
+        if (ev?.origem === "google") {
+          showToast("Evento do Google Agenda — mova lá; o sync espelha aqui ⇄");
+          return;
+        }
+      }
       const inicio = isoDe(dataISO, hora);
       const fim = isoDe(dataISO, hora + info.durMin / 60);
       const err =
@@ -321,7 +363,7 @@ export default function AppShell() {
       await refresh();
       showToast(info.tipo === "evento" ? "Evento movido ✓" : "Tarefa agendada — o prazo acompanha o dia ✓");
     },
-    [refresh, showToast],
+    [eventosHoje, eventosSemana, refresh, showToast],
   );
 
   // Regra do produto: a nota nasce do evento (vínculo é metadado, nada duplicado)
@@ -418,6 +460,7 @@ export default function AppShell() {
         onToday={() => setView("dia")}
         onTasks={() => setView("tarefas")}
         onNotes={() => setView("notas")}
+        onSync={() => (session ? syncAgenda() : showToast("Entre com Google para trazer a sua agenda"))}
         onInbox={openTriage}
         onNew={(kind) => (session ? setNewKind(kind) : showToast("Entre para criar os seus de verdade"))}
         onWeekly={openWeekly}
