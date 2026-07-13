@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { entrarComGoogle } from "@/lib/gcal";
 
 type Props = { onToast: (msg: string) => void };
 
@@ -43,11 +44,20 @@ export default function AuthBar({ onToast }: Props) {
         <span>
           {sent
             ? "Link enviado! Abra seu e-mail e clique para entrar."
-            : "Sem login, as capturas ficam só nesta aba. Login Google/Microsoft chega no Marco 2."}
+            : "Sem login, as capturas ficam só nesta aba. Com Google, sua agenda entra junto."}
         </span>
       </div>
       {!sent && (
         <>
+          <button
+            className="btn-google"
+            onClick={async () => {
+              const err = await entrarComGoogle();
+              if (err) onToast(`Não foi possível entrar com Google: ${err}`);
+            }}
+          >
+            <span aria-hidden>G</span> Entrar com Google
+          </button>
           <input
             type="email"
             value={email}

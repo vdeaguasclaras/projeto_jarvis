@@ -15,6 +15,7 @@ type Props = {
   onToday: () => void;
   onTasks: () => void;
   onNotes: () => void;
+  onSync: () => void;
   onInbox: () => void;
   onNew: (kind: Kind) => void;
   onWeekly: () => void;
@@ -101,6 +102,9 @@ export default function Sidebar(p: Props) {
       </button>
       <button className="nav-item" onClick={p.onWeekly}>
         <span className="nav-ico">⟳</span> Revisão semanal <span className="due-chip">{p.weeklyDone ? "✓" : "dom"}</span>
+      </button>
+      <button className="nav-item" onClick={p.onSync} title="Importa os eventos do Google Calendar (janela de 67 dias)">
+        <span className="nav-ico">⇄</span> Google Agenda
       </button>
 
       {grupo("projeto", "Projetos", "▶")}
