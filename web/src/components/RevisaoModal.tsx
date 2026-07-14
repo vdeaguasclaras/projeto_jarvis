@@ -130,6 +130,9 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
   const [incubadas, setIncubadas] = useState<{ total: number; volta: string | null }>({ total: 0, volta: null });
   const [seqRev, setSeqRev] = useState(0);
   const [pronto, setPronto] = useState(false);
+  // Uma etapa por tela (feedback do Raul) — mais limpo de ler e responder
+  const [passo, setPasso] = useState(0);
+  const TOTAL_PASSOS = 7;
 
   useEffect(() => {
     (async () => {
@@ -374,6 +377,8 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
               <p className="sub">Carregando a sua semana…</p>
             ) : (
               <>
+                {passo === 0 && (
+                <div className="wk-step-unico">
                 {/* 1 · placar da semana que fecha */}
                 <div className="wk-step">
                   <span className="wk-num">1</span>
@@ -423,6 +428,10 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
                   </div>
                 </div>
 
+                </div>
+                )}
+                {passo === 1 && (
+                <div className="wk-step-unico">
                 {/* 2 · vislumbre da semana que vem */}
                 <div className="wk-step">
                   <span className="wk-num">2</span>
@@ -448,6 +457,10 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
                   </div>
                 </div>
 
+                </div>
+                )}
+                {passo === 2 && (
+                <div className="wk-step-unico">
                 {/* 3 · prioridades da próxima semana */}
                 <div className="wk-step">
                   <span className="wk-num">3</span>
@@ -473,6 +486,10 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
                   </div>
                 </div>
 
+                </div>
+                )}
+                {passo === 3 && (
+                <div className="wk-step-unico">
                 {/* 4 · vencidas */}
                 <div className="wk-step">
                   <span className="wk-num">4</span>
@@ -543,6 +560,10 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
                   </div>
                 </div>
 
+                </div>
+                )}
+                {passo === 4 && (
+                <div className="wk-step-unico">
                 {/* 5 · bloco de foco */}
                 <div className="wk-step">
                   <span className="wk-num">5</span>
@@ -587,6 +608,10 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
                   </div>
                 </div>
 
+                </div>
+                )}
+                {passo === 5 && (
+                <div className="wk-step-unico">
                 {/* 6 · projeto parado */}
                 <div className="wk-step">
                   <span className="wk-num">6</span>
@@ -626,6 +651,10 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
                   </div>
                 </div>
 
+                </div>
+                )}
+                {passo === 6 && (
+                <div className="wk-step-unico">
                 {/* 7 · inbox */}
                 <div className="wk-step">
                   <span className="wk-num">7</span>
@@ -641,13 +670,32 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
                   </div>
                 </div>
 
+                </div>
+                )}
+
+                <div className="wk-dots" aria-hidden>
+                  {Array.from({ length: TOTAL_PASSOS }, (_, i) => (
+                    <button key={i} className={`wk-dot${i === passo ? " on" : ""}`} onClick={() => setPasso(i)} />
+                  ))}
+                </div>
                 <div className="modal-foot">
-                  <button className="btn ghost" onClick={onClose}>
+                  <button className="btn ghost" style={{ marginRight: "auto" }} onClick={onClose}>
                     Depois
                   </button>
-                  <button className="btn primary" onClick={concluir}>
-                    Concluir revisão ✓
-                  </button>
+                  {passo > 0 && (
+                    <button className="btn ghost" onClick={() => setPasso(passo - 1)}>
+                      ← Voltar
+                    </button>
+                  )}
+                  {passo < TOTAL_PASSOS - 1 ? (
+                    <button className="btn primary" onClick={() => setPasso(passo + 1)}>
+                      Avançar → <small style={{ fontWeight: 400, opacity: 0.85 }}>({passo + 1}/{TOTAL_PASSOS})</small>
+                    </button>
+                  ) : (
+                    <button className="btn primary" onClick={concluir}>
+                      Concluir revisão ✓
+                    </button>
+                  )}
                 </div>
               </>
             )}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { somaDias, type Evento, type Tarefa } from "@/lib/db";
 import TimeGrid, { arrasteToque, blocoDeEvento, blocoDeTarefa, hhmm, type Bloco, type DropInfo } from "@/components/TimeGrid";
 import PrioRow, { type PrioItem } from "@/components/PrioRow";
@@ -57,6 +58,7 @@ export default function WeekView({
   onConcluirTarefa,
   onDefinirPrio,
 }: Props) {
+  const [trayAberta, setTrayAberta] = useState(false);
   if (!logged) {
     return (
       <div className="view-in">
@@ -102,9 +104,11 @@ export default function WeekView({
       <PrioRow label="Prioridades da semana" items={prioridades} i={0.3} onDefinir={onDefinirPrio} />
 
       {semHorario.length > 0 && (
-        <div className="tray stagger" style={{ ["--i" as string]: 0.4 }}>
-          <span className="plabel">Sem horário</span>
-          {semHorario.map((t) => (
+        <div className={`tray stagger${trayAberta ? "" : " fechada"}`} style={{ ["--i" as string]: 0.4 }}>
+          <button className="tray-toggle" onClick={() => setTrayAberta((v) => !v)}>
+            ☐ {semHorario.length} sem horário {trayAberta ? "▴" : "▾"}
+          </button>
+          {trayAberta && semHorario.map((t) => (
             <span
               key={t.id}
               className="traychip"
@@ -121,7 +125,7 @@ export default function WeekView({
               {t.titulo}
             </span>
           ))}
-          <span className="empty-hint" style={{ margin: 0 }}>← arraste para um dia</span>
+          {trayAberta && <span className="empty-hint" style={{ margin: 0 }}>arraste para um dia — o prazo acompanha</span>}
         </div>
       )}
 
