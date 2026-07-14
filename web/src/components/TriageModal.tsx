@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   agendarTarefa,
+  atualizarTarefa,
   criarNota,
   criarPessoa,
   criarTarefa,
@@ -12,7 +13,6 @@ import {
   registrarRitual,
   resolvePrazo,
   type Container,
-  type Evento,
   type InboxItem,
   type Tarefa,
 } from "@/lib/db";
@@ -27,28 +27,15 @@ type Props = {
   containers: Container[];
   /** tarefas de hoje (ou vencidas) ainda sem horário — etapa final do check */
   tarefasSemHorario: Tarefa[];
-  /** eventos de hoje, para propor horários realmente livres */
-  eventosHoje: Evento[];
   onClose: () => void;
   onChanged: () => void;
   onToast: (msg: string) => void;
 };
 
-/** Vagas livres de 1h entre 8h e 18h de hoje, descontando os eventos. */
-function vagasDeHoje(eventos: Evento[]): number[] {
-  const ocupadas = eventos.map((e) => {
-    const i = new Date(e.inicio);
-    const f = new Date(e.fim);
-    return [i.getHours() + i.getMinutes() / 60, f.getHours() + f.getMinutes() / 60] as [number, number];
-  });
-  const agora = new Date();
-  const minimo = agora.getHours() + 1; // só horários ainda por vir
-  const livres: number[] = [];
-  for (let h = 8; h <= 17; h++) {
-    if (h < minimo) continue;
-    if (!ocupadas.some(([i, f]) => h < f && h + 1 > i)) livres.push(h);
-  }
-  return livres;
+/** Próxima hora cheia (mínimo 8h, máximo 22h) — palpite inicial do formulário. */
+function proximaHora(): string {
+  const h = Math.min(Math.max(new Date().getHours() + 1, 8), 22);
+  return `${String(h).padStart(2, "0")}:00`;
 }
 
 /** Triagem GTD/CODE do check do dia — fluxo do protótipo v6 sobre dados reais.
@@ -59,7 +46,6 @@ export default function TriageModal({
   items,
   containers,
   tarefasSemHorario,
-  eventosHoje,
   onClose,
   onChanged,
   onToast,
@@ -76,13 +62,38 @@ export default function TriageModal({
   const item = pendentes.find((it) => it.id === curId) ?? pendentes[0] ?? null;
   const inboxZerada = pendentes.length === 0;
 
-  // ── etapa final: horários para as tarefas de hoje ──
-  const vagas = useMemo(() => vagasDeHoje(eventosHoje), [eventosHoje]);
-  // O Kairós propõe: distribui as vagas livres em sequência; o usuário decide
-  const [horas, setHoras] = useState<Record<string, number | null>>(() =>
-    Object.fromEntries(tarefasSemHorario.map((t, i) => [t.id, vagasDeHoje(eventosHoje)[i] ?? null])),
-  );
-  const [agendadas, setAgendadas] = useState(false);
+  // ── etapa final: escolher tarefa e atribuir dia, hora e grupo ──
+  const [agendadasIds, setAgendadasIds] = useState<string[]>([]);
+  const [selTarefa, setSelTarefa] = useState<string | null>(null);
+  const [fDia, setFDia] = useState(hojeISO());
+  const [fHora, setFHora] = useState(proximaHora());
+  const [fGrupo, setFGrupo] = useState<string | null>(null);
+  const tarefasPendentes = tarefasSemHorario.filter((t) => !agendadasIds.includes(t.id));
+
+  const escolherTarefa = (t: Tarefa) => {
+    setSelTarefa(t.id);
+    setFDia(t.prazo && t.prazo > hojeISO() ? t.prazo : hojeISO());
+    setFHora(proximaHora());
+    setFGrupo(t.container_id);
+  };
+
+  const reservar = async () => {
+    const t = tarefasPendentes.find((x) => x.id === selTarefa);
+    if (!t || !fDia || !fHora) return;
+    const [hh, mm] = fHora.split(":").map(Number);
+    const h = (hh || 0) + (mm || 0) / 60;
+    const dur = (t.duracao_min ?? 60) / 60;
+    const err = await agendarTarefa(t.id, isoDe(fDia, h), isoDe(fDia, h + dur), fDia);
+    if (err) {
+      onToast(`Erro ao reservar: ${err}`);
+      return;
+    }
+    if (fGrupo !== t.container_id) await atualizarTarefa(t.id, { container_id: fGrupo });
+    setAgendadasIds((prev) => [...prev, t.id]);
+    setSelTarefa(null);
+    onChanged();
+    onToast(`"${t.titulo.slice(0, 40)}" reservada para ${fDia.split("-").reverse().slice(0, 2).join("/")} às ${fHora} ✓`);
+  };
 
   const next = async (msg: string) => {
     if (!item) return;
@@ -170,21 +181,6 @@ export default function TriageModal({
     await next("Descartada — sem dó");
   };
 
-  const aplicarHorarios = async () => {
-    const hoje = hojeISO();
-    let n = 0;
-    for (const t of tarefasSemHorario) {
-      const h = horas[t.id];
-      if (h == null) continue;
-      const dur = (t.duracao_min ?? 60) / 60;
-      await agendarTarefa(t.id, isoDe(hoje, h), isoDe(hoje, h + dur), hoje);
-      n++;
-    }
-    setAgendadas(true);
-    onChanged();
-    onToast(n ? `${n} tarefa${n > 1 ? "s" : ""} com horário reservado no dia ✓` : "Tudo certo — ficam na lista, sem horário");
-  };
-
   const pill = (on: boolean) => `pill-opt${on ? " on" : ""}`;
   const back = (
     <button className="tri-back" onClick={() => setStep("cls")}>
@@ -193,7 +189,7 @@ export default function TriageModal({
   );
   const containersDe = (kinds: string[]) => containers.filter((c) => kinds.includes(c.kind));
 
-  const semHorarioPendentes = tarefasSemHorario.length > 0 && !agendadas;
+  const semHorarioPendentes = tarefasPendentes.length > 0;
 
   return (
     <>
@@ -211,35 +207,54 @@ export default function TriageModal({
                     <div className="big">✓</div>
                     <h4>Inbox zero!</h4>
                     <p>
-                      Agora, o dia: {tarefasSemHorario.length} tarefa{tarefasSemHorario.length > 1 ? "s" : ""} para hoje ainda sem
-                      horário. O Kairós propõe vagas livres — você decide.
+                      Agora, o dia: {tarefasPendentes.length} tarefa{tarefasPendentes.length > 1 ? "s" : ""} para hoje ainda sem
+                      horário. Toque numa para reservar dia e hora — ou conclua e deixe como estão.
                     </p>
                   </div>
-                  {tarefasSemHorario.map((t) => (
-                    <div key={t.id}>
-                      <div className="flab">{t.titulo}</div>
-                      <div className="pillrow">
-                        {vagas.slice(0, 4).map((h) => (
-                          <button
-                            key={h}
-                            className={pill(horas[t.id] === h)}
-                            onClick={() => setHoras((prev) => ({ ...prev, [t.id]: h }))}
-                          >
-                            {h}h
+                  {tarefasPendentes.map((t) =>
+                    selTarefa === t.id ? (
+                      <div key={t.id} className="triage-card" style={{ marginBottom: 8 }}>
+                        <div className="triage-title" style={{ fontSize: 13.5 }}>{t.titulo}</div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <div style={{ flex: "1 1 130px" }}>
+                            <div className="flab">Dia</div>
+                            <input className="tri-input" type="date" value={fDia} onChange={(e) => setFDia(e.target.value)} />
+                          </div>
+                          <div style={{ flex: "0 1 100px" }}>
+                            <div className="flab">Hora</div>
+                            <input className="tri-input" type="time" step={900} value={fHora} onChange={(e) => setFHora(e.target.value)} />
+                          </div>
+                        </div>
+                        <div className="flab">Projeto / área (opcional)</div>
+                        <select className="tri-input" value={fGrupo ?? ""} onChange={(e) => setFGrupo(e.target.value || null)}>
+                          <option value="">— nenhum —</option>
+                          {containers.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.emoji ? `${c.emoji} ` : ""}
+                              {c.nome}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="modal-foot" style={{ marginTop: 10 }}>
+                          <button className="btn ghost" onClick={() => setSelTarefa(null)}>
+                            Cancelar
                           </button>
-                        ))}
-                        <button
-                          className={`pill-opt warm${horas[t.id] == null ? " on" : ""}`}
-                          onClick={() => setHoras((prev) => ({ ...prev, [t.id]: null }))}
-                        >
-                          sem horário
-                        </button>
+                          <button className="btn primary" onClick={reservar}>
+                            Reservar horário ✓
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ) : (
+                      <button key={t.id} className="backlink" onClick={() => escolherTarefa(t)}>
+                        <b>☐ {t.titulo}</b>
+                        {t.prazo && t.prazo < hojeISO() ? `venceu ${t.prazo.split("-").reverse().slice(0, 2).join("/")} · ` : ""}
+                        toque para dar dia e hora
+                      </button>
+                    ),
+                  )}
                   <div className="modal-foot">
-                    <button className="btn primary" onClick={aplicarHorarios}>
-                      Reservar horários ✓
+                    <button className="btn primary" onClick={onClose}>
+                      Concluir ✓
                     </button>
                   </div>
                 </div>

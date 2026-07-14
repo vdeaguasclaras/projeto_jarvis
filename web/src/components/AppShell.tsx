@@ -18,6 +18,7 @@ import NewContainerModal from "@/components/NewContainerModal";
 import EventoModal, { type EventoForm } from "@/components/EventoModal";
 import EventoPanel from "@/components/EventoPanel";
 import TarefaModal, { type TarefaEdicao } from "@/components/TarefaModal";
+import ParaPage, { ParaLista } from "@/components/ParaPage";
 import PrioModal from "@/components/PrioModal";
 import RevisaoModal from "@/components/RevisaoModal";
 import Pwa from "@/components/Pwa";
@@ -103,6 +104,8 @@ export default function AppShell() {
   const [eventoForm, setEventoForm] = useState<EventoForm | null>(null);
   const [eventoPanel, setEventoPanel] = useState<Evento | null>(null);
   const [tarefaEdit, setTarefaEdit] = useState<Tarefa | null>(null);
+  // Páginas PARA: id do container aberto, ou "lista" (índice no celular)
+  const [paginaId, setPaginaId] = useState<string | null>(null);
   const [prioEscopo, setPrioEscopo] = useState<EscopoPrio | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -130,8 +133,9 @@ export default function AppShell() {
       listInbox(),
       listTarefas(),
       sequenciaCheck(),
-      listEventos(hoje, somaDias(hoje, 1)),
-      listEventos(weekStart, somaDias(weekStart, 7)),
+      // janela estendida para trás: eventos de dia inteiro longos (férias) começam antes
+      listEventos(somaDias(hoje, -14), somaDias(hoje, 1)),
+      listEventos(somaDias(weekStart, -14), somaDias(weekStart, 7)),
       listPrioridades("dia", hoje),
       listPrioridades("semana", weekStart),
       revisaoDaSemanaFeita(),
@@ -463,7 +467,7 @@ export default function AppShell() {
     }
     await refresh();
     setNotaAbrir(id);
-    setView("notas");
+    irParaView("notas");
     showToast("Nota criada a partir do evento ✎ — expressar é o E do CODE");
   }, [session, eventoPanel, refresh, showToast]);
 
@@ -489,16 +493,22 @@ export default function AppShell() {
     showToast("Você saiu — de volta ao modo demonstração");
   }, [showToast]);
 
+  // Trocar de visão fecha a página PARA aberta
+  const irParaView = useCallback((v: ViewId) => {
+    setPaginaId(null);
+    setView(v);
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       const match = VIEWS.find((v) => v.key === e.key);
-      if (match) setView(match.id);
+      if (match) irParaView(match.id);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  }, [irParaView]);
 
   const inboxCount = session ? inboxItems.length : demoInbox.length;
   const hoje = hojeISO();
@@ -536,12 +546,13 @@ export default function AppShell() {
         userEmail={session?.user.email ?? null}
         containers={session ? containers : null}
         tarefas={tarefas}
-        onToday={() => setView("dia")}
-        onTasks={() => setView("tarefas")}
-        onNotes={() => setView("notas")}
+        onToday={() => irParaView("dia")}
+        onTasks={() => irParaView("tarefas")}
+        onNotes={() => irParaView("notas")}
         onSync={() => (session ? syncAgenda() : showToast("Entre com Google para trazer a sua agenda"))}
         onInbox={openTriage}
         onNew={(kind) => (session ? setNewKind(kind) : showToast("Entre para criar os seus de verdade"))}
+        onOpenContainer={setPaginaId}
         onWeekly={openWeekly}
         weeklyDone={revisaoFeita}
         onLogout={logout}
@@ -553,13 +564,32 @@ export default function AppShell() {
           title={TITLES[view]}
           containers={containers}
           pessoas={pessoas}
-          onView={setView}
+          onView={irParaView}
           onToggleSidebar={() => setCollapsed((c) => !c)}
           onCapture={capture}
         />
         <div className="canvas">
           {!session && <AuthBar onToast={showToast} />}
-          {view === "dia" ? (
+          {session && paginaId === "lista" ? (
+            <ParaLista containers={containers} tarefas={tarefas} onOpen={setPaginaId} />
+          ) : session && paginaId && containers.some((c) => c.id === paginaId) ? (
+            <ParaPage
+              key={paginaId}
+              userId={session.user.id}
+              container={containers.find((c) => c.id === paginaId)!}
+              tarefas={tarefas}
+              notas={notas}
+              onBack={() => setPaginaId(null)}
+              onConclude={conclude}
+              onEditTarefa={setTarefaEdit}
+              onAbrirNota={(id) => {
+                setNotaAbrir(id);
+                irParaView("notas");
+              }}
+              onChanged={refresh}
+              onToast={showToast}
+            />
+          ) : view === "dia" ? (
             <DayView
               key="dia"
               logged={!!session}
@@ -602,7 +632,7 @@ export default function AppShell() {
               tarefas={tarefas}
               onDia={(dia) => {
                 setWeekStart(segundaDe(dia));
-                setView("semana");
+                irParaView("semana");
               }}
               onToast={showToast}
             />
@@ -613,7 +643,7 @@ export default function AppShell() {
               tarefas={tarefas}
               onDia={(dia) => {
                 setWeekStart(segundaDe(dia));
-                setView("semana");
+                irParaView("semana");
               }}
             />
           ) : view === "tarefas" ? (
@@ -645,7 +675,7 @@ export default function AppShell() {
               pessoas={pessoas}
               onAbrirNota={(id) => {
                 setNotaAbrir(id);
-                setView("notas");
+                irParaView("notas");
               }}
               onToast={showToast}
             />
@@ -657,10 +687,10 @@ export default function AppShell() {
       <nav className="bottomnav" aria-label="Navegação">
         {(
           [
-            ["dia", "◉", "Hoje", () => setView("dia")],
-            ["tarefas", "☑", "Tarefas", () => setView("tarefas")],
+            ["dia", "◉", "Hoje", () => irParaView("dia")],
+            ["tarefas", "☑", "Tarefas", () => irParaView("tarefas")],
             ["inbox", "↓", "Inbox", openTriage],
-            ["projetos", "▶", "Projetos", () => showToast("Páginas PARA — em construção nesta fase")],
+            ["projetos", "▶", "Projetos", () => (session ? setPaginaId("lista") : showToast("Entre para ver os seus"))],
             ["arquivo", "▤", "Arquivo", () => showToast("Arquivo — em construção nesta fase")],
           ] as [string, string, string, () => void][]
         ).map(([id, ico, label, fn]) => (
@@ -688,7 +718,6 @@ export default function AppShell() {
           items={inboxItems}
           containers={containers}
           tarefasSemHorario={tarefasSemHorario}
-          eventosHoje={eventosHoje}
           onClose={() => setTriaging(false)}
           onChanged={refresh}
           onToast={showToast}
@@ -708,7 +737,7 @@ export default function AppShell() {
           onAbrirNota={(id) => {
             setEventoPanel(null);
             setNotaAbrir(id);
-            setView("notas");
+            irParaView("notas");
           }}
           onClose={() => setEventoPanel(null)}
         />

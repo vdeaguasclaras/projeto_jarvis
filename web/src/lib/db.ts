@@ -3,7 +3,15 @@ import { supabase } from "./supabase";
 /** Camada de dados do Kairós — todas as tabelas kairos_* com RLS por usuário. */
 
 export type Kind = "projeto" | "area" | "recurso";
-export type Container = { id: string; kind: Kind; nome: string; emoji: string | null };
+export type Container = {
+  id: string;
+  kind: Kind;
+  nome: string;
+  emoji: string | null;
+  descricao: string | null;
+  objetivo: string | null;
+  prazo: string | null;
+};
 export type Pessoa = { id: string; nome: string };
 export type InboxItem = { id: string; texto: string };
 export type TarefaStatus = "a_fazer" | "em_andamento" | "em_espera" | "concluida" | "algum_dia";
@@ -30,6 +38,7 @@ export type Evento = {
   fim: string;
   origem: EventoOrigem;
   container_id: string | null;
+  dia_inteiro: boolean;
 };
 export type Prioridade = { id: string; tarefa_id: string; ordem: number };
 export type EscopoPrio = "dia" | "semana";
@@ -75,6 +84,17 @@ export function segundaDe(dataISO: string): string {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
+/** Data local (YYYY-MM-DD) de um timestamp. */
+export function dataLocalDe(ts: string): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** O evento de dia inteiro cobre esta data? (fim é exclusivo, padrão do Google) */
+export function cobreDia(e: Evento, dataISO: string): boolean {
+  return e.dia_inteiro && dataISO >= dataLocalDe(e.inicio) && dataISO < dataLocalDe(e.fim);
+}
+
 /** Soma dias a uma data ISO (aceita negativos). */
 export function somaDias(dataISO: string, dias: number): string {
   const [a, m, d] = dataISO.split("-").map(Number);
@@ -86,7 +106,7 @@ export async function listContainers(): Promise<Container[]> {
   if (!supabase) return [];
   const { data } = await supabase
     .from("kairos_containers")
-    .select("id, kind, nome, emoji")
+    .select("id, kind, nome, emoji, descricao, objetivo, prazo")
     .is("arquivado_em", null)
     .order("criado_em");
   return (data as Container[]) ?? [];
@@ -102,9 +122,29 @@ export async function createContainer(
   const { data, error } = await supabase
     .from("kairos_containers")
     .insert({ user_id: userId, kind, nome, emoji: emoji ?? null })
-    .select("id, kind, nome, emoji")
+    .select("id, kind, nome, emoji, descricao, objetivo, prazo")
     .single();
   return error ? null : (data as Container);
+}
+
+/** Edição da página PARA (nome, emoji, descrição, objetivo, prazo). */
+export async function atualizarContainer(
+  id: string,
+  campos: { nome?: string; emoji?: string | null; descricao?: string | null; objetivo?: string | null; prazo?: string | null },
+): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase.from("kairos_containers").update(campos).eq("id", id);
+  return error ? error.message : null;
+}
+
+/** Arquivar tira da sidebar e das listas; nada é apagado (PARA: Archives). */
+export async function arquivarContainer(id: string): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase
+    .from("kairos_containers")
+    .update({ arquivado_em: new Date().toISOString() })
+    .eq("id", id);
+  return error ? error.message : null;
 }
 
 export async function listPessoas(): Promise<Pessoa[]> {
@@ -326,7 +366,7 @@ export async function listEventos(deISO: string, ateISO: string): Promise<Evento
   const ate = new Date(`${ateISO}T00:00`).toISOString();
   const { data } = await supabase
     .from("kairos_eventos")
-    .select("id, titulo, inicio, fim, origem, container_id")
+    .select("id, titulo, inicio, fim, origem, container_id, dia_inteiro")
     .gte("inicio", de)
     .lt("inicio", ate)
     .order("inicio");

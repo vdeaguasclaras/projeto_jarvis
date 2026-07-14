@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { hojeISO, listEventos, segundaDe, somaDias, type Evento, type Tarefa } from "@/lib/db";
+import { cobreDia, hojeISO, listEventos, segundaDe, somaDias, type Evento, type Tarefa } from "@/lib/db";
 
 /** Mês (restante do Marco 5) — grade mensal do protótipo v6 sobre dados reais:
  *  eventos + tarefas com prazo no dia; clique no dia abre a Semana correspondente. */
@@ -70,7 +70,9 @@ export default function MonthView({ logged, tarefas, onDia, onToast }: Props) {
 
   type Item = { titulo: string; classe: string };
   const itensDe = (dia: string): Item[] => [
-    ...eventos.filter((e) => dataLocal(e.inicio) === dia).map((e) => ({ titulo: e.titulo, classe: "" })),
+    ...eventos
+      .filter((e) => (e.dia_inteiro ? cobreDia(e, dia) : dataLocal(e.inicio) === dia))
+      .map((e) => ({ titulo: e.titulo, classe: "" })),
     ...tarefas
       .filter((t) => t.prazo === dia && t.status !== "algum_dia")
       .map((t) => ({ titulo: t.titulo, classe: t.status === "concluida" ? "task done" : "task" })),

@@ -36,13 +36,17 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Próximos passos (na ordem)
 
-1. Feedback do Raul sobre a 1ª rodada de refino (docs/14) — em especial o sync multiagendas.
-2. Páginas PARA (projeto/área/recurso com objetivos, tarefas e notas vinculadas — o protótipo define).
-3. OAuth Microsoft + Outlook (fecha a Fase 2), quando o Raul criar as credenciais na Azure (docs/11).
+1. Feedback do Raul sobre a 2ª rodada (docs/15): check redesenhado, dia inteiro, páginas PARA.
+2. Candidatos: renovação do token Google sem relogar (Edge Function), Web Push com app fechado,
+   apertar políticas `jim_*` antes de compartilhar, gamificação plena / auto-agendamento sugerido.
+3. **OAuth Microsoft/Outlook: ADIADO por decisão do Raul (14/07)** — não implementar por ora.
 
 Feitos: Marcos 1–7 completos (login Google incluído), revisão semanal (wizard), Mês/Ano, importador do
 Todoist (migração 0004), Fase 3 completa (Notas + Grafo, migração 0005), **Fase 2 Google** (sync de
 TODAS as agendas visíveis, espelho idempotente `google_id = agenda/evento`, migração 0006; Google é a
 fonte da verdade; `provider_token` vale ~1h por login) e a **1ª rodada de refino do uso real** (docs/14):
 painel lateral de evento, check do dia com escolha de item + agendamento do dia, captura com data/hora
-vira tarefa agendada, filtros nas Tarefas, recorrência (migração 0007), rolagem corrigida.
+vira tarefa agendada, filtros nas Tarefas, recorrência (migração 0007), rolagem corrigida. **2ª rodada**
+(docs/15): check do dia com dia/hora/grupo por tarefa, eventos de dia inteiro (migração 0008, faixa
+"o dia todo"), **páginas PARA** (descrição/objetivo editáveis, progresso, tarefas, notas, arquivar,
+lista no celular).

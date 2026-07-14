@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { somaDias, type Evento, type Tarefa } from "@/lib/db";
+import { cobreDia, somaDias, type Evento, type Tarefa } from "@/lib/db";
 import TimeGrid, { arrasteToque, blocoDeEvento, blocoDeTarefa, hhmm, type Bloco, type DropInfo } from "@/components/TimeGrid";
 import PrioRow, { type PrioItem } from "@/components/PrioRow";
 
@@ -76,9 +76,15 @@ export default function WeekView({
   const [faixa, sub] = rotulo(weekStart);
 
   const blocos: Bloco[] = [
-    ...eventos.map(blocoDeEvento),
+    ...eventos.filter((e) => !e.dia_inteiro).map(blocoDeEvento),
     ...tarefas.map(blocoDeTarefa).filter((b): b is Bloco => b !== null),
   ].filter((b) => b.dataISO >= weekStart && b.dataISO <= fimSemana);
+
+  // Dia inteiro: um chip por dia coberto na semana
+  const WD = ["seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
+  const diaInteiro = dias.flatMap((dia, i) =>
+    eventos.filter((e) => cobreDia(e, dia)).map((e) => ({ e, rotulo: `${WD[i]} ${Number(dia.slice(8))}` })),
+  );
 
   // Bandeja: abertas sem horário — com prazo na semana, vencidas ou ainda sem prazo
   const semHorario = tarefas
@@ -102,6 +108,17 @@ export default function WeekView({
       </div>
 
       <PrioRow label="Prioridades da semana" items={prioridades} i={0.3} onDefinir={onDefinirPrio} />
+
+      {diaInteiro.length > 0 && (
+        <div className="allday stagger" style={{ ["--i" as string]: 0.35 }}>
+          <span className="plabel">O dia todo</span>
+          {diaInteiro.map(({ e, rotulo }, i) => (
+            <button key={`${e.id}-${i}`} className={`allday-chip${e.origem === "google" ? " g" : ""}`} onClick={() => onEventoClick(e.id)}>
+              <small>{rotulo}</small> {e.titulo}
+            </button>
+          ))}
+        </div>
+      )}
 
       {semHorario.length > 0 && (
         <div className={`tray stagger${trayAberta ? "" : " fechada"}`} style={{ ["--i" as string]: 0.4 }}>
