@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { DAY_EVENTS, DAY_PRIORITIES } from "@/lib/demo";
 import type { Evento, Tarefa } from "@/lib/db";
 import TimeGrid, { arrasteToque, blocoDeEvento, blocoDeTarefa, hhmm, type Bloco, type DropInfo } from "@/components/TimeGrid";
@@ -40,6 +41,7 @@ export default function DayView({
   onConcluirTarefa,
   onDefinirPrio,
 }: Props) {
+  const [trayAberta, setTrayAberta] = useState(false);
   const pct = Math.min(100, Math.round((placar.done / Math.max(placar.total, 1)) * 100));
 
   // Demo (sem login) mantém a agenda de exemplo do protótipo
@@ -126,9 +128,11 @@ export default function DayView({
       />
 
       {semHorario.length > 0 && (
-        <div className="tray stagger" style={{ ["--i" as string]: 0.7 }}>
-          <span className="plabel">Sem horário</span>
-          {semHorario.map((t) => (
+        <div className={`tray stagger${trayAberta ? "" : " fechada"}`} style={{ ["--i" as string]: 0.7 }}>
+          <button className="tray-toggle" onClick={() => setTrayAberta((v) => !v)}>
+            ☐ {semHorario.length} sem horário {trayAberta ? "▴" : "▾"}
+          </button>
+          {trayAberta && semHorario.map((t) => (
             <span
               key={t.id}
               className="traychip"
@@ -147,7 +151,9 @@ export default function DayView({
               {t.titulo}
             </span>
           ))}
-          <span className="empty-hint" style={{ margin: 0 }}>← arraste para a grade</span>
+          {trayAberta && (
+            <span className="empty-hint" style={{ margin: 0 }}>arraste para a grade — ou use o check do dia</span>
+          )}
         </div>
       )}
 

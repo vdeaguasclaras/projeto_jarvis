@@ -16,6 +16,8 @@ import TasksView from "@/components/TasksView";
 import TriageModal from "@/components/TriageModal";
 import NewContainerModal from "@/components/NewContainerModal";
 import EventoModal, { type EventoForm } from "@/components/EventoModal";
+import EventoPanel from "@/components/EventoPanel";
+import TarefaModal, { type TarefaEdicao } from "@/components/TarefaModal";
 import PrioModal from "@/components/PrioModal";
 import RevisaoModal from "@/components/RevisaoModal";
 import Pwa from "@/components/Pwa";
@@ -28,11 +30,14 @@ import { supabase } from "@/lib/supabase";
 import {
   agendarTarefa,
   atualizarEvento,
+  atualizarTarefa,
   capturar,
+  concluirTarefa,
   createContainer,
   criarEvento,
   criarNota,
   criarTarefa,
+  excluirTarefa,
   listNotas,
   definirPrioridades,
   excluirEvento,
@@ -43,7 +48,6 @@ import {
   listPessoas,
   listPrioridades,
   listTarefas,
-  mudarStatusTarefa,
   revisaoDaSemanaFeita,
   segundaDe,
   sequenciaCheck,
@@ -97,6 +101,8 @@ export default function AppShell() {
   const [revisaoFeita, setRevisaoFeita] = useState(false);
   const [newKind, setNewKind] = useState<Kind | null>(null);
   const [eventoForm, setEventoForm] = useState<EventoForm | null>(null);
+  const [eventoPanel, setEventoPanel] = useState<Evento | null>(null);
+  const [tarefaEdit, setTarefaEdit] = useState<Tarefa | null>(null);
   const [prioEscopo, setPrioEscopo] = useState<EscopoPrio | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -169,25 +175,36 @@ export default function AppShell() {
     async (text: string) => {
       const c = parseCapture(text);
       if (session) {
-        // Com #projeto ou /área reconhecidos, vira tarefa direto — a Inbox é só para o não classificado
+        // Vira tarefa direto com #projeto, /área OU data — a Inbox é só para o
+        // incompleto (sem classificação e sem prazo). Com hora, já entra na agenda.
         const alvo =
           encontraContainer(c.project, containers, ["projeto"]) ??
           encontraContainer(c.area, containers, ["area"]);
-        if (alvo) {
-          const prazo = resolveDataCaptura(c.date);
+        const prazo = resolveDataCaptura(c.date);
+        if (alvo || prazo) {
+          let agendada: { agendada_inicio: string; agendada_fim: string } | undefined;
+          if (prazo && c.time) {
+            const m = c.time.match(/^(\d{1,2})h(\d{2})?$/);
+            if (m) {
+              const h = Number(m[1]) + Number(m[2] ?? 0) / 60;
+              agendada = { agendada_inicio: isoDe(prazo, h), agendada_fim: isoDe(prazo, h + 1) };
+            }
+          }
           const err = await criarTarefa(session.user.id, {
             titulo: c.title,
             status: "a_fazer",
             prazo,
-            container_id: alvo.id,
+            container_id: alvo?.id ?? null,
+            ...agendada,
           });
           if (err) {
             showToast(`Erro ao salvar: ${err}`);
             return;
           }
-          setTarefas(await listTarefas());
+          await refresh();
+          const onde = alvo ? ` em ${alvo.emoji ? alvo.emoji + " " : ""}${alvo.nome}` : "";
           showToast(
-            `Virou tarefa em ${alvo.emoji ? alvo.emoji + " " : ""}${alvo.nome}${prazo ? ` · ${c.date}` : ""} — direto, sem Inbox ✓`,
+            `Virou tarefa${onde}${prazo ? ` · ${c.date}` : ""}${agendada ? ` às ${c.time} — já na agenda 📅` : ""} — direto, sem Inbox ✓`,
           );
           return;
         }
@@ -203,7 +220,7 @@ export default function AppShell() {
         showToast(`Capturado: "${c.title.slice(0, 48)}" (só nesta aba — entre para salvar)`);
       }
     },
-    [session, containers, showToast],
+    [session, containers, refresh, showToast],
   );
 
   // ── Fase 2: sync do Google Calendar ──
@@ -213,7 +230,9 @@ export default function AppShell() {
       const r = await sincronizarGoogleAgenda(session.user.id);
       if (r.ok) {
         await refresh();
-        showToast(`Google Agenda sincronizada: ${r.importados} evento${r.importados === 1 ? "" : "s"} na janela de 67 dias ⇄`);
+        showToast(
+          `Google sincronizado: ${r.importados} evento${r.importados === 1 ? "" : "s"} de ${r.agendas} agenda${r.agendas === 1 ? "" : "s"} (janela de 67 dias) ⇄`,
+        );
       } else if (!silencioso) {
         showToast(
           r.motivo === "sem_token" || r.motivo === "expirado"
@@ -242,26 +261,69 @@ export default function AppShell() {
     setRevisando(true);
   }, [session, showToast]);
 
+  // Tarefas de hoje (ou vencidas) ainda sem horário — a etapa final do check cuida delas
+  const tarefasSemHorario = tarefas.filter(
+    (t) =>
+      (t.status === "a_fazer" || t.status === "em_andamento") &&
+      !t.agendada_inicio &&
+      t.prazo !== null &&
+      t.prazo <= hojeISO(),
+  );
+
   const openTriage = useCallback(() => {
     if (!session) {
       showToast("Entre com seu e-mail para triar a Inbox de verdade");
       return;
     }
-    if (!inboxItems.length) {
-      showToast("Inbox zero — nada para triar 🎉");
+    if (!inboxItems.length && !tarefasSemHorario.length) {
+      showToast("Inbox zero e dia com horários no lugar — nada para triar 🎉");
       return;
     }
     setTriaging(true);
-  }, [session, inboxItems.length, showToast]);
+  }, [session, inboxItems.length, tarefasSemHorario.length, showToast]);
 
   const conclude = useCallback(
     async (id: string) => {
-      await mudarStatusTarefa(id, "concluida");
+      const t = tarefas.find((x) => x.id === id);
+      if (!t || !session) return;
+      const prox = await concluirTarefa(session.user.id, t);
       setTarefas(await listTarefas());
-      showToast("Concluída ✓ +1 no placar de hoje");
+      showToast(
+        prox
+          ? `Concluída ✓ — recorrente: a próxima já nasceu para ${prox.split("-").reverse().slice(0, 2).join("/")}`
+          : "Concluída ✓ +1 no placar de hoje",
+      );
     },
-    [showToast],
+    [tarefas, session, showToast],
   );
+
+  const salvarTarefa = useCallback(
+    async (campos: TarefaEdicao) => {
+      if (!tarefaEdit) return;
+      const err = await atualizarTarefa(tarefaEdit.id, campos);
+      setTarefaEdit(null);
+      if (err) {
+        showToast(`Erro ao salvar: ${err}`);
+        return;
+      }
+      await refresh();
+      showToast(`Tarefa atualizada ✓${campos.recorrencia ? " — repete " + (campos.recorrencia === "diaria" ? "todo dia" : campos.recorrencia) : ""}`);
+    },
+    [tarefaEdit, refresh, showToast],
+  );
+
+  const apagarTarefa = useCallback(async () => {
+    if (!tarefaEdit) return;
+    if (!window.confirm(`Excluir a tarefa "${tarefaEdit.titulo}"?`)) return;
+    const err = await excluirTarefa(tarefaEdit.id);
+    setTarefaEdit(null);
+    if (err) {
+      showToast(`Erro ao excluir: ${err}`);
+      return;
+    }
+    await refresh();
+    showToast("Tarefa excluída");
+  }, [tarefaEdit, refresh, showToast]);
 
   const criarNovoContainer = useCallback(
     async (nome: string, emoji: string | null) => {
@@ -286,27 +348,42 @@ export default function AppShell() {
     setEventoForm({ titulo: "", dataISO, hIni: hora, hFim: hora + 1, container_id: null });
   }, []);
 
+  // Clique num evento abre o painel lateral (info + notas) — não a edição direta
   const abrirEvento = useCallback(
     (id: string) => {
       const ev = [...eventosHoje, ...eventosSemana].find((e) => e.id === id);
-      if (!ev) return;
-      if (ev.origem === "google") {
-        showToast(`"${ev.titulo}" vem do Google Agenda — edite lá; o sync espelha aqui ⇄`);
-        return;
-      }
-      const i = new Date(ev.inicio);
-      const f = new Date(ev.fim);
-      setEventoForm({
-        id: ev.id,
-        titulo: ev.titulo,
-        dataISO: `${i.getFullYear()}-${String(i.getMonth() + 1).padStart(2, "0")}-${String(i.getDate()).padStart(2, "0")}`,
-        hIni: i.getHours() + i.getMinutes() / 60,
-        hFim: f.getHours() + f.getMinutes() / 60,
-        container_id: ev.container_id,
-      });
+      if (ev) setEventoPanel(ev);
     },
     [eventosHoje, eventosSemana],
   );
+
+  const editarDoPainel = useCallback(() => {
+    const ev = eventoPanel;
+    if (!ev) return;
+    setEventoPanel(null);
+    const i = new Date(ev.inicio);
+    const f = new Date(ev.fim);
+    setEventoForm({
+      id: ev.id,
+      titulo: ev.titulo,
+      dataISO: `${i.getFullYear()}-${String(i.getMonth() + 1).padStart(2, "0")}-${String(i.getDate()).padStart(2, "0")}`,
+      hIni: i.getHours() + i.getMinutes() / 60,
+      hFim: f.getHours() + f.getMinutes() / 60,
+      container_id: ev.container_id,
+    });
+  }, [eventoPanel]);
+
+  const excluirDoPainel = useCallback(async () => {
+    if (!eventoPanel) return;
+    const err = await excluirEvento(eventoPanel.id);
+    setEventoPanel(null);
+    if (err) {
+      showToast(`Erro ao excluir: ${err}`);
+      return;
+    }
+    await refresh();
+    showToast("Evento excluído ✓");
+  }, [eventoPanel, refresh, showToast]);
 
   const salvarEvento = useCallback(
     async (f: EventoForm) => {
@@ -368,16 +445,18 @@ export default function AppShell() {
 
   // Regra do produto: a nota nasce do evento (vínculo é metadado, nada duplicado)
   const criarNotaDoEvento = useCallback(async () => {
-    if (!session || !eventoForm?.id) return;
-    const [a, m, d] = eventoForm.dataISO.split("-");
+    if (!session || !eventoPanel) return;
+    const i = new Date(eventoPanel.inicio);
+    const d = String(i.getDate()).padStart(2, "0");
+    const m = String(i.getMonth() + 1).padStart(2, "0");
     const { id, err } = await criarNota(
       session.user.id,
-      `${eventoForm.titulo} · ${d}/${m}/${a}`,
-      `Nota do evento **${eventoForm.titulo}** (${d}/${m}).\n\n`,
-      eventoForm.container_id,
-      eventoForm.id,
+      `${eventoPanel.titulo} · ${d}/${m}/${i.getFullYear()}`,
+      `Nota do evento **${eventoPanel.titulo}** (${d}/${m}).\n\n`,
+      eventoPanel.container_id,
+      eventoPanel.id,
     );
-    setEventoForm(null);
+    setEventoPanel(null);
     if (err || !id) {
       showToast(`Erro ao criar a nota: ${err}`);
       return;
@@ -386,7 +465,7 @@ export default function AppShell() {
     setNotaAbrir(id);
     setView("notas");
     showToast("Nota criada a partir do evento ✎ — expressar é o E do CODE");
-  }, [session, eventoForm, refresh, showToast]);
+  }, [session, eventoPanel, refresh, showToast]);
 
   const salvarPrioridades = useCallback(
     async (ids: string[]) => {
@@ -544,6 +623,7 @@ export default function AppShell() {
               containers={containers}
               logged={!!session}
               onConclude={conclude}
+              onEdit={setTarefaEdit}
               onToast={showToast}
             />
           ) : view === "notas" ? (
@@ -607,6 +687,8 @@ export default function AppShell() {
           userId={session.user.id}
           items={inboxItems}
           containers={containers}
+          tarefasSemHorario={tarefasSemHorario}
+          eventosHoje={eventosHoje}
           onClose={() => setTriaging(false)}
           onChanged={refresh}
           onToast={showToast}
@@ -615,13 +697,37 @@ export default function AppShell() {
       {newKind && (
         <NewContainerModal kind={newKind} onCreate={criarNovoContainer} onClose={() => setNewKind(null)} />
       )}
+      {eventoPanel && session && (
+        <EventoPanel
+          evento={eventoPanel}
+          containers={containers}
+          notas={notas}
+          onEditar={editarDoPainel}
+          onExcluir={excluirDoPainel}
+          onNovaNota={criarNotaDoEvento}
+          onAbrirNota={(id) => {
+            setEventoPanel(null);
+            setNotaAbrir(id);
+            setView("notas");
+          }}
+          onClose={() => setEventoPanel(null)}
+        />
+      )}
+      {tarefaEdit && session && (
+        <TarefaModal
+          tarefa={tarefaEdit}
+          containers={containers}
+          onSave={salvarTarefa}
+          onDelete={apagarTarefa}
+          onClose={() => setTarefaEdit(null)}
+        />
+      )}
       {eventoForm && session && (
         <EventoModal
           inicial={eventoForm}
           containers={containers}
           onSave={salvarEvento}
           onDelete={eventoForm.id ? apagarEvento : undefined}
-          onNota={eventoForm.id ? criarNotaDoEvento : undefined}
           onClose={() => setEventoForm(null)}
         />
       )}

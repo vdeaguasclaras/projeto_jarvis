@@ -7,6 +7,7 @@ export type Container = { id: string; kind: Kind; nome: string; emoji: string | 
 export type Pessoa = { id: string; nome: string };
 export type InboxItem = { id: string; texto: string };
 export type TarefaStatus = "a_fazer" | "em_andamento" | "em_espera" | "concluida" | "algum_dia";
+export type Recorrencia = "diaria" | "semanal" | "quinzenal" | "mensal";
 export type Tarefa = {
   id: string;
   titulo: string;
@@ -18,6 +19,8 @@ export type Tarefa = {
   agendada_inicio: string | null;
   agendada_fim: string | null;
   duracao_min: number | null;
+  recorrencia: Recorrencia | null;
+  recorre_ate: string | null;
 };
 export type EventoOrigem = "local" | "google" | "outlook";
 export type Evento = {
@@ -142,7 +145,9 @@ export async function listTarefas(): Promise<Tarefa[]> {
   if (!supabase) return [];
   const { data } = await supabase
     .from("kairos_tarefas")
-    .select("id, titulo, status, prazo, container_id, criada_em, concluida_em, agendada_inicio, agendada_fim, duracao_min")
+    .select(
+      "id, titulo, status, prazo, container_id, criada_em, concluida_em, agendada_inicio, agendada_fim, duracao_min, recorrencia, recorre_ate",
+    )
     .order("criada_em", { ascending: false });
   return (data as Tarefa[]) ?? [];
 }
@@ -157,6 +162,8 @@ export async function criarTarefa(
     responsavel_id?: string | null;
     descricao?: string | null;
     nota_origem_id?: string | null;
+    agendada_inicio?: string | null;
+    agendada_fim?: string | null;
     concluida?: boolean;
   },
 ): Promise<string | null> {
@@ -170,6 +177,8 @@ export async function criarTarefa(
     responsavel_id: campos.responsavel_id ?? null,
     descricao: campos.descricao ?? null,
     nota_origem_id: campos.nota_origem_id ?? null,
+    agendada_inicio: campos.agendada_inicio ?? null,
+    agendada_fim: campos.agendada_fim ?? null,
     concluida_em: campos.concluida ? new Date().toISOString() : null,
   });
   return error ? error.message : null;
@@ -181,6 +190,62 @@ export async function mudarStatusTarefa(id: string, status: TarefaStatus): Promi
     .from("kairos_tarefas")
     .update({ status, concluida_em: status === "concluida" ? new Date().toISOString() : null })
     .eq("id", id);
+}
+
+/** Edição geral da tarefa (modal de tarefa). */
+export async function atualizarTarefa(
+  id: string,
+  campos: {
+    titulo?: string;
+    prazo?: string | null;
+    container_id?: string | null;
+    status?: TarefaStatus;
+    recorrencia?: Recorrencia | null;
+    recorre_ate?: string | null;
+  },
+): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase.from("kairos_tarefas").update(campos).eq("id", id);
+  return error ? error.message : null;
+}
+
+export async function excluirTarefa(id: string): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase.from("kairos_tarefas").delete().eq("id", id);
+  return error ? error.message : null;
+}
+
+/** Próxima data de uma recorrência a partir do prazo atual. */
+export function proximaOcorrencia(prazoISO: string, rec: Recorrencia): string {
+  if (rec === "mensal") {
+    const [a, m, d] = prazoISO.split("-").map(Number);
+    const alvo = new Date(a, m, 1); // mês seguinte
+    const ultimo = new Date(a, m + 1, 0).getDate();
+    alvo.setDate(Math.min(d, ultimo));
+    return `${alvo.getFullYear()}-${String(alvo.getMonth() + 1).padStart(2, "0")}-${String(alvo.getDate()).padStart(2, "0")}`;
+  }
+  return somaDias(prazoISO, rec === "diaria" ? 1 : rec === "semanal" ? 7 : 14);
+}
+
+/** Conclui a tarefa; se for recorrente, cria a próxima ocorrência (até recorre_ate).
+ *  Devolve a data da próxima ocorrência criada, ou null. */
+export async function concluirTarefa(userId: string, t: Tarefa): Promise<string | null> {
+  await mudarStatusTarefa(t.id, "concluida");
+  if (!supabase || !t.recorrencia) return null;
+  const base = t.prazo ?? hojeISO();
+  const prox = proximaOcorrencia(base, t.recorrencia);
+  if (t.recorre_ate && prox > t.recorre_ate) return null;
+  await supabase.from("kairos_tarefas").insert({
+    user_id: userId,
+    titulo: t.titulo,
+    status: "a_fazer",
+    prazo: prox,
+    container_id: t.container_id,
+    duracao_min: t.duracao_min,
+    recorrencia: t.recorrencia,
+    recorre_ate: t.recorre_ate,
+  });
+  return prox;
 }
 
 export async function criarPessoa(userId: string, nome: string): Promise<string | null> {

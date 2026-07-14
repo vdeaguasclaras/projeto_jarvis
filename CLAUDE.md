@@ -36,12 +36,13 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Próximos passos (na ordem)
 
-1. Teste real do login Google + sync da agenda pelo Raul (checklist em docs/13).
+1. Feedback do Raul sobre a 1ª rodada de refino (docs/14) — em especial o sync multiagendas.
 2. Páginas PARA (projeto/área/recurso com objetivos, tarefas e notas vinculadas — o protótipo define).
 3. OAuth Microsoft + Outlook (fecha a Fase 2), quando o Raul criar as credenciais na Azure (docs/11).
-4. Refino conforme o uso real do Raul.
 
-Feitos: Marcos 1–7 completos (login Google incluído), revisão semanal, Mês/Ano, importador do Todoist
-(migração 0004), Fase 3 completa (Notas Zettelkasten + Grafo, migração 0005) e **Fase 2 Google**:
-sync unidirecional do Google Calendar sem backend (espelho idempotente por `google_id`, migração 0006;
-Google é a fonte da verdade; `provider_token` vale ~1h por login). Ver docs/09–13.
+Feitos: Marcos 1–7 completos (login Google incluído), revisão semanal (wizard), Mês/Ano, importador do
+Todoist (migração 0004), Fase 3 completa (Notas + Grafo, migração 0005), **Fase 2 Google** (sync de
+TODAS as agendas visíveis, espelho idempotente `google_id = agenda/evento`, migração 0006; Google é a
+fonte da verdade; `provider_token` vale ~1h por login) e a **1ª rodada de refino do uso real** (docs/14):
+painel lateral de evento, check do dia com escolha de item + agendamento do dia, captura com data/hora
+vira tarefa agendada, filtros nas Tarefas, recorrência (migração 0007), rolagem corrigida.

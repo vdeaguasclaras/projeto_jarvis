@@ -12,7 +12,7 @@ import { supabase } from "./supabase";
  *  o renova sozinho; expirou, o app pede para entrar com Google de novo. */
 
 export type ResultadoSync =
-  | { ok: true; importados: number; removidos: number }
+  | { ok: true; importados: number; removidos: number; agendas: number }
   | { ok: false; motivo: "sem_token" | "expirado" | "api_desligada" | "erro"; detalhe?: string };
 
 const JANELA_ANTES_DIAS = 7;
@@ -26,6 +26,23 @@ type GEvento = {
   end?: { dateTime?: string; date?: string };
 };
 
+type GAgenda = { id: string; summary?: string; selected?: boolean };
+
+async function gFetch(token: string, url: string): Promise<{ ok: true; json: unknown } | { ok: false; r: ResultadoSync }> {
+  let resp: Response;
+  try {
+    resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  } catch (e) {
+    return { ok: false, r: { ok: false, motivo: "erro", detalhe: String(e) } };
+  }
+  if (resp.status === 401) return { ok: false, r: { ok: false, motivo: "expirado" } };
+  if (resp.status === 403) return { ok: false, r: { ok: false, motivo: "api_desligada" } };
+  if (!resp.ok) return { ok: false, r: { ok: false, motivo: "erro", detalhe: `HTTP ${resp.status}` } };
+  return { ok: true, json: await resp.json() };
+}
+
+/** Importa TODAS as agendas visíveis da conta (ex.: pessoal + "Marista"),
+ *  não só a principal. google_id = "agenda/evento" para não colidir. */
 export async function sincronizarGoogleAgenda(userId: string): Promise<ResultadoSync> {
   if (!supabase) return { ok: false, motivo: "erro", detalhe: "sem banco" };
   const { data } = await supabase.auth.getSession();
@@ -38,57 +55,55 @@ export async function sincronizarGoogleAgenda(userId: string): Promise<Resultado
   const ate = new Date();
   ate.setDate(ate.getDate() + JANELA_DEPOIS_DIAS);
 
-  const url =
-    "https://www.googleapis.com/calendar/v3/calendars/primary/events" +
-    `?timeMin=${encodeURIComponent(de.toISOString())}` +
-    `&timeMax=${encodeURIComponent(ate.toISOString())}` +
-    "&singleEvents=true&orderBy=startTime&maxResults=250";
+  // 1 · todas as agendas da conta (as marcadas como visíveis no Google)
+  const rCal = await gFetch(token, "https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=50");
+  if (!rCal.ok) return rCal.r;
+  const agendas = ((rCal.json as { items?: GAgenda[] }).items ?? []).filter((c) => c.id && c.selected !== false);
 
-  let resp: Response;
-  try {
-    resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  } catch (e) {
-    return { ok: false, motivo: "erro", detalhe: String(e) };
-  }
-  if (resp.status === 401) return { ok: false, motivo: "expirado" };
-  if (resp.status === 403) return { ok: false, motivo: "api_desligada" };
-  if (!resp.ok) return { ok: false, motivo: "erro", detalhe: `HTTP ${resp.status}` };
-
-  const json = (await resp.json()) as { items?: GEvento[] };
-  // Só eventos com horário (dia inteiro fica para depois — não polui a grade)
-  const eventos = (json.items ?? []).filter(
-    (e) => e.status !== "cancelled" && e.id && e.start?.dateTime && e.end?.dateTime,
-  );
-
-  if (eventos.length) {
-    const { error } = await supabase.from("kairos_eventos").upsert(
-      eventos.map((e) => ({
+  // 2 · eventos de cada agenda na janela (só os com horário — dia inteiro fica para depois)
+  const linhas: { user_id: string; titulo: string; inicio: string; fim: string; origem: string; google_id: string }[] = [];
+  for (const cal of agendas) {
+    const url =
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.id)}/events` +
+      `?timeMin=${encodeURIComponent(de.toISOString())}` +
+      `&timeMax=${encodeURIComponent(ate.toISOString())}` +
+      "&singleEvents=true&orderBy=startTime&maxResults=250";
+    const r = await gFetch(token, url);
+    if (!r.ok) return r.r;
+    for (const e of (r.json as { items?: GEvento[] }).items ?? []) {
+      if (e.status === "cancelled" || !e.id || !e.start?.dateTime || !e.end?.dateTime) continue;
+      linhas.push({
         user_id: userId,
         titulo: e.summary?.trim() || "(sem título)",
-        inicio: e.start!.dateTime!,
-        fim: e.end!.dateTime!,
+        inicio: e.start.dateTime,
+        fim: e.end.dateTime,
         origem: "google",
-        google_id: e.id,
-      })),
-      { onConflict: "user_id,google_id" },
-    );
+        google_id: `${cal.id}/${e.id}`,
+      });
+    }
+  }
+
+  // 3 · espelho idempotente
+  if (linhas.length) {
+    const { error } = await supabase.from("kairos_eventos").upsert(linhas, { onConflict: "user_id,google_id" });
     if (error) return { ok: false, motivo: "erro", detalhe: error.message };
   }
 
-  // Remove da janela os espelhos cujo evento sumiu (cancelado/movido) no Google
+  // 4 · remove da janela os espelhos cujo evento sumiu no Google
+  //     (inclui os google_id no formato antigo, sem o prefixo da agenda)
   let del = supabase
     .from("kairos_eventos")
     .delete({ count: "exact" })
     .eq("origem", "google")
     .gte("inicio", de.toISOString())
     .lt("inicio", ate.toISOString());
-  if (eventos.length) {
-    del = del.not("google_id", "in", `(${eventos.map((e) => `"${e.id}"`).join(",")})`);
+  if (linhas.length) {
+    del = del.not("google_id", "in", `(${linhas.map((l) => `"${l.google_id}"`).join(",")})`);
   }
   const { count, error: errDel } = await del;
   if (errDel) return { ok: false, motivo: "erro", detalhe: errDel.message };
 
-  return { ok: true, importados: eventos.length, removidos: count ?? 0 };
+  return { ok: true, importados: linhas.length, removidos: count ?? 0, agendas: agendas.length };
 }
 
 /** Entrar com Google já pedindo o escopo da agenda (Marco 2 + Fase 2). */
