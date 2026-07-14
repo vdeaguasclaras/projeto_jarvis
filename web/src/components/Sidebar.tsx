@@ -18,6 +18,7 @@ type Props = {
   onSync: () => void;
   onInbox: () => void;
   onNew: (kind: Kind) => void;
+  onOpenContainer: (id: string) => void;
   onWeekly: () => void;
   /** revisão da semana atual já registrada */
   weeklyDone: boolean;
@@ -61,7 +62,7 @@ export default function Sidebar(p: Props) {
           ))}
         {reais !== null && reais.length === 0 && <p className="side-empty">nenhum ainda — use o +</p>}
         {reais?.map((c, i) => (
-          <button key={c.id} className="nav-item" onClick={() => p.onSoon(`Página de ${c.nome}`)}>
+          <button key={c.id} className="nav-item" onClick={() => p.onOpenContainer(c.id)}>
             {c.emoji ? (
               <span className="nav-ico">{c.emoji}</span>
             ) : kind === "projeto" ? (

@@ -60,8 +60,21 @@ export async function sincronizarGoogleAgenda(userId: string): Promise<Resultado
   if (!rCal.ok) return rCal.r;
   const agendas = ((rCal.json as { items?: GAgenda[] }).items ?? []).filter((c) => c.id && c.selected !== false);
 
-  // 2 · eventos de cada agenda na janela (só os com horário — dia inteiro fica para depois)
-  const linhas: { user_id: string; titulo: string; inicio: string; fim: string; origem: string; google_id: string }[] = [];
+  // 2 · eventos de cada agenda na janela — com horário e de dia inteiro
+  const meiaNoiteISO = (dataISO: string) => {
+    const [a, m, d] = dataISO.split("-").map(Number);
+    return new Date(a, m - 1, d).toISOString(); // meia-noite LOCAL
+  };
+  type Linha = {
+    user_id: string;
+    titulo: string;
+    inicio: string;
+    fim: string;
+    origem: string;
+    google_id: string;
+    dia_inteiro: boolean;
+  };
+  const linhas: Linha[] = [];
   for (const cal of agendas) {
     const url =
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.id)}/events` +
@@ -71,15 +84,19 @@ export async function sincronizarGoogleAgenda(userId: string): Promise<Resultado
     const r = await gFetch(token, url);
     if (!r.ok) return r.r;
     for (const e of (r.json as { items?: GEvento[] }).items ?? []) {
-      if (e.status === "cancelled" || !e.id || !e.start?.dateTime || !e.end?.dateTime) continue;
-      linhas.push({
+      if (e.status === "cancelled" || !e.id) continue;
+      const base = {
         user_id: userId,
         titulo: e.summary?.trim() || "(sem título)",
-        inicio: e.start.dateTime,
-        fim: e.end.dateTime,
         origem: "google",
         google_id: `${cal.id}/${e.id}`,
-      });
+      };
+      if (e.start?.dateTime && e.end?.dateTime) {
+        linhas.push({ ...base, inicio: e.start.dateTime, fim: e.end.dateTime, dia_inteiro: false });
+      } else if (e.start?.date && e.end?.date) {
+        // dia inteiro: start.date inclusivo, end.date exclusivo (padrão do Google)
+        linhas.push({ ...base, inicio: meiaNoiteISO(e.start.date), fim: meiaNoiteISO(e.end.date), dia_inteiro: true });
+      }
     }
   }
 

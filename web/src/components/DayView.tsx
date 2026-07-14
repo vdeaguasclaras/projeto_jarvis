@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { DAY_EVENTS, DAY_PRIORITIES } from "@/lib/demo";
-import type { Evento, Tarefa } from "@/lib/db";
+import { cobreDia, type Evento, type Tarefa } from "@/lib/db";
 import TimeGrid, { arrasteToque, blocoDeEvento, blocoDeTarefa, hhmm, type Bloco, type DropInfo } from "@/components/TimeGrid";
 import PrioRow, { type PrioItem } from "@/components/PrioRow";
 
@@ -44,10 +44,13 @@ export default function DayView({
   const [trayAberta, setTrayAberta] = useState(false);
   const pct = Math.min(100, Math.round((placar.done / Math.max(placar.total, 1)) * 100));
 
+  // Eventos de dia inteiro ficam na faixa própria, fora da grade de horas
+  const diaInteiro = logged ? eventos.filter((e) => cobreDia(e, hoje)) : [];
+
   // Demo (sem login) mantém a agenda de exemplo do protótipo
   const blocos: Bloco[] = logged
     ? [
-        ...eventos.map(blocoDeEvento),
+        ...eventos.filter((e) => !e.dia_inteiro).map(blocoDeEvento),
         ...tarefas.map(blocoDeTarefa).filter((b): b is Bloco => b !== null),
       ].filter((b) => b.dataISO === hoje)
     : DAY_EVENTS.map((ev) => ({
@@ -126,6 +129,17 @@ export default function DayView({
         i={0.5}
         onDefinir={() => (logged ? onDefinirPrio() : onToast("Entre com seu e-mail para definir as suas"))}
       />
+
+      {diaInteiro.length > 0 && (
+        <div className="allday stagger" style={{ ["--i" as string]: 0.6 }}>
+          <span className="plabel">O dia todo</span>
+          {diaInteiro.map((e) => (
+            <button key={e.id} className={`allday-chip${e.origem === "google" ? " g" : ""}`} onClick={() => onEventoClick(e.id)}>
+              {e.titulo}
+            </button>
+          ))}
+        </div>
+      )}
 
       {semHorario.length > 0 && (
         <div className={`tray stagger${trayAberta ? "" : " fechada"}`} style={{ ["--i" as string]: 0.7 }}>

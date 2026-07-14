@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { hojeISO, listEventos, type Evento, type Tarefa } from "@/lib/db";
+import { dataLocalDe, hojeISO, listEventos, somaDias, type Evento, type Tarefa } from "@/lib/db";
 
 /** Ano (restante do Marco 5) — modo densidade do protótipo v6:
  *  cada linha é um mês, alinhado por dia da semana; a cor mostra a
@@ -29,8 +29,17 @@ export default function YearView({ logged, tarefas, onDia }: Props) {
     const m = new Map<string, number>();
     const soma = (iso: string) => m.set(iso, (m.get(iso) ?? 0) + 1);
     for (const e of eventos) {
-      const d = new Date(e.inicio);
-      soma(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+      if (e.dia_inteiro) {
+        // conta cada dia coberto (fim exclusivo), limitado a 60 dias por segurança
+        let dia = dataLocalDe(e.inicio);
+        const fim = dataLocalDe(e.fim);
+        for (let i = 0; dia < fim && i < 60; i++) {
+          soma(dia);
+          dia = somaDias(dia, 1);
+        }
+      } else {
+        soma(dataLocalDe(e.inicio));
+      }
     }
     for (const t of tarefas) if (t.prazo?.startsWith(`${ano}-`) && t.status !== "algum_dia") soma(t.prazo);
     return m;

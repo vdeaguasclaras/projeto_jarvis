@@ -76,6 +76,7 @@ function vagasDeFoco(semanaISO: string, eventos: Evento[]): Vaga[] {
   for (let i = 0; i < 5; i++) {
     const dataISO = somaDias(semanaISO, i);
     const ocupados = eventos
+      .filter((e) => !e.dia_inteiro)
       .filter((e) => {
         const d = new Date(e.inicio);
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` === dataISO;
@@ -195,7 +196,7 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
   // ── passo 2: vislumbre da próxima semana ──
   const vislumbre = useMemo(() => {
     const dias = Array.from({ length: 5 }, () => ({ n: 0, horas: 0 }));
-    for (const e of evProx) {
+    for (const e of evProx.filter((x) => !x.dia_inteiro)) {
       const d = new Date(e.inicio);
       const idx = (d.getDay() + 6) % 7;
       if (idx > 4) continue;

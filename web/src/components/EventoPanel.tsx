@@ -44,7 +44,18 @@ export default function EventoPanel({ evento, containers, notas, onEditar, onExc
         </div>
 
         <p className="sp-quando">
-          {DIAS_LONGOS[i.getDay()]}, {i.getDate()} {MESES[i.getMonth()]} · {fmtHora(i)} – {fmtHora(f)}
+          {evento.dia_inteiro ? (
+            <>
+              {DIAS_LONGOS[i.getDay()]}, {i.getDate()} {MESES[i.getMonth()]}
+              {f.getTime() - i.getTime() > 86400000 &&
+                ` – ${new Date(f.getTime() - 86400000).getDate()} ${MESES[new Date(f.getTime() - 86400000).getMonth()]}`}{" "}
+              · o dia todo
+            </>
+          ) : (
+            <>
+              {DIAS_LONGOS[i.getDay()]}, {i.getDate()} {MESES[i.getMonth()]} · {fmtHora(i)} – {fmtHora(f)}
+            </>
+          )}
         </p>
 
         <div className="pillrow" style={{ marginTop: 2 }}>
