@@ -577,14 +577,30 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 }
 .note-md:focus { border-color: var(--accent); outline: none; }
 .note-tag { color: var(--task); background: var(--task-soft); border-radius: 4px; padding: 0 4px; font-size: 0.9em; }
-.note { font-family: var(--serif); font-size: 14.5px; line-height: 1.62; max-width: 62ch; }
-.note p { margin: 0 0 10px; }
+/* Leitura da nota: linhas mais longas e tipografia mais generosa (pedido do Raul) */
+.note { font-family: var(--serif); font-size: 15.5px; line-height: 1.72; max-width: 88ch; }
+.note p { margin: 0 0 12px; }
 .wikilink { color: var(--accent-ink); background: var(--accent-soft); border-radius: 4px; padding: 0 3px; cursor: pointer; }
 .wikilink:hover { text-decoration: underline; }
-.note-render h1 { font-size: 20px; margin: 6px 0 10px; font-family: var(--sans); }
-.note-render h2 { font-size: 15px; margin: 16px 0 6px; font-family: var(--sans); }
-.note-render ul, .note-render ol { margin: 0 0 10px; padding-left: 20px; }
-.note-render li { margin: 3px 0; }
+.note-render h1 {
+  font-size: 23px; margin: 8px 0 12px; font-family: var(--sans); font-weight: 700;
+  letter-spacing: -0.01em; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+}
+.note-render h2 { font-size: 17.5px; margin: 22px 0 8px; font-family: var(--sans); font-weight: 650; }
+.note-render h3 { font-size: 15px; margin: 18px 0 6px; font-family: var(--sans); font-weight: 650; color: var(--ink); }
+.note-render h4 {
+  font-size: 11.5px; margin: 16px 0 4px; font-family: var(--sans); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-2);
+}
+.note-render hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
+.note-render code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.86em;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px;
+}
+.note-render s { color: var(--ink-3); }
+.note-render a { color: var(--accent-ink); }
+.note-render ul, .note-render ol { margin: 0 0 12px; padding-left: 22px; }
+.note-render li { margin: 4px 0; }
 .note-render blockquote {
   border-left: 3px solid var(--accent); margin: 10px 0; padding: 6px 12px;
   color: var(--ink-2); background: var(--surface-2); border-radius: 0 8px 8px 0;
