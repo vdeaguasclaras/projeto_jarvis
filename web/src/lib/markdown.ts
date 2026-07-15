@@ -1,5 +1,7 @@
-/** Markdown das notas — o mesmo dialeto do protótipo v6:
- *  **negrito** *itálico* ## títulos > citação - listas - [ ] encaminhamentos
+/** Markdown das notas — dialeto do protótipo v6, ampliado no uso real:
+ *  # ## ### #### títulos · **negrito** ou __negrito__ · *itálico* ou _itálico_
+ *  `código` · ~~riscado~~ · > citação · - ou * listas · 1. numeradas
+ *  - [ ] encaminhamentos · --- linha divisória
  *  [[links]] entre notas · #tags · @pessoas · [arquivo](file:...) linkado, nunca duplicado. */
 
 function esc(s: string): string {
@@ -7,14 +9,22 @@ function esc(s: string): string {
 }
 
 function mdInline(s: string): string {
-  return esc(s)
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-    .replace(/\[\[([^\]]+)\]\]/g, '<a class="wikilink" data-nota="$1">[[$1]]</a>')
-    .replace(/\[([^\]]+)\]\(file:[^)]*\)/g, '<span class="chip file">📄 $1</span>')
-    .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
-    .replace(/(^|\s)#([\wÀ-ú-]+)/g, '$1<span class="note-tag">#$2</span>')
-    .replace(/(^|\s)@([\wÀ-ú]+)/g, '$1<span class="chip person">@$2</span>');
+  return (
+    esc(s)
+      .replace(/`([^`]+)`/g, "<code>$1</code>")
+      // negrito antes do itálico; lazy para aceitar * solto dentro
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/__(.+?)__/g, "<strong>$1</strong>")
+      // itálico só entre bordas de palavra — não pega snake_case nem 2*3*4
+      .replace(/(^|[\s(])\*([^*\n]+)\*(?=$|[\s).,;:!?])/g, "$1<em>$2</em>")
+      .replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,;:!?])/g, "$1<em>$2</em>")
+      .replace(/~~(.+?)~~/g, "<s>$1</s>")
+      .replace(/\[\[([^\]]+)\]\]/g, '<a class="wikilink" data-nota="$1">[[$1]]</a>')
+      .replace(/\[([^\]]+)\]\(file:[^)]*\)/g, '<span class="chip file">📄 $1</span>')
+      .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+      .replace(/(^|\s)#([\wÀ-ú-]+)/g, '$1<span class="note-tag">#$2</span>')
+      .replace(/(^|\s)@([\wÀ-ú]+)/g, '$1<span class="chip person">@$2</span>')
+  );
 }
 
 export function mdToHtml(md: string): string {
@@ -34,17 +44,17 @@ export function mdToHtml(md: string): string {
       html += `<figure class="md-media"><div class="ph">${media[2] ? "🎬" : "🖼"} ${esc(media[1] || "mídia")}</div></figure>`;
       continue;
     }
-    if (/^- \[[ x]\] /.test(l)) {
+    if (/^[-*] \[[ x]\] /.test(l)) {
       if (list !== "ul") {
         closeList();
         html += "<ul>";
         list = "ul";
       }
-      const feita = /^- \[x\]/.test(l);
+      const feita = /^[-*] \[x\]/.test(l);
       html += `<li class="mdtask"><span class="bx">${feita ? "☑" : "☐"}</span>${mdInline(l.slice(6))}</li>`;
       continue;
     }
-    if (/^- /.test(l)) {
+    if (/^[-*] /.test(l)) {
       if (list !== "ul") {
         closeList();
         html += "<ul>";
@@ -63,8 +73,9 @@ export function mdToHtml(md: string): string {
       continue;
     }
     closeList();
-    if (l.startsWith("## ")) html += `<h2>${mdInline(l.slice(3))}</h2>`;
-    else if (l.startsWith("# ")) html += `<h1>${mdInline(l.slice(2))}</h1>`;
+    const titulo = l.match(/^(#{1,4}) (.+)/); // #tag continua tag: título exige espaço
+    if (titulo) html += `<h${titulo[1].length}>${mdInline(titulo[2])}</h${titulo[1].length}>`;
+    else if (/^(-{3,}|\*{3,}|_{3,})$/.test(l)) html += "<hr>";
     else if (l.startsWith("> ")) html += `<blockquote>${mdInline(l.slice(2))}</blockquote>`;
     else if (l) html += `<p>${mdInline(l)}</p>`;
   }
@@ -87,9 +98,9 @@ export function pessoasDe(md: string): string[] {
   return [...new Set([...md.matchAll(/(^|\s)@([\wÀ-ú]+)/g)].map((m) => m[2]))];
 }
 
-/** Encaminhamentos abertos: linhas "- [ ] …". */
+/** Encaminhamentos abertos: linhas "- [ ] …" (ou "* [ ] …"). */
 export function encaminhamentosDe(md: string): string[] {
-  return (md.match(/^- \[ \] .+$/gm) ?? []).map((l) => l.slice(6).trim());
+  return (md.match(/^[-*] \[ \] .+$/gm) ?? []).map((l) => l.slice(6).trim());
 }
 
 /** Primeira linha legível, para o snippet da lista. */

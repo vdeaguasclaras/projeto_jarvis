@@ -383,6 +383,9 @@ export default function NotesView({ logged, userId, containers, abrirId, onToast
                     ))}
                   </div>
                 )}
+                <p className="capture-hint" style={{ marginTop: 6 }}>
+                  # ## ### títulos · **negrito** · *itálico* · `código` · ~~riscado~~ · &gt; citação · - lista · - [ ] vira tarefa · [[link]] · --- divisória
+                </p>
               </>
             ) : (
               <div
