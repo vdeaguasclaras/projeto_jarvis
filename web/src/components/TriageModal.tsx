@@ -18,6 +18,7 @@ import {
 } from "@/lib/db";
 import { parseCapture } from "@/lib/parser";
 import { isoDe } from "@/components/TimeGrid";
+import CapturaImagem from "@/components/CapturaImagem";
 
 type Step = "cls" | "sim2" | "deleg" | "acao" | "nao" | "ref";
 
@@ -121,14 +122,14 @@ export default function TriageModal({
 
   const fazerAgora = async () => {
     if (!item) return;
-    await criarTarefa(userId, { titulo: parseCapture(item.texto).title, concluida: true });
+    await criarTarefa(userId, { titulo: parseCapture(item.texto).title, concluida: true, imagem_path: item.imagem_path });
     await marcarTriado(item.id);
     await next("Registrada como feita ✓ (regra dos 2 minutos) — soma no placar de hoje");
   };
 
   const fazerHoje = async () => {
     if (!item) return;
-    await criarTarefa(userId, { titulo: parseCapture(item.texto).title, status: "a_fazer", prazo: hojeISO() });
+    await criarTarefa(userId, { titulo: parseCapture(item.texto).title, status: "a_fazer", prazo: hojeISO(), imagem_path: item.imagem_path });
     await marcarTriado(item.id);
     await next("Na sua lista de hoje ✓ — veja na visão Tarefas");
   };
@@ -143,6 +144,7 @@ export default function TriageModal({
       prazo: resolvePrazo(quando),
       responsavel_id: pessoaId,
       descricao: `Delegada para @${nome}`,
+      imagem_path: item.imagem_path,
     });
     await marcarTriado(item.id);
     await next(`Delegada para @${nome} — acompanhando em "Em espera"`);
@@ -155,6 +157,7 @@ export default function TriageModal({
       status: "a_fazer",
       prazo: resolvePrazo(quando),
       container_id: containerId,
+      imagem_path: item.imagem_path,
     });
     await marcarTriado(item.id);
     const c = containers.find((x) => x.id === containerId);
@@ -296,6 +299,7 @@ export default function TriageModal({
                   )}
                   {step !== "cls" && back}
                   <div className="triage-title">{item.texto}</div>
+                  {item.imagem_path && <CapturaImagem path={item.imagem_path} />}
 
                   {step === "cls" && (
                     <>

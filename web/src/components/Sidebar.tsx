@@ -7,6 +7,9 @@ import type { Container, Kind, Tarefa } from "@/lib/db";
 
 type Props = {
   inboxCount: number;
+  /** placar do dia + sequência — o check do dia mora aqui agora (proposta B) */
+  placar: { done: number; total: number };
+  seq: number;
   activeToday: boolean;
   activeTasks: boolean;
   userEmail: string | null;
@@ -130,6 +133,33 @@ export default function Sidebar(p: Props) {
       <button className={`nav-item${p.activeToday ? " active" : ""}`} onClick={p.onToday}>
         <span className="nav-ico">◉</span> Hoje
       </button>
+
+      <div className="check-vivo">
+        <b>
+          <span
+            className="anel"
+            style={{ ["--p" as string]: Math.min(100, Math.round((p.placar.done / Math.max(p.placar.total, 1)) * 100)) }}
+          >
+            <i>
+              {p.placar.done}/{p.placar.total}
+            </i>
+          </span>
+          Check do dia
+        </b>
+        <small>
+          {p.inboxCount > 0 ? (
+            <>
+              Inbox com <b>{p.inboxCount}</b> {p.inboxCount === 1 ? "item" : "itens"}
+            </>
+          ) : (
+            <>Inbox zero</>
+          )}
+          {" · 🔥 "}
+          {p.seq > 1 ? `${p.seq} dias` : p.seq === 1 ? "feito hoje" : "começa hoje"}
+        </small>
+        <button onClick={p.onInbox}>Fazer o check</button>
+      </div>
+
       <button className="nav-item" onClick={p.onInbox}>
         <span className="nav-ico">↓</span> Inbox <span className="count">{p.inboxCount}</span>
       </button>

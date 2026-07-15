@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { isoDe } from "@/components/TimeGrid";
+import CapturaImagem from "@/components/CapturaImagem";
 import { hojeISO, type Container, type Pessoa, type Recorrencia, type Tarefa, type TarefaStatus } from "@/lib/db";
 
 /** Painel lateral da tarefa (padrão Notion, pedido do Raul): tudo o que se
@@ -136,6 +137,8 @@ export default function TarefaPanel({ tarefa, containers, pessoas, onSave, onCon
           </button>
         </div>
         {concluida && <p className="sp-quando">✓ concluída — editar reabre como “a fazer”</p>}
+
+        {tarefa.imagem_path && <CapturaImagem path={tarefa.imagem_path} alt={`Imagem de ${tarefa.titulo}`} />}
 
         <div className="flab">Horário no dia</div>
         <div className="pillrow" style={{ marginBottom: comHorario ? 8 : 0 }}>

@@ -36,12 +36,11 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Próximos passos (na ordem)
 
-1. Feedback do Raul sobre a 3ª rodada (docs/16) e **escolha do protótipo do topo do Dia**
-   (`prototipos/topo-dia-{a,b,c}.html`) para implementar no app.
-2. Se aprovado: imagem na captura (Supabase Storage) — esboçada no protótipo C.
-3. Candidatos: renovação do token Google sem relogar (Edge Function), Web Push com app fechado,
+1. Teste do Raul no topo novo (docs/17): check na sidebar (anel), FAB de captura com imagem
+   (Storage bucket `capturas`, migração 0010), faixa compacta no celular.
+2. Candidatos: renovação do token Google sem relogar (Edge Function), Web Push com app fechado,
    apertar políticas `jim_*` antes de compartilhar, gamificação plena / auto-agendamento sugerido.
-4. **OAuth Microsoft/Outlook: ADIADO por decisão do Raul (14/07)** — não implementar por ora.
+3. **OAuth Microsoft/Outlook: ADIADO por decisão do Raul (14/07)** — não implementar por ora.
 
 Feitos: Marcos 1–7 completos (login Google incluído), revisão semanal (wizard), Mês/Ano, importador do
 Todoist (migração 0004), Fase 3 completa (Notas + Grafo, migração 0005), **Fase 2 Google** (sync de

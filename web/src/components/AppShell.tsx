@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
+import CaptureFab from "@/components/CaptureFab";
 import DayView from "@/components/DayView";
 import WeekView from "@/components/WeekView";
 import MonthView from "@/components/MonthView";
@@ -55,6 +56,7 @@ import {
   segundaDe,
   sequenciaCheck,
   somaDias,
+  subirImagemCaptura,
   type Container,
   type EscopoPrio,
   type Evento,
@@ -180,9 +182,19 @@ export default function AppShell() {
   }, [session, refresh]);
 
   const capture = useCallback(
-    async (text: string) => {
+    async (text: string, imagem: File | null = null) => {
       const c = parseCapture(text);
       if (session) {
+        // imagem (proposta C): sobe para o Storage e acompanha a captura
+        let imagemPath: string | null = null;
+        if (imagem) {
+          const up = await subirImagemCaptura(session.user.id, imagem);
+          if (up.err) {
+            showToast(`Erro ao subir a imagem: ${up.err}`);
+            return;
+          }
+          imagemPath = up.path;
+        }
         // Vira tarefa direto com #projeto, /área OU data — a Inbox é só para o
         // incompleto (sem classificação e sem prazo). Com hora, já entra na agenda
         // (30 min por padrão — dá para ajustar no painel da tarefa).
@@ -212,6 +224,7 @@ export default function AppShell() {
             prazo,
             container_id: alvo?.id ?? null,
             responsavel_id: responsavelId,
+            imagem_path: imagemPath,
             ...agendada,
           });
           if (err) {
@@ -226,13 +239,13 @@ export default function AppShell() {
           );
           return;
         }
-        const err = await capturar(session.user.id, text.trim());
+        const err = await capturar(session.user.id, text.trim(), imagemPath);
         if (err) {
           showToast(`Erro ao salvar: ${err}`);
           return;
         }
         setInboxItems(await listInbox());
-        showToast(`Capturado: "${c.title.slice(0, 48)}" → Inbox ✓ (triagem no check do dia)`);
+        showToast(`Capturado: "${c.title.slice(0, 48)}"${imagemPath ? " com imagem 🖼" : ""} → Inbox ✓ (triagem no check do dia)`);
       } else {
         setDemoInbox((prev) => [...prev, c.title]);
         showToast(`Capturado: "${c.title.slice(0, 48)}" (só nesta aba — entre para salvar)`);
@@ -562,12 +575,7 @@ export default function AppShell() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      if (e.key === "c" && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        // atalho da captura — capturar sem tirar a mão do teclado
-        e.preventDefault();
-        (document.getElementById("captura-input") as HTMLInputElement | null)?.focus();
-        return;
-      }
+      // o atalho "c" da captura vive no CaptureFab
       const match = VIEWS.find((v) => v.key === e.key);
       if (match) irParaView(match.id);
     };
@@ -619,6 +627,8 @@ export default function AppShell() {
       <Pwa logged={!!session} inboxCount={inboxItems.length} />
       <Sidebar
         inboxCount={inboxCount}
+        placar={placar}
+        seq={session ? seq : 0}
         activeToday={view === "dia"}
         activeTasks={view === "tarefas"}
         userEmail={session?.user.email ?? null}
@@ -644,11 +654,8 @@ export default function AppShell() {
           view={view}
           title={TITLES[view]}
           diaAtual={diaAtual}
-          containers={containers}
-          pessoas={pessoas}
           onView={irParaView}
           onToggleSidebar={() => setCollapsed((c) => !c)}
-          onCapture={capture}
         />
         <div className="canvas">
           {!session && <AuthBar onToast={showToast} />}
@@ -882,6 +889,14 @@ export default function AppShell() {
           onToast={showToast}
         />
       )}
+
+      <CaptureFab
+        logged={!!session}
+        containers={containers}
+        pessoas={pessoas}
+        onCapture={capture}
+        onToast={showToast}
+      />
 
       <div className={`toast${toast ? " show" : ""}`} role="status">
         {toast}
