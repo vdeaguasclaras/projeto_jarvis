@@ -160,9 +160,6 @@ export default function Sidebar(p: Props) {
         <button onClick={p.onInbox}>Fazer o check</button>
       </div>
 
-      <button className="nav-item" onClick={p.onInbox}>
-        <span className="nav-ico">↓</span> Inbox <span className="count">{p.inboxCount}</span>
-      </button>
       <button className={`nav-item${p.activeTasks ? " active" : ""}`} onClick={p.onTasks}>
         <span className="nav-ico">☑</span> Tarefas{" "}
         <span className="count">{p.tarefas.filter((t) => t.status !== "concluida").length || ""}</span>
