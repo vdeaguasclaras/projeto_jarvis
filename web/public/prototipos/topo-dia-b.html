@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kairós · Topo do Dia — Proposta B: check na sidebar</title>
+<style>
+  :root {
+    --bg:#f6f7f6; --surface:#fff; --surface-2:#eff1f0; --ink:#1c2422; --ink-2:#5b6663; --ink-3:#939c98;
+    --line:#e2e6e4; --accent:#14685c; --accent-soft:#e0edea; --accent-ink:#0e5045;
+    --today:#b45309; --today-soft:#f7ead8; --task:#7c6ba8; --task-soft:#ece8f4; --google:#4285c8;
+    --shadow:0 10px 30px rgba(28,36,34,.1); --ease:cubic-bezier(.22,1,.36,1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#141817; --surface:#1b2120; --surface-2:#222927; --ink:#e7ecea; --ink-2:#a3ada9; --ink-3:#6e7975;
+      --line:#2c3432; --accent:#4cc2ae; --accent-soft:#1d3330; --accent-ink:#7fd8c8; --today:#e5a04c; --today-soft:#362a1a; --task-soft:#2a2634; }
+  }
+  * { box-sizing:border-box }
+  body { margin:0; font:14px/1.45 system-ui,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); padding:24px 28px }
+  .nota-proposta { max-width:980px; margin:0 auto 18px; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:10px; padding:12px 16px }
+  .nota-proposta h1 { font-size:16px; margin:0 0 4px }
+  .nota-proposta p { margin:0; font-size:12.5px; color:var(--ink-2) }
+  .nota-proposta nav { margin-top:8px; font-size:12px }
+  .nota-proposta a { color:var(--accent-ink) }
+
+  .mock { max-width:980px; margin:0 auto; display:grid; grid-template-columns:220px 1fr; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--surface); box-shadow:var(--shadow) }
+
+  /* ── A ideia: o check do dia MORA na sidebar (item vivo, com anel de progresso
+     e badge da inbox). O topo da página fica só com prioridades + grade. ── */
+  .sb { background:var(--surface); border-right:1px solid var(--line); padding:14px 10px; font-size:13px }
+  .sb .brand { display:flex; gap:8px; align-items:center; padding:0 6px 12px; font-weight:650 }
+  .sb .brand i { width:24px; height:24px; background:var(--accent); color:#fff; border-radius:8px; display:grid; place-items:center; font-style:normal; font-size:12px }
+  .sb .item { display:flex; align-items:center; gap:8px; padding:7px 9px; border-radius:8px; color:var(--ink-2) }
+  .sb .item.on { background:var(--accent-soft); color:var(--accent-ink); font-weight:600 }
+  .sb .item .n { margin-left:auto; font-size:11px; color:var(--ink-3) }
+  .sb .check-vivo { margin:10px 4px; padding:10px; border:1px solid var(--line); border-left:3px solid var(--today);
+    border-radius:10px; background:linear-gradient(120deg,var(--today-soft),var(--surface)) }
+  .sb .check-vivo b { font-size:12.5px; display:flex; align-items:center; gap:8px }
+  .anel { width:26px; height:26px; border-radius:50%; background:conic-gradient(var(--accent) 0 33%, var(--surface-2) 33% 100%); display:grid; place-items:center; font-size:9px; color:var(--ink-2) }
+  .anel i { width:18px; height:18px; border-radius:50%; background:var(--surface); display:grid; place-items:center; font-style:normal }
+  .sb .check-vivo small { color:var(--ink-2); display:block; margin-top:6px; font-size:11.5px }
+  .sb .check-vivo button { margin-top:8px; width:100%; background:var(--today); border:none; color:#fff; border-radius:8px; padding:5px 0; font:inherit; font-size:12px; font-weight:600; cursor:pointer }
+
+  .main { padding:16px 20px }
+  .dia-h { display:flex; align-items:baseline; gap:10px; margin-bottom:12px }
+  .dia-h h2 { margin:0; font-size:17px } .dia-h small { color:var(--ink-3) }
+  .prio-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:9px 12px; margin-bottom:10px;
+    background:var(--surface); border:1px solid var(--line); border-radius:10px }
+  .prio-row .lbl { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--today); font-weight:700 }
+  .chip { border:1px solid var(--line); border-radius:99px; padding:3px 12px; font-size:12.5px; background:var(--bg) }
+  .chip::before { content:"★ "; color:var(--today); font-size:11px }
+  .chip.done { color:var(--ink-3); text-decoration:line-through } .chip.done::before { content:"✓ "; color:var(--accent) }
+  .p-set { margin-left:auto; border:1px solid var(--line); background:none; color:var(--accent-ink); border-radius:99px; padding:2px 10px; font:inherit; font-size:11.5px; font-weight:600; cursor:pointer }
+
+  .corpo { display:grid; grid-template-columns:1fr 190px; gap:14px }
+  .grade { display:grid; grid-template-columns:44px 1fr; border-top:1px solid var(--line) }
+  .hl { font-size:10.5px; color:var(--ink-3); text-align:right; padding:0 8px 34px 0 }
+  .col { border-left:1px solid var(--line); position:relative }
+  .slot { height:46px; border-bottom:1px solid var(--line) }
+  .ev { position:absolute; left:6px; right:6px; background:var(--surface); border:1px solid var(--line);
+    border-left:3px solid var(--google); border-radius:7px; padding:3px 8px; font-size:12px }
+  .ev b { display:block } .ev span { color:var(--ink-3); font-size:10.5px }
+  .semh { border:1px dashed var(--line); border-radius:10px; padding:10px; font-size:12px; background:var(--surface); align-self:start }
+  .semh h3 { margin:0 0 8px; font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--task) }
+  .semh .t { border:1px dashed var(--task); background:var(--task-soft); border-radius:8px; padding:5px 8px; margin-bottom:6px; cursor:grab }
+</style>
+</head>
+<body>
+  <div class="nota-proposta">
+    <h1>Proposta B — “Prioridades no comando”</h1>
+    <p>O check do dia <b>sai do topo e vira um cartão vivo na sidebar</b> (anel de progresso + botão).
+       O topo do Dia fica com <b>uma linha só de prioridades</b> e a grade sobe. O “sem horário”
+       é a coluna ao lado da grade (como já implementado no app).</p>
+    <nav>Ver também: <a href="topo-dia-a.html">Proposta A — faixa única</a> · <a href="topo-dia-c.html">Proposta C — captura em destaque</a></nav>
+  </div>
+
+  <div class="mock">
+    <div class="sb">
+      <div class="brand"><i>K</i> Kairós</div>
+      <div class="item on">◉ Hoje</div>
+      <div class="check-vivo">
+        <b><span class="anel"><i>1/3</i></span> Check do dia</b>
+        <small>Inbox com <b>2</b> itens · 🔥 4 dias seguidos</small>
+        <button>Fazer o check</button>
+      </div>
+      <div class="item">↓ Inbox <span class="n">2</span></div>
+      <div class="item">☑ Tarefas <span class="n">14</span></div>
+      <div class="item">✎ Notas</div>
+      <div class="item">⟳ Revisão semanal</div>
+    </div>
+    <div class="main">
+      <div class="dia-h"><h2>terça-feira, 15 de julho</h2><small>‹ hoje ›</small></div>
+      <div class="prio-row">
+        <span class="lbl">★ Hoje</span>
+        <span class="chip">Fechar a programação do Marial</span>
+        <span class="chip">Preparação p/ reunião das 14h</span>
+        <span class="chip done">Parecer do contrato</span>
+        <button class="p-set">Ajustar →</button>
+      </div>
+      <div class="corpo">
+        <div class="grade">
+          <div><div class="hl" style="padding-top:0">8:00</div><div class="hl">9:00</div><div class="hl">10:00</div><div class="hl">11:00</div></div>
+          <div class="col">
+            <div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div>
+            <div class="ev" style="top:50px;height:42px"><b>Reunião de equipe</b><span>9:00 – 10:00</span></div>
+          </div>
+        </div>
+        <div class="semh">
+          <h3>☐ Sem horário</h3>
+          <div class="t">☐ Ligar para a escola</div>
+          <div class="t">☐ Responder e-mail da editora</div>
+          <div class="t">☐ Separar documentos</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
