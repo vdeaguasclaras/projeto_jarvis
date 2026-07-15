@@ -11,9 +11,9 @@ export type Container = {
   descricao: string | null;
   objetivo: string | null;
   prazo: string | null;
-  /** projeto pode pertencer a uma área (PARA) */
-  area_id: string | null;
 };
+/** Vínculo N:N — um projeto pode pertencer a várias áreas ao mesmo tempo. */
+export type ProjetoArea = { projeto_id: string; area_id: string };
 export type Pessoa = { id: string; nome: string };
 export type InboxItem = { id: string; texto: string; imagem_path: string | null };
 export type TarefaStatus = "a_fazer" | "em_andamento" | "em_espera" | "concluida" | "algum_dia";
@@ -118,10 +118,32 @@ export async function listContainers(): Promise<Container[]> {
   if (!supabase) return [];
   const { data } = await supabase
     .from("kairos_containers")
-    .select("id, kind, nome, emoji, descricao, objetivo, prazo, area_id")
+    .select("id, kind, nome, emoji, descricao, objetivo, prazo")
     .is("arquivado_em", null)
     .order("criado_em");
   return (data as Container[]) ?? [];
+}
+
+export async function listProjetoAreas(): Promise<ProjetoArea[]> {
+  if (!supabase) return [];
+  const { data } = await supabase.from("kairos_projeto_areas").select("projeto_id, area_id");
+  return (data as ProjetoArea[]) ?? [];
+}
+
+/** Substitui as áreas de um projeto pelas escolhidas (N:N). */
+export async function definirAreasDoProjeto(
+  userId: string,
+  projetoId: string,
+  areaIds: string[],
+): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const del = await supabase.from("kairos_projeto_areas").delete().eq("projeto_id", projetoId);
+  if (del.error) return del.error.message;
+  if (!areaIds.length) return null;
+  const { error } = await supabase
+    .from("kairos_projeto_areas")
+    .insert(areaIds.map((area_id) => ({ user_id: userId, projeto_id: projetoId, area_id })));
+  return error ? error.message : null;
 }
 
 export async function createContainer(
@@ -129,21 +151,24 @@ export async function createContainer(
   kind: Kind,
   nome: string,
   emoji?: string | null,
-  areaId?: string | null,
+  areaIds?: string[],
 ): Promise<Container | null> {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from("kairos_containers")
-    .insert({ user_id: userId, kind, nome, emoji: emoji ?? null, area_id: kind === "projeto" ? (areaId ?? null) : null })
-    .select("id, kind, nome, emoji, descricao, objetivo, prazo, area_id")
+    .insert({ user_id: userId, kind, nome, emoji: emoji ?? null })
+    .select("id, kind, nome, emoji, descricao, objetivo, prazo")
     .single();
-  return error ? null : (data as Container);
+  if (error || !data) return null;
+  const c = data as Container;
+  if (kind === "projeto" && areaIds?.length) await definirAreasDoProjeto(userId, c.id, areaIds);
+  return c;
 }
 
-/** Edição da página PARA (nome, ícone, descrição, objetivo, prazo, área do projeto). */
+/** Edição da página PARA (nome, ícone, descrição, objetivo, prazo). */
 export async function atualizarContainer(
   id: string,
-  campos: { nome?: string; emoji?: string | null; descricao?: string | null; objetivo?: string | null; prazo?: string | null; area_id?: string | null },
+  campos: { nome?: string; emoji?: string | null; descricao?: string | null; objetivo?: string | null; prazo?: string | null },
 ): Promise<string | null> {
   if (!supabase) return "sem banco";
   const { error } = await supabase.from("kairos_containers").update(campos).eq("id", id);

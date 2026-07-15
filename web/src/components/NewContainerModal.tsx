@@ -8,18 +8,18 @@ const LABEL: Record<Kind, string> = { projeto: "Novo projeto", area: "Nova área
 
 type Props = {
   kind: Kind;
-  /** áreas existentes — um projeto pode nascer já vinculado a uma */
+  /** áreas existentes — um projeto pode nascer já vinculado a várias */
   areas: Container[];
-  onCreate: (nome: string, icone: string | null, areaId: string | null) => void;
+  onCreate: (nome: string, icone: string | null, areaIds: string[]) => void;
   onClose: () => void;
 };
 
 export default function NewContainerModal({ kind, areas, onCreate, onClose }: Props) {
   const [nome, setNome] = useState("");
   const [icone, setIcone] = useState<string | null>(null);
-  const [areaId, setAreaId] = useState<string | null>(null);
+  const [areaIds, setAreaIds] = useState<string[]>([]);
   const save = () => {
-    if (nome.trim()) onCreate(nome.trim(), icone, areaId);
+    if (nome.trim()) onCreate(nome.trim(), icone, areaIds);
   };
   return (
     <>
@@ -44,16 +44,21 @@ export default function NewContainerModal({ kind, areas, onCreate, onClose }: Pr
             <IconePicker valor={icone} onChange={setIcone} />
             {kind === "projeto" && areas.length > 0 && (
               <>
-                <div className="flab">Parte de qual área? (opcional)</div>
-                <select className="tri-input" value={areaId ?? ""} onChange={(e) => setAreaId(e.target.value || null)}>
-                  <option value="">— nenhuma —</option>
+                <div className="flab">Parte de quais áreas? (opcional — pode ser mais de uma)</div>
+                <div className="pillrow">
                   {areas.map((a) => (
-                    <option key={a.id} value={a.id}>
+                    <button
+                      key={a.id}
+                      className={`pill-opt${areaIds.includes(a.id) ? " on" : ""}`}
+                      onClick={() =>
+                        setAreaIds((prev) => (prev.includes(a.id) ? prev.filter((x) => x !== a.id) : [...prev, a.id]))
+                      }
+                    >
                       {a.emoji ? `${a.emoji} ` : ""}
                       {a.nome}
-                    </option>
+                    </button>
                   ))}
-                </select>
+                </div>
               </>
             )}
             <div className="modal-foot">

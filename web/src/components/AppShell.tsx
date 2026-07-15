@@ -50,6 +50,7 @@ import {
   listInbox,
   listPessoas,
   listPrioridades,
+  listProjetoAreas,
   listTarefas,
   marcarPrioFeita,
   revisaoDaSemanaFeita,
@@ -66,6 +67,7 @@ import {
   type Pessoa,
   type PrioEscolha,
   type Prioridade,
+  type ProjetoArea,
   type Tarefa,
 } from "@/lib/db";
 
@@ -91,6 +93,7 @@ export default function AppShell() {
   const [session, setSession] = useState<Session | null>(null);
   const [demoInbox, setDemoInbox] = useState<string[]>(DEMO_INBOX);
   const [containers, setContainers] = useState<Container[]>([]);
+  const [projetoAreas, setProjetoAreas] = useState<ProjetoArea[]>([]);
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
@@ -133,8 +136,9 @@ export default function AppShell() {
 
   const refresh = useCallback(async () => {
     if (!session) return;
-    const [cs, ps, inb, ts, sq, evD, evS, pd, psem, rev, ns] = await Promise.all([
+    const [cs, pa, ps, inb, ts, sq, evD, evS, pd, psem, rev, ns] = await Promise.all([
       listContainers(),
+      listProjetoAreas(),
       listPessoas(),
       listInbox(),
       listTarefas(),
@@ -148,6 +152,7 @@ export default function AppShell() {
       listNotas(),
     ]);
     setContainers(cs);
+    setProjetoAreas(pa);
     setPessoas(ps);
     setInboxItems(inb);
     setTarefas(ts);
@@ -165,6 +170,7 @@ export default function AppShell() {
       refresh();
     } else {
       setContainers([]);
+      setProjetoAreas([]);
       setInboxItems([]);
       setTarefas([]);
       setEventosDia([]);
@@ -357,12 +363,13 @@ export default function AppShell() {
   }, [tarefaEdit, refresh, showToast]);
 
   const criarNovoContainer = useCallback(
-    async (nome: string, icone: string | null, areaId: string | null) => {
+    async (nome: string, icone: string | null, areaIds: string[]) => {
       if (!session || !newKind) return;
-      const c = await createContainer(session.user.id, newKind, nome, icone, areaId);
+      const c = await createContainer(session.user.id, newKind, nome, icone, areaIds);
       setNewKind(null);
       if (c) {
         setContainers(await listContainers());
+        setProjetoAreas(await listProjetoAreas());
         showToast(
           `${newKind === "area" ? "Área" : newKind === "projeto" ? "Projeto" : "Recurso"} ${icone ? icone + " " : ""}"${nome}" criado ✓`,
         );
@@ -667,6 +674,7 @@ export default function AppShell() {
               userId={session.user.id}
               container={containers.find((c) => c.id === paginaId)!}
               containers={containers}
+              projetoAreas={projetoAreas}
               tarefas={tarefas}
               notas={notas}
               onBack={() => setPaginaId(null)}
@@ -777,6 +785,7 @@ export default function AppShell() {
               logged={!!session}
               notas={notas}
               containers={containers}
+              projetoAreas={projetoAreas}
               pessoas={pessoas}
               onAbrirNota={(id) => {
                 setNotaAbrir(id);

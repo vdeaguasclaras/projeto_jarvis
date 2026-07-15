@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Container, Nota, Pessoa } from "@/lib/db";
+import type { Container, Nota, Pessoa, ProjetoArea } from "@/lib/db";
 import { linksDe, pessoasDe } from "@/lib/markdown";
 import { normalizar } from "@/lib/parser";
 
@@ -16,6 +16,7 @@ type Props = {
   logged: boolean;
   notas: Nota[];
   containers: Container[];
+  projetoAreas: ProjetoArea[];
   pessoas: Pessoa[];
   onAbrirNota: (id: string) => void;
   onAbrirContainer: (id: string) => void;
@@ -30,7 +31,7 @@ const COR: Record<Tipo, string> = {
   pessoa: "--today",
 };
 
-export default function GraphView({ logged, notas, containers, pessoas, onAbrirNota, onAbrirContainer, onToast }: Props) {
+export default function GraphView({ logged, notas, containers, projetoAreas, pessoas, onAbrirNota, onAbrirContainer, onToast }: Props) {
   const cvRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -68,9 +69,11 @@ export default function GraphView({ logged, notas, containers, pessoas, onAbrirN
     };
 
     for (const c of containers) addNo(`c:${c.id}`, `${c.emoji ? c.emoji + " " : ""}${c.nome}`, c.kind as Tipo);
-    // projeto pertence a uma área → aresta estrutural do PARA
-    for (const c of containers) {
-      if (c.area_id && porChave.has(`c:${c.area_id}`)) liga(porChave.get(`c:${c.id}`)!, porChave.get(`c:${c.area_id}`)!);
+    // projeto pode pertencer a várias áreas → arestas estruturais do PARA
+    for (const l of projetoAreas) {
+      const p = porChave.get(`c:${l.projeto_id}`);
+      const a = porChave.get(`c:${l.area_id}`);
+      if (p && a) liga(p, a);
     }
     for (const n of notas) addNo(`nota:${n.id}`, n.titulo, "nota");
     for (const n of notas) {
@@ -239,7 +242,7 @@ export default function GraphView({ logged, notas, containers, pessoas, onAbrirN
       cv.removeEventListener("pointerup", onUp);
       removeEventListener("resize", onResize);
     };
-  }, [logged, notas, containers, pessoas, onAbrirNota, onAbrirContainer, onToast]);
+  }, [logged, notas, containers, projetoAreas, pessoas, onAbrirNota, onAbrirContainer, onToast]);
 
   if (!logged) {
     return (
