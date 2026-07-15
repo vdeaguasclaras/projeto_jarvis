@@ -13,7 +13,8 @@ import {
   type Tarefa,
 } from "@/lib/db";
 import IconePicker from "@/components/IconePicker";
-import { snippetDe } from "@/lib/markdown";
+import { linksDe, snippetDe } from "@/lib/markdown";
+import { normalizar } from "@/lib/parser";
 
 /** Páginas PARA — projeto, área ou recurso com descrição, objetivo,
  *  progresso, tarefas do grupo e notas vinculadas (protótipo v6).
@@ -66,7 +67,12 @@ export default function ParaPage({
   const [novaTarefa, setNovaTarefa] = useState("");
 
   const hoje = hojeISO();
+  // Notas do grupo + notas que CITAM este projeto/área via [[link]] (Zettelkasten:
+  // os links estruturam) — antes só as agrupadas apareciam, feedback do Raul
   const notasDoGrupo = notas.filter((n) => n.container_id === c.id);
+  const notasQueCitam = notas.filter(
+    (n) => n.container_id !== c.id && linksDe(n.md).some((t) => normalizar(t) === normalizar(c.nome)),
+  );
 
   // Projeto ↔ áreas (N:N): as áreas deste projeto e os projetos desta área
   const areasDoProjeto =
@@ -323,8 +329,8 @@ export default function ParaPage({
 
           <div className="page-sec">
             <h3>Notas vinculadas</h3>
-            {notasDoGrupo.length === 0 && (
-              <p className="empty-hint">Nenhuma — agrupar notas é opcional; os [[links]] também estruturam.</p>
+            {notasDoGrupo.length === 0 && notasQueCitam.length === 0 && (
+              <p className="empty-hint">Nenhuma — agrupe uma nota aqui ou cite [[{c.nome}]] no texto dela.</p>
             )}
             {notasDoGrupo.map((n) => (
               <button key={n.id} className="backlink" onClick={() => onAbrirNota(n.id)}>
@@ -332,6 +338,19 @@ export default function ParaPage({
                 {snippetDe(n.md) || "— vazia —"}
               </button>
             ))}
+            {notasQueCitam.length > 0 && (
+              <>
+                <p className="empty-hint" style={{ margin: "10px 0 6px" }}>
+                  citam [[{c.nome}]] no texto:
+                </p>
+                {notasQueCitam.map((n) => (
+                  <button key={n.id} className="backlink" onClick={() => onAbrirNota(n.id)}>
+                    <b>{n.titulo}</b>
+                    {snippetDe(n.md) || "— vazia —"}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         </div>
       </div>
