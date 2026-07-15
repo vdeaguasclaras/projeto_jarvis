@@ -159,9 +159,12 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .fab {
   position: fixed; right: 24px; bottom: 24px; z-index: 60;
   width: 54px; height: 54px; border-radius: 50%; background: var(--accent); color: #fff;
-  font-size: 26px; box-shadow: var(--shadow-lg); transition: transform 0.2s var(--ease);
+  font-size: 26px; box-shadow: var(--shadow-lg);
+  transition: transform 0.2s var(--ease), right 0.28s var(--ease), opacity 0.2s;
 }
 .fab:hover { transform: scale(1.08); }
+/* Aba lateral aberta: o botão anda para o lado do painel (nada sobreposto) */
+.fab.recuado, .compositor.recuado { right: calc(min(380px, 94vw) + 20px); }
 .fab kbd {
   position: absolute; top: -6px; right: -4px; font-family: inherit; font-size: 10px;
   background: var(--ink); color: var(--bg); border-radius: 5px; padding: 0 5px; line-height: 1.5;
@@ -803,6 +806,8 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   .fab { bottom: calc(76px + env(safe-area-inset-bottom)); right: 14px; }
   .fab kbd { display: none; }
   .compositor { right: 14px; left: 14px; width: auto; bottom: calc(140px + env(safe-area-inset-bottom)); }
+  /* No celular a aba lateral ocupa quase a tela toda — o botão se esconde */
+  .fab.recuado, .compositor.recuado { right: 14px; opacity: 0; pointer-events: none; transform: scale(0.6); }
   .timegrid { grid-template-columns: 40px 1fr; }
   .timegrid.week { grid-template-columns: 40px repeat(7, 1fr); }
   .weekhead { grid-template-columns: 40px repeat(7, 1fr); }
