@@ -901,6 +901,7 @@ export default function AppShell() {
 
       <CaptureFab
         logged={!!session}
+        recuar={!!(eventoPanel || eventoForm || tarefaEdit)}
         containers={containers}
         pessoas={pessoas}
         onCapture={capture}

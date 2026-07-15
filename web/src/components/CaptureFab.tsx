@@ -13,13 +13,15 @@ type Sugestao = { insere: string; mostra: string; tipo: string };
 
 type Props = {
   logged: boolean;
+  /** uma aba lateral está aberta — o botão desliza para o lado (não sobrepor o Salvar) */
+  recuar: boolean;
   containers: Container[];
   pessoas: Pessoa[];
   onCapture: (texto: string, imagem: File | null) => Promise<void> | void;
   onToast: (msg: string) => void;
 };
 
-export default function CaptureFab({ logged, containers, pessoas, onCapture, onToast }: Props) {
+export default function CaptureFab({ logged, recuar, containers, pessoas, onCapture, onToast }: Props) {
   const [aberto, setAberto] = useState(false);
   const [text, setText] = useState("");
   const [imagem, setImagem] = useState<File | null>(null);
@@ -119,7 +121,7 @@ export default function CaptureFab({ logged, containers, pessoas, onCapture, onT
     <>
       {aberto && <div className="scrim show" style={{ background: "transparent", backdropFilter: "none" }} onClick={fechar} />}
       <div
-        className={`compositor${aberto ? " aberto" : ""}`}
+        className={`compositor${aberto ? " aberto" : ""}${recuar ? " recuado" : ""}`}
         role="dialog"
         aria-label="Capturar"
         onDragOver={(e) => {
@@ -230,7 +232,7 @@ export default function CaptureFab({ logged, containers, pessoas, onCapture, onT
         {arrastando && <div className="comp-drop">solte a imagem aqui</div>}
       </div>
       <button
-        className="fab"
+        className={`fab${recuar ? " recuado" : ""}`}
         aria-label="Capturar (atalho: c)"
         title="Capturar (atalho: c)"
         onClick={() => {
