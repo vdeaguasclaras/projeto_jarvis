@@ -18,6 +18,7 @@ type Props = {
   containers: Container[];
   pessoas: Pessoa[];
   onAbrirNota: (id: string) => void;
+  onAbrirContainer: (id: string) => void;
   onToast: (msg: string) => void;
 };
 
@@ -29,7 +30,7 @@ const COR: Record<Tipo, string> = {
   pessoa: "--today",
 };
 
-export default function GraphView({ logged, notas, containers, pessoas, onAbrirNota, onToast }: Props) {
+export default function GraphView({ logged, notas, containers, pessoas, onAbrirNota, onAbrirContainer, onToast }: Props) {
   const cvRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -38,7 +39,8 @@ export default function GraphView({ logged, notas, containers, pessoas, onAbrirN
     const ctx = cv?.getContext("2d");
     if (!cv || !ctx) return;
 
-    // ── monta os nós: notas + containers/pessoas conectados ──
+    // ── monta os nós: TODOS os projetos/áreas/recursos + notas + pessoas citadas.
+    //    (antes só containers ligados a notas apareciam — feedback do Raul) ──
     const nos: No[] = [];
     const porChave = new Map<string, No>();
     const addNo = (chave: string, label: string, tipo: Tipo) => {
@@ -65,6 +67,11 @@ export default function GraphView({ logged, notas, containers, pessoas, onAbrirN
       if (a !== b && !arestas.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) arestas.push([a, b]);
     };
 
+    for (const c of containers) addNo(`c:${c.id}`, `${c.emoji ? c.emoji + " " : ""}${c.nome}`, c.kind as Tipo);
+    // projeto pertence a uma área → aresta estrutural do PARA
+    for (const c of containers) {
+      if (c.area_id && porChave.has(`c:${c.area_id}`)) liga(porChave.get(`c:${c.id}`)!, porChave.get(`c:${c.area_id}`)!);
+    }
     for (const n of notas) addNo(`nota:${n.id}`, n.titulo, "nota");
     for (const n of notas) {
       const eu = porChave.get(`nota:${n.id}`)!;
@@ -203,7 +210,8 @@ export default function GraphView({ logged, notas, containers, pessoas, onAbrirN
     const onUp = (e: PointerEvent) => {
       if (dragging && downAt && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < 5) {
         if (dragging.tipo === "nota") onAbrirNota(dragging.id.slice(5));
-        else onToast(`${dragging.label} — página própria chega com as páginas PARA`);
+        else if (dragging.id.startsWith("c:")) onAbrirContainer(dragging.id.slice(2));
+        else onToast(`${dragging.label} — as pessoas ainda não têm página própria`);
       }
       dragging = null;
       downAt = null;
@@ -231,7 +239,7 @@ export default function GraphView({ logged, notas, containers, pessoas, onAbrirN
       cv.removeEventListener("pointerup", onUp);
       removeEventListener("resize", onResize);
     };
-  }, [logged, notas, containers, pessoas, onAbrirNota, onToast]);
+  }, [logged, notas, containers, pessoas, onAbrirNota, onAbrirContainer, onToast]);
 
   if (!logged) {
     return (
@@ -248,9 +256,9 @@ export default function GraphView({ logged, notas, containers, pessoas, onAbrirN
   return (
     <div className="view-in">
       <p className="year-note stagger" style={{ ["--i" as string]: 0 }}>
-        {notas.length === 0
-          ? "O grafo nasce das notas — crie a primeira em Notas e ligue com [[links]]."
-          : "Conexões entre notas, projetos, áreas, recursos e pessoas. Arraste os nós; clique numa nota para abrir."}
+        {notas.length === 0 && containers.length === 0
+          ? "O grafo nasce dos seus projetos, áreas e notas — crie e ligue com [[links]]."
+          : "Conexões entre notas, projetos, áreas, recursos e pessoas. Arraste os nós; clique para abrir a página."}
       </p>
       <div className="graphwrap stagger" style={{ ["--i" as string]: 1 }}>
         <canvas ref={cvRef} className="graphcv" />

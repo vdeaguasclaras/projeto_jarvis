@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cobreDia, somaDias, type Evento, type Tarefa } from "@/lib/db";
-import TimeGrid, { arrasteToque, blocoDeEvento, blocoDeTarefa, hhmm, type Bloco, type DropInfo } from "@/components/TimeGrid";
+import TimeGrid, { arrasteToque, blocoDeEvento, blocoDeTarefa, type Bloco, type DropInfo } from "@/components/TimeGrid";
 import PrioRow, { type PrioItem } from "@/components/PrioRow";
 
 const MESES = [
@@ -40,7 +40,11 @@ type Props = {
   onDrop: (info: DropInfo, dataISO: string, hora: number) => void;
   onEventoClick: (id: string) => void;
   onConcluirTarefa: (id: string) => void;
+  onEditTarefa: (t: Tarefa) => void;
+  onDia: (dataISO: string) => void;
   onDefinirPrio: () => void;
+  onPrioAbrir: (p: PrioItem) => void;
+  onPrioConcluir: (p: PrioItem) => void;
 };
 
 export default function WeekView({
@@ -56,7 +60,11 @@ export default function WeekView({
   onDrop,
   onEventoClick,
   onConcluirTarefa,
+  onEditTarefa,
+  onDia,
   onDefinirPrio,
+  onPrioAbrir,
+  onPrioConcluir,
 }: Props) {
   const [trayAberta, setTrayAberta] = useState(false);
   if (!logged) {
@@ -107,7 +115,15 @@ export default function WeekView({
         </span>
       </div>
 
-      <PrioRow label="Prioridades da semana" items={prioridades} i={0.3} onDefinir={onDefinirPrio} />
+      <PrioRow
+        label="Prioridades da semana"
+        items={prioridades}
+        i={0.3}
+        onDefinir={onDefinirPrio}
+        onAbrir={onPrioAbrir}
+        onConcluir={onPrioConcluir}
+        onDrop={onDrop}
+      />
 
       {diaInteiro.length > 0 && (
         <div className="allday stagger" style={{ ["--i" as string]: 0.35 }}>
@@ -133,16 +149,17 @@ export default function WeekView({
               onDragStart={(e) =>
                 e.dataTransfer.setData(
                   "application/json",
-                  JSON.stringify({ tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 60 } satisfies DropInfo),
+                  JSON.stringify({ tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 30 } satisfies DropInfo),
                 )
               }
-              onPointerDown={(e) => arrasteToque(e, { tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 60 }, t.titulo, onDrop)}
-              onClick={() => onToast("Arraste para um dia da grade — o prazo acompanha")}
+              onPointerDown={(e) => arrasteToque(e, { tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 30 }, t.titulo, onDrop)}
+              onClick={() => onEditTarefa(t)}
+              title="Clique para abrir · arraste para um dia da grade"
             >
               {t.titulo}
             </span>
           ))}
-          {trayAberta && <span className="empty-hint" style={{ margin: 0 }}>arraste para um dia — o prazo acompanha</span>}
+          {trayAberta && <span className="empty-hint" style={{ margin: 0 }}>arraste para um dia — o prazo acompanha · clique abre</span>}
         </div>
       )}
 
@@ -153,11 +170,15 @@ export default function WeekView({
         semana
         onSlotClick={onSlotClick}
         onDrop={onDrop}
-        onBlocoClick={(b) =>
-          b.tipo === "evento"
-            ? onEventoClick(b.id)
-            : onToast(b.feita ? "Já concluída ✓" : `${b.titulo} · ${hhmm(b.inicio)} — duplo clique conclui, arraste para mover`)
-        }
+        onDiaClick={onDia}
+        onBlocoClick={(b) => {
+          if (b.tipo === "evento") {
+            onEventoClick(b.id);
+            return;
+          }
+          const t = tarefas.find((x) => x.id === b.id);
+          if (t) onEditTarefa(t);
+        }}
         onBlocoDblClick={(b) => b.tipo === "tarefa" && !b.feita && onConcluirTarefa(b.id)}
       />
     </div>

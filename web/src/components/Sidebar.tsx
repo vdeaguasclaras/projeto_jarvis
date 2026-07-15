@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AREAS, PROJECTS, RESOURCES } from "@/lib/demo";
 import { LembreteCheck } from "@/components/Pwa";
 import type { Container, Kind, Tarefa } from "@/lib/db";
@@ -27,8 +28,31 @@ type Props = {
 };
 
 const DOT = ["var(--today)", "var(--accent)", "var(--task)", "var(--google)"];
+const LS_KEY = "kairos.sidebar.abertos";
 
 export default function Sidebar(p: Props) {
+  // Seções expansíveis (muitos projetos/áreas — pedido do Raul); estado lembrado.
+  const [aberto, setAberto] = useState<Record<string, boolean>>({ projeto: true, area: true, recurso: true });
+  useEffect(() => {
+    try {
+      const salvo = localStorage.getItem(LS_KEY);
+      if (salvo) setAberto((prev) => ({ ...prev, ...JSON.parse(salvo) }));
+    } catch {
+      /* primeiro uso */
+    }
+  }, []);
+  const toggleGrupo = (kind: Kind) => {
+    setAberto((prev) => {
+      const prox = { ...prev, [kind]: !prev[kind] };
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(prox));
+      } catch {
+        /* sem localStorage */
+      }
+      return prox;
+    });
+  };
+
   const toggleTheme = () => {
     const root = document.documentElement;
     const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -41,39 +65,54 @@ export default function Sidebar(p: Props) {
 
   const grupo = (kind: Kind, label: string, ico: string) => {
     const reais = p.containers?.filter((c) => c.kind === kind) ?? null;
+    const mostrando = aberto[kind] !== false;
+    const total = reais?.length ?? 0;
     return (
       <>
         <div className="para-row">
-          <span className="para-label">{label}</span>
+          <button
+            className="para-toggle"
+            aria-expanded={mostrando}
+            onClick={() => toggleGrupo(kind)}
+            title={mostrando ? "Recolher" : `Mostrar (${total})`}
+          >
+            <span className={`para-chev${mostrando ? " open" : ""}`}>›</span>
+            <span className="para-label">{label}</span>
+            {!mostrando && total > 0 && <span className="para-n">{total}</span>}
+          </button>
           <button className="para-add" aria-label={`Criar ${label.toLowerCase()}`} onClick={() => p.onNew(kind)}>
             +
           </button>
         </div>
-        {reais === null &&
-          (kind === "projeto" ? PROJECTS.map((x) => x.name) : kind === "area" ? AREAS : RESOURCES).map((nome, i) => (
-            <button key={nome} className="nav-item" onClick={() => p.onSoon(`Página de ${nome} (exemplo)`)}>
-              {kind === "projeto" ? (
-                <span className="proj-dot" style={{ background: DOT[i % DOT.length] }} />
-              ) : (
-                <span className="nav-ico">{ico}</span>
-              )}
-              {nome}
-            </button>
-          ))}
-        {reais !== null && reais.length === 0 && <p className="side-empty">nenhum ainda — use o +</p>}
-        {reais?.map((c, i) => (
-          <button key={c.id} className="nav-item" onClick={() => p.onOpenContainer(c.id)}>
-            {c.emoji ? (
-              <span className="nav-ico">{c.emoji}</span>
-            ) : kind === "projeto" ? (
-              <span className="proj-dot" style={{ background: DOT[i % DOT.length] }} />
-            ) : (
-              <span className="nav-ico">{ico}</span>
-            )}
-            {c.nome}
-            {kind === "projeto" && <span className="count">{abertas(c.id)}</span>}
-          </button>
-        ))}
+        {mostrando && (
+          <>
+            {reais === null &&
+              (kind === "projeto" ? PROJECTS.map((x) => x.name) : kind === "area" ? AREAS : RESOURCES).map((nome, i) => (
+                <button key={nome} className="nav-item" onClick={() => p.onSoon(`Página de ${nome} (exemplo)`)}>
+                  {kind === "projeto" ? (
+                    <span className="proj-dot" style={{ background: DOT[i % DOT.length] }} />
+                  ) : (
+                    <span className="nav-ico">{ico}</span>
+                  )}
+                  {nome}
+                </button>
+              ))}
+            {reais !== null && reais.length === 0 && <p className="side-empty">nenhum ainda — use o +</p>}
+            {reais?.map((c, i) => (
+              <button key={c.id} className="nav-item" onClick={() => p.onOpenContainer(c.id)}>
+                {c.emoji ? (
+                  <span className="nav-ico">{c.emoji}</span>
+                ) : kind === "projeto" ? (
+                  <span className="proj-dot" style={{ background: DOT[i % DOT.length] }} />
+                ) : (
+                  <span className="nav-ico">{ico}</span>
+                )}
+                {c.nome}
+                {kind === "projeto" && <span className="count">{abertas(c.id)}</span>}
+              </button>
+            ))}
+          </>
+        )}
       </>
     );
   };

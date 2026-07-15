@@ -10,22 +10,27 @@ import {
   type Nota,
   type Tarefa,
 } from "@/lib/db";
+import IconePicker from "@/components/IconePicker";
 import { snippetDe } from "@/lib/markdown";
 
 /** Páginas PARA — projeto, área ou recurso com descrição, objetivo,
- *  progresso, tarefas do grupo e notas vinculadas (protótipo v6). */
+ *  progresso, tarefas do grupo e notas vinculadas (protótipo v6).
+ *  3ª rodada: projeto pode pertencer a uma área (e a área lista seus projetos). */
 
 const KIND_LABEL = { projeto: "Projeto", area: "Área", recurso: "Recurso" } as const;
 
 type Props = {
   userId: string;
   container: Container;
+  /** todos os containers — área do projeto, projetos da área */
+  containers: Container[];
   tarefas: Tarefa[];
   notas: Nota[];
   onBack: () => void;
   onConclude: (id: string) => void;
   onEditTarefa: (t: Tarefa) => void;
   onAbrirNota: (id: string) => void;
+  onOpenContainer: (id: string) => void;
   onChanged: () => void;
   onToast: (msg: string) => void;
 };
@@ -33,21 +38,24 @@ type Props = {
 export default function ParaPage({
   userId,
   container: c,
+  containers,
   tarefas,
   notas,
   onBack,
   onConclude,
   onEditTarefa,
   onAbrirNota,
+  onOpenContainer,
   onChanged,
   onToast,
 }: Props) {
   const [editando, setEditando] = useState(false);
   const [fNome, setFNome] = useState(c.nome);
-  const [fEmoji, setFEmoji] = useState(c.emoji ?? "");
+  const [fEmoji, setFEmoji] = useState<string | null>(c.emoji);
   const [fDesc, setFDesc] = useState(c.descricao ?? "");
   const [fObj, setFObj] = useState(c.objetivo ?? "");
   const [fPrazo, setFPrazo] = useState(c.prazo ?? "");
+  const [fArea, setFArea] = useState<string | null>(c.area_id);
   const [novaTarefa, setNovaTarefa] = useState("");
 
   const doGrupo = tarefas.filter((t) => t.container_id === c.id);
@@ -57,14 +65,20 @@ export default function ParaPage({
   const notasDoGrupo = notas.filter((n) => n.container_id === c.id);
   const hoje = hojeISO();
 
+  // Projeto ↔ área (PARA): a área-mãe do projeto e os projetos desta área
+  const areaDoProjeto = c.kind === "projeto" && c.area_id ? containers.find((x) => x.id === c.area_id) ?? null : null;
+  const projetosDaArea = c.kind === "area" ? containers.filter((x) => x.kind === "projeto" && x.area_id === c.id) : [];
+  const areas = containers.filter((x) => x.kind === "area" && x.id !== c.id);
+
   const salvar = async () => {
     if (!fNome.trim()) return;
     const err = await atualizarContainer(c.id, {
       nome: fNome.trim(),
-      emoji: fEmoji.trim() || null,
+      emoji: fEmoji?.trim() || null,
       descricao: fDesc.trim() || null,
       objetivo: fObj.trim() || null,
       prazo: c.kind === "projeto" ? fPrazo || null : undefined,
+      area_id: c.kind === "projeto" ? fArea : undefined,
     });
     setEditando(false);
     if (err) return onToast(`Erro ao salvar: ${err}`);
@@ -105,17 +119,23 @@ export default function ParaPage({
         <div className="page-head">
           {editando ? (
             <div className="page-edit">
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  className="tri-input"
-                  style={{ flex: "0 1 70px", textAlign: "center" }}
-                  value={fEmoji}
-                  onChange={(e) => setFEmoji(e.target.value)}
-                  placeholder="emoji"
-                  maxLength={4}
-                />
-                <input className="tri-input" style={{ flex: 1 }} value={fNome} onChange={(e) => setFNome(e.target.value)} autoFocus />
-              </div>
+              <input className="tri-input" value={fNome} onChange={(e) => setFNome(e.target.value)} autoFocus />
+              <div className="flab">Ícone</div>
+              <IconePicker valor={fEmoji} onChange={setFEmoji} />
+              {c.kind === "projeto" && (
+                <>
+                  <div className="flab">Parte de qual área? (opcional)</div>
+                  <select className="tri-input" value={fArea ?? ""} onChange={(e) => setFArea(e.target.value || null)}>
+                    <option value="">— nenhuma —</option>
+                    {areas.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.emoji ? `${a.emoji} ` : ""}
+                        {a.nome}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
               <div className="flab">Descrição — do que se trata</div>
               <textarea className="tri-input" rows={2} value={fDesc} onChange={(e) => setFDesc(e.target.value)} />
               <div className="flab">{c.kind === "projeto" ? "Objetivo — quando estará concluído" : "Padrão a manter"}</div>
@@ -143,6 +163,17 @@ export default function ParaPage({
               </h1>
               <div className="page-props">
                 <span className="chip">{KIND_LABEL[c.kind]}</span>
+                {areaDoProjeto && (
+                  <button
+                    className="chip"
+                    style={{ cursor: "pointer" }}
+                    title={`Abrir a área ${areaDoProjeto.nome}`}
+                    onClick={() => onOpenContainer(areaDoProjeto.id)}
+                  >
+                    ▣ parte de {areaDoProjeto.emoji ? `${areaDoProjeto.emoji} ` : ""}
+                    {areaDoProjeto.nome}
+                  </button>
+                )}
                 {c.prazo && (
                   <span className="chip muted" style={c.prazo < hoje ? { color: "var(--today)" } : undefined}>
                     prazo {c.prazo.split("-").reverse().slice(0, 2).join("/")}
@@ -178,6 +209,37 @@ export default function ParaPage({
             </>
           )}
         </div>
+
+        {c.kind === "area" && (
+          <div className="page-sec">
+            <h3>Projetos desta área</h3>
+            {projetosDaArea.length === 0 && (
+              <p className="empty-hint">Nenhum ainda — vincule pelo “✎ editar” do projeto (parte de qual área).</p>
+            )}
+            {projetosDaArea.map((pr) => {
+              const doProjeto = tarefas.filter((t) => t.container_id === pr.id);
+              const pendentes = doProjeto.filter((t) => t.status !== "concluida" && t.status !== "algum_dia").length;
+              const feitas = doProjeto.filter((t) => t.status === "concluida").length;
+              const pctPr = doProjeto.length ? Math.round((feitas / doProjeto.length) * 100) : 0;
+              return (
+                <button key={pr.id} className="listrow" onClick={() => onOpenContainer(pr.id)}>
+                  {pr.emoji ? `${pr.emoji} ` : "▶ "}
+                  {pr.nome}
+                  {pr.prazo && (
+                    <span className="chip muted" style={pr.prazo < hoje ? { color: "var(--today)" } : undefined}>
+                      prazo {pr.prazo.split("-").reverse().slice(0, 2).join("/")}
+                    </span>
+                  )}
+                  <span className="count">
+                    {pendentes} aberta{pendentes !== 1 ? "s" : ""}
+                    {doProjeto.length ? ` · ${pctPr}%` : ""}
+                  </span>
+                  <span className="go">›</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className="page-cols">
           <div className="page-sec">

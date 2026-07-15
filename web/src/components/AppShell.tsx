@@ -17,7 +17,7 @@ import TriageModal from "@/components/TriageModal";
 import NewContainerModal from "@/components/NewContainerModal";
 import EventoModal, { type EventoForm } from "@/components/EventoModal";
 import EventoPanel from "@/components/EventoPanel";
-import TarefaModal, { type TarefaEdicao } from "@/components/TarefaModal";
+import TarefaPanel, { type TarefaEdicao } from "@/components/TarefaPanel";
 import ParaPage, { ParaLista } from "@/components/ParaPage";
 import PrioModal from "@/components/PrioModal";
 import RevisaoModal from "@/components/RevisaoModal";
@@ -25,7 +25,7 @@ import Pwa from "@/components/Pwa";
 import { isoDe, type DropInfo } from "@/components/TimeGrid";
 import type { PrioItem } from "@/components/PrioRow";
 import { ROADMAP, VIEWS, type ViewId } from "@/lib/demo";
-import { encontraContainer, parseCapture, resolveDataCaptura } from "@/lib/parser";
+import { encontraContainer, normalizar, parseCapture, resolveDataCaptura } from "@/lib/parser";
 import { sincronizarGoogleAgenda } from "@/lib/gcal";
 import { supabase } from "@/lib/supabase";
 import {
@@ -37,6 +37,7 @@ import {
   createContainer,
   criarEvento,
   criarNota,
+  criarPessoa,
   criarTarefa,
   excluirTarefa,
   listNotas,
@@ -49,6 +50,7 @@ import {
   listPessoas,
   listPrioridades,
   listTarefas,
+  marcarPrioFeita,
   revisaoDaSemanaFeita,
   segundaDe,
   sequenciaCheck,
@@ -60,6 +62,7 @@ import {
   type Kind,
   type Nota,
   type Pessoa,
+  type PrioEscolha,
   type Prioridade,
   type Tarefa,
 } from "@/lib/db";
@@ -89,9 +92,11 @@ export default function AppShell() {
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
   const [tarefas, setTarefas] = useState<Tarefa[]>([]);
-  const [eventosHoje, setEventosHoje] = useState<Evento[]>([]);
+  const [eventosDia, setEventosDia] = useState<Evento[]>([]);
   const [eventosSemana, setEventosSemana] = useState<Evento[]>([]);
   const [weekStart, setWeekStart] = useState<string>(() => segundaDe(hojeISO()));
+  // Dia sendo visto na visão Dia — o padrão é hoje, mas dá para navegar
+  const [diaAtual, setDiaAtual] = useState<string>(() => hojeISO());
   const [prioDia, setPrioDia] = useState<Prioridade[]>([]);
   const [prioSemana, setPrioSemana] = useState<Prioridade[]>([]);
   const [notas, setNotas] = useState<Nota[]>([]);
@@ -126,17 +131,16 @@ export default function AppShell() {
 
   const refresh = useCallback(async () => {
     if (!session) return;
-    const hoje = hojeISO();
-    const [cs, ps, inb, ts, sq, evH, evS, pd, psem, rev, ns] = await Promise.all([
+    const [cs, ps, inb, ts, sq, evD, evS, pd, psem, rev, ns] = await Promise.all([
       listContainers(),
       listPessoas(),
       listInbox(),
       listTarefas(),
       sequenciaCheck(),
       // janela estendida para trás: eventos de dia inteiro longos (férias) começam antes
-      listEventos(somaDias(hoje, -14), somaDias(hoje, 1)),
+      listEventos(somaDias(diaAtual, -14), somaDias(diaAtual, 1)),
       listEventos(somaDias(weekStart, -14), somaDias(weekStart, 7)),
-      listPrioridades("dia", hoje),
+      listPrioridades("dia", diaAtual),
       listPrioridades("semana", weekStart),
       revisaoDaSemanaFeita(),
       listNotas(),
@@ -146,13 +150,13 @@ export default function AppShell() {
     setInboxItems(inb);
     setTarefas(ts);
     setSeq(sq);
-    setEventosHoje(evH);
+    setEventosDia(evD);
     setEventosSemana(evS);
     setPrioDia(pd);
     setPrioSemana(psem);
     setRevisaoFeita(rev);
     setNotas(ns);
-  }, [session, weekStart]);
+  }, [session, weekStart, diaAtual]);
 
   useEffect(() => {
     if (session) {
@@ -161,7 +165,7 @@ export default function AppShell() {
       setContainers([]);
       setInboxItems([]);
       setTarefas([]);
-      setEventosHoje([]);
+      setEventosDia([]);
       setEventosSemana([]);
       setPrioDia([]);
       setPrioSemana([]);
@@ -180,7 +184,8 @@ export default function AppShell() {
       const c = parseCapture(text);
       if (session) {
         // Vira tarefa direto com #projeto, /área OU data — a Inbox é só para o
-        // incompleto (sem classificação e sem prazo). Com hora, já entra na agenda.
+        // incompleto (sem classificação e sem prazo). Com hora, já entra na agenda
+        // (30 min por padrão — dá para ajustar no painel da tarefa).
         const alvo =
           encontraContainer(c.project, containers, ["projeto"]) ??
           encontraContainer(c.area, containers, ["area"]);
@@ -191,14 +196,22 @@ export default function AppShell() {
             const m = c.time.match(/^(\d{1,2})h(\d{2})?$/);
             if (m) {
               const h = Number(m[1]) + Number(m[2] ?? 0) / 60;
-              agendada = { agendada_inicio: isoDe(prazo, h), agendada_fim: isoDe(prazo, h + 1) };
+              agendada = { agendada_inicio: isoDe(prazo, h), agendada_fim: isoDe(prazo, h + 0.5) };
             }
+          }
+          // @pessoa citada vira registro e fica na tarefa (as marcações persistem)
+          let responsavelId: string | null = null;
+          if (c.people.length) {
+            const nome = c.people[0].replace(/-/g, " ");
+            const existente = pessoas.find((p) => normalizar(p.nome) === normalizar(nome));
+            responsavelId = existente?.id ?? (await criarPessoa(session.user.id, nome));
           }
           const err = await criarTarefa(session.user.id, {
             titulo: c.title,
             status: "a_fazer",
             prazo,
             container_id: alvo?.id ?? null,
+            responsavel_id: responsavelId,
             ...agendada,
           });
           if (err) {
@@ -207,8 +220,9 @@ export default function AppShell() {
           }
           await refresh();
           const onde = alvo ? ` em ${alvo.emoji ? alvo.emoji + " " : ""}${alvo.nome}` : "";
+          const quem = c.people.length ? ` com @${c.people[0].replace(/-/g, " ")}` : "";
           showToast(
-            `Virou tarefa${onde}${prazo ? ` · ${c.date}` : ""}${agendada ? ` às ${c.time} — já na agenda 📅` : ""} — direto, sem Inbox ✓`,
+            `Virou tarefa${onde}${quem}${prazo ? ` · ${c.date}` : ""}${agendada ? ` às ${c.time} — já na agenda 📅` : ""} — direto, sem Inbox ✓`,
           );
           return;
         }
@@ -224,7 +238,7 @@ export default function AppShell() {
         showToast(`Capturado: "${c.title.slice(0, 48)}" (só nesta aba — entre para salvar)`);
       }
     },
-    [session, containers, refresh, showToast],
+    [session, containers, pessoas, refresh, showToast],
   );
 
   // ── Fase 2: sync do Google Calendar ──
@@ -330,20 +344,35 @@ export default function AppShell() {
   }, [tarefaEdit, refresh, showToast]);
 
   const criarNovoContainer = useCallback(
-    async (nome: string, emoji: string | null) => {
+    async (nome: string, icone: string | null, areaId: string | null) => {
       if (!session || !newKind) return;
-      const c = await createContainer(session.user.id, newKind, nome, emoji);
+      const c = await createContainer(session.user.id, newKind, nome, icone, areaId);
       setNewKind(null);
       if (c) {
         setContainers(await listContainers());
         showToast(
-          `${newKind === "area" ? "Área" : newKind === "projeto" ? "Projeto" : "Recurso"} ${emoji ? emoji + " " : ""}"${nome}" criado ✓`,
+          `${newKind === "area" ? "Área" : newKind === "projeto" ? "Projeto" : "Recurso"} ${icone ? icone + " " : ""}"${nome}" criado ✓`,
         );
       } else {
         showToast("Não foi possível criar — tente de novo");
       }
     },
     [session, newKind, showToast],
+  );
+
+  // Tarefa rápida da coluna "sem horário" do Dia — nasce com prazo no dia visto
+  const novaTarefaDoDia = useCallback(
+    async (titulo: string, dia: string) => {
+      if (!session) return;
+      const err = await criarTarefa(session.user.id, { titulo, status: "a_fazer", prazo: dia });
+      if (err) {
+        showToast(`Erro ao criar: ${err}`);
+        return;
+      }
+      await refresh();
+      showToast(`"${titulo.slice(0, 40)}" no dia ${dia.split("-").reverse().slice(0, 2).join("/")} — sem hora marcada ✓`);
+    },
+    [session, refresh, showToast],
   );
 
   // ── Marco 5: eventos, agendamento por arrasto e prioridades ──
@@ -355,10 +384,10 @@ export default function AppShell() {
   // Clique num evento abre o painel lateral (info + notas) — não a edição direta
   const abrirEvento = useCallback(
     (id: string) => {
-      const ev = [...eventosHoje, ...eventosSemana].find((e) => e.id === id);
+      const ev = [...eventosDia, ...eventosSemana].find((e) => e.id === id);
       if (ev) setEventoPanel(ev);
     },
-    [eventosHoje, eventosSemana],
+    [eventosDia, eventosSemana],
   );
 
   const editarDoPainel = useCallback(() => {
@@ -425,7 +454,7 @@ export default function AppShell() {
   const soltarNaGrade = useCallback(
     async (info: DropInfo, dataISO: string, hora: number) => {
       if (info.tipo === "evento") {
-        const ev = [...eventosHoje, ...eventosSemana].find((e) => e.id === info.id);
+        const ev = [...eventosDia, ...eventosSemana].find((e) => e.id === info.id);
         if (ev?.origem === "google") {
           showToast("Evento do Google Agenda — mova lá; o sync espelha aqui ⇄");
           return;
@@ -444,7 +473,7 @@ export default function AppShell() {
       await refresh();
       showToast(info.tipo === "evento" ? "Evento movido ✓" : "Tarefa agendada — o prazo acompanha o dia ✓");
     },
-    [eventosHoje, eventosSemana, refresh, showToast],
+    [eventosDia, eventosSemana, refresh, showToast],
   );
 
   // Regra do produto: a nota nasce do evento (vínculo é metadado, nada duplicado)
@@ -472,19 +501,49 @@ export default function AppShell() {
   }, [session, eventoPanel, refresh, showToast]);
 
   const salvarPrioridades = useCallback(
-    async (ids: string[]) => {
+    async (escolhas: PrioEscolha[]) => {
       if (!session || !prioEscopo) return;
-      const data = prioEscopo === "dia" ? hojeISO() : weekStart;
-      const err = await definirPrioridades(session.user.id, prioEscopo, data, ids);
+      const data = prioEscopo === "dia" ? diaAtual : weekStart;
+      const err = await definirPrioridades(session.user.id, prioEscopo, data, escolhas);
       setPrioEscopo(null);
       if (err) {
         showToast(`Erro ao salvar: ${err}`);
         return;
       }
       await refresh();
-      showToast(ids.length ? `Prioridades definidas (${Math.min(ids.length, 3)}) ★` : "Prioridades limpas");
+      showToast(escolhas.length ? `Prioridades definidas (${Math.min(escolhas.length, 3)}) ★` : "Prioridades limpas");
     },
-    [session, prioEscopo, weekStart, refresh, showToast],
+    [session, prioEscopo, diaAtual, weekStart, refresh, showToast],
+  );
+
+  // ── Prioridades acionáveis (pedido do Raul): ✓ conclui, clique abre ──
+  const concluirPrio = useCallback(
+    async (p: PrioItem) => {
+      if (p.tarefaId) {
+        await conclude(p.tarefaId);
+        return;
+      }
+      const err = await marcarPrioFeita(p.id, !p.feita);
+      if (err) {
+        showToast(`Erro: ${err}`);
+        return;
+      }
+      await refresh();
+      showToast(!p.feita ? "Prioridade feita ✓ — era isso que importava hoje" : "Prioridade reaberta");
+    },
+    [conclude, refresh, showToast],
+  );
+
+  const abrirPrio = useCallback(
+    (p: PrioItem) => {
+      if (!p.tarefaId) {
+        concluirPrio(p);
+        return;
+      }
+      const t = tarefas.find((x) => x.id === p.tarefaId);
+      if (t) setTarefaEdit(t);
+    },
+    [tarefas, concluirPrio],
   );
 
   const logout = useCallback(async () => {
@@ -502,7 +561,13 @@ export default function AppShell() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key === "c" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        // atalho da captura — capturar sem tirar a mão do teclado
+        e.preventDefault();
+        (document.getElementById("captura-input") as HTMLInputElement | null)?.focus();
+        return;
+      }
       const match = VIEWS.find((v) => v.key === e.key);
       if (match) irParaView(match.id);
     };
@@ -518,23 +583,36 @@ export default function AppShell() {
 
   const itensDePrio = (prios: Prioridade[]): PrioItem[] =>
     prios
-      .map((p) => tarefas.find((t) => t.id === p.tarefa_id))
-      .filter((t): t is Tarefa => !!t)
-      .map((t) => ({ titulo: t.titulo, feita: t.status === "concluida" }));
+      .map((p): PrioItem | null => {
+        if (p.tarefa_id) {
+          const t = tarefas.find((x) => x.id === p.tarefa_id);
+          if (!t) return null;
+          return {
+            id: p.id,
+            tarefaId: t.id,
+            titulo: t.titulo,
+            feita: t.status === "concluida",
+            durMin: t.duracao_min ?? 30,
+            agendada: !!t.agendada_inicio,
+          };
+        }
+        return { id: p.id, tarefaId: null, titulo: p.titulo ?? "", feita: p.feita, durMin: 30, agendada: false };
+      })
+      .filter((p): p is PrioItem => p !== null);
 
   // Candidatas do modal de prioridades: abertas, prazo mais próximo primeiro
   const candidatas = tarefas
     .filter((t) => t.status === "a_fazer" || t.status === "em_andamento")
-    .sort((a, b) => (a.prazo ?? "9999") < (b.prazo ?? "9999") ? -1 : 1)
-    .slice(0, 24);
+    .sort((a, b) => (a.prazo ?? "9999") < (b.prazo ?? "9999") ? -1 : 1);
 
-  // Kairós propõe: sem nada salvo, pré-seleciona as com prazo até a data-alvo
-  const iniciaisPrio = (escopo: EscopoPrio): string[] => {
-    const salvas = (escopo === "dia" ? prioDia : prioSemana).map((p) => p.tarefa_id);
-    if (salvas.length) return salvas;
-    const limite = escopo === "dia" ? hoje : somaDias(weekStart, 6);
-    return candidatas.filter((t) => t.prazo !== null && t.prazo <= limite).slice(0, 3).map((t) => t.id);
+  // Kairós propõe: as com prazo até a data-alvo (o usuário decide no modal)
+  const sugeridasPrio = (escopo: EscopoPrio): string[] => {
+    const limite = escopo === "dia" ? diaAtual : somaDias(weekStart, 6);
+    return candidatas.filter((t) => t.prazo !== null && t.prazo <= limite).slice(0, 6).map((t) => t.id);
   };
+
+  const atuaisPrio = (escopo: EscopoPrio): PrioEscolha[] =>
+    (escopo === "dia" ? prioDia : prioSemana).map((p) => ({ tarefa_id: p.tarefa_id, titulo: p.titulo, feita: p.feita }));
 
   return (
     <div className={`app${collapsed ? " nosb" : ""}`}>
@@ -546,7 +624,10 @@ export default function AppShell() {
         userEmail={session?.user.email ?? null}
         containers={session ? containers : null}
         tarefas={tarefas}
-        onToday={() => irParaView("dia")}
+        onToday={() => {
+          setDiaAtual(hojeISO());
+          irParaView("dia");
+        }}
         onTasks={() => irParaView("tarefas")}
         onNotes={() => irParaView("notas")}
         onSync={() => (session ? syncAgenda() : showToast("Entre com Google para trazer a sua agenda"))}
@@ -562,6 +643,7 @@ export default function AppShell() {
         <Topbar
           view={view}
           title={TITLES[view]}
+          diaAtual={diaAtual}
           containers={containers}
           pessoas={pessoas}
           onView={irParaView}
@@ -577,6 +659,7 @@ export default function AppShell() {
               key={paginaId}
               userId={session.user.id}
               container={containers.find((c) => c.id === paginaId)!}
+              containers={containers}
               tarefas={tarefas}
               notas={notas}
               onBack={() => setPaginaId(null)}
@@ -586,6 +669,7 @@ export default function AppShell() {
                 setNotaAbrir(id);
                 irParaView("notas");
               }}
+              onOpenContainer={setPaginaId}
               onChanged={refresh}
               onToast={showToast}
             />
@@ -593,20 +677,26 @@ export default function AppShell() {
             <DayView
               key="dia"
               logged={!!session}
+              dia={diaAtual}
               hoje={hoje}
               inboxCount={inboxCount}
               placar={placar}
               seq={seq}
-              eventos={eventosHoje}
+              eventos={eventosDia}
               tarefas={tarefas}
               prioridades={itensDePrio(prioDia)}
+              onNavDia={setDiaAtual}
               onCheck={openTriage}
               onToast={showToast}
               onSlotClick={abrirNovoEvento}
               onDrop={soltarNaGrade}
               onEventoClick={abrirEvento}
               onConcluirTarefa={conclude}
+              onEditTarefa={setTarefaEdit}
+              onNovaTarefaDia={novaTarefaDoDia}
               onDefinirPrio={() => setPrioEscopo("dia")}
+              onPrioAbrir={abrirPrio}
+              onPrioConcluir={concluirPrio}
             />
           ) : view === "semana" ? (
             <WeekView
@@ -623,7 +713,14 @@ export default function AppShell() {
               onDrop={soltarNaGrade}
               onEventoClick={abrirEvento}
               onConcluirTarefa={conclude}
+              onEditTarefa={setTarefaEdit}
+              onDia={(d) => {
+                setDiaAtual(d);
+                irParaView("dia");
+              }}
               onDefinirPrio={() => setPrioEscopo("semana")}
+              onPrioAbrir={abrirPrio}
+              onPrioConcluir={concluirPrio}
             />
           ) : view === "mes" ? (
             <MonthView
@@ -651,6 +748,7 @@ export default function AppShell() {
               key="tarefas"
               tarefas={tarefas}
               containers={containers}
+              pessoas={pessoas}
               logged={!!session}
               onConclude={conclude}
               onEdit={setTarefaEdit}
@@ -677,6 +775,7 @@ export default function AppShell() {
                 setNotaAbrir(id);
                 irParaView("notas");
               }}
+              onAbrirContainer={setPaginaId}
               onToast={showToast}
             />
           ) : (
@@ -687,7 +786,7 @@ export default function AppShell() {
       <nav className="bottomnav" aria-label="Navegação">
         {(
           [
-            ["dia", "◉", "Hoje", () => irParaView("dia")],
+            ["dia", "◉", "Hoje", () => { setDiaAtual(hojeISO()); irParaView("dia"); }],
             ["tarefas", "☑", "Tarefas", () => irParaView("tarefas")],
             ["inbox", "↓", "Inbox", openTriage],
             ["projetos", "▶", "Projetos", () => (session ? setPaginaId("lista") : showToast("Entre para ver os seus"))],
@@ -724,7 +823,12 @@ export default function AppShell() {
         />
       )}
       {newKind && (
-        <NewContainerModal kind={newKind} onCreate={criarNovoContainer} onClose={() => setNewKind(null)} />
+        <NewContainerModal
+          kind={newKind}
+          areas={containers.filter((c) => c.kind === "area")}
+          onCreate={criarNovoContainer}
+          onClose={() => setNewKind(null)}
+        />
       )}
       {eventoPanel && session && (
         <EventoPanel
@@ -743,10 +847,15 @@ export default function AppShell() {
         />
       )}
       {tarefaEdit && session && (
-        <TarefaModal
+        <TarefaPanel
           tarefa={tarefaEdit}
           containers={containers}
+          pessoas={pessoas}
           onSave={salvarTarefa}
+          onConcluir={() => {
+            conclude(tarefaEdit.id);
+            setTarefaEdit(null);
+          }}
           onDelete={apagarTarefa}
           onClose={() => setTarefaEdit(null)}
         />
@@ -762,11 +871,12 @@ export default function AppShell() {
       )}
       {prioEscopo && session && (
         <PrioModal
-          titulo={prioEscopo === "dia" ? "Prioridades de hoje" : "Prioridades da semana"}
-          sub="Escolha até 3 — o Kairós propõe, você decide. Elas aparecem no topo do Dia e da Semana."
+          titulo={prioEscopo === "dia" ? (diaAtual === hoje ? "Prioridades de hoje" : `Prioridades de ${diaAtual.split("-").reverse().slice(0, 2).join("/")}`) : "Prioridades da semana"}
+          sub="Escolha até 3 — o Kairós propõe, você decide. Pode ser tarefa ou algo avulso, como a preparação para uma reunião."
           tarefas={candidatas}
+          sugeridas={sugeridasPrio(prioEscopo)}
+          atuais={atuaisPrio(prioEscopo)}
           containers={containers}
-          iniciais={iniciaisPrio(prioEscopo)}
           onSave={salvarPrioridades}
           onClose={() => setPrioEscopo(null)}
           onToast={showToast}

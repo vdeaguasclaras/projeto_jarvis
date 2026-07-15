@@ -1,22 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import type { Kind } from "@/lib/db";
+import IconePicker from "@/components/IconePicker";
+import type { Container, Kind } from "@/lib/db";
 
 const LABEL: Record<Kind, string> = { projeto: "Novo projeto", area: "Nova área", recurso: "Novo recurso" };
-const EMOJIS = ["🎯", "📊", "🏗️", "💰", "🏠", "👥", "🤝", "⚖️", "📚", "🧠", "💡", "🗂️", "🌱", "🛠️", "✈️", "❤️"];
 
 type Props = {
   kind: Kind;
-  onCreate: (nome: string, emoji: string | null) => void;
+  /** áreas existentes — um projeto pode nascer já vinculado a uma */
+  areas: Container[];
+  onCreate: (nome: string, icone: string | null, areaId: string | null) => void;
   onClose: () => void;
 };
 
-export default function NewContainerModal({ kind, onCreate, onClose }: Props) {
+export default function NewContainerModal({ kind, areas, onCreate, onClose }: Props) {
   const [nome, setNome] = useState("");
-  const [emoji, setEmoji] = useState<string | null>(null);
+  const [icone, setIcone] = useState<string | null>(null);
+  const [areaId, setAreaId] = useState<string | null>(null);
   const save = () => {
-    if (nome.trim()) onCreate(nome.trim(), emoji);
+    if (nome.trim()) onCreate(nome.trim(), icone, areaId);
   };
   return (
     <>
@@ -25,7 +28,7 @@ export default function NewContainerModal({ kind, onCreate, onClose }: Props) {
         <div className="modal open" role="dialog" aria-label={LABEL[kind]}>
           <div className="modal-pad">
             <h2>
-              {emoji ? `${emoji} ` : ""}
+              {icone ? `${icone} ` : ""}
               {LABEL[kind]}
             </h2>
             <p className="sub">Só o nome é obrigatório — o resto pode vir depois.</p>
@@ -37,22 +40,22 @@ export default function NewContainerModal({ kind, onCreate, onClose }: Props) {
               placeholder={kind === "projeto" ? "ex.: Relatório anual 2026" : kind === "area" ? "ex.: Financeiro" : "ex.: Leituras"}
               autoFocus
             />
-            <div className="flab">Símbolo (opcional)</div>
-            <div className="pillrow">
-              <button className={`pill-opt${emoji === null ? " on" : ""}`} onClick={() => setEmoji(null)}>
-                sem
-              </button>
-              {EMOJIS.map((e) => (
-                <button
-                  key={e}
-                  className={`pill-opt${emoji === e ? " on" : ""}`}
-                  style={{ padding: "3px 8px" }}
-                  onClick={() => setEmoji(e)}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
+            <div className="flab">Ícone (opcional)</div>
+            <IconePicker valor={icone} onChange={setIcone} />
+            {kind === "projeto" && areas.length > 0 && (
+              <>
+                <div className="flab">Parte de qual área? (opcional)</div>
+                <select className="tri-input" value={areaId ?? ""} onChange={(e) => setAreaId(e.target.value || null)}>
+                  <option value="">— nenhuma —</option>
+                  {areas.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.emoji ? `${a.emoji} ` : ""}
+                      {a.nome}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
             <div className="modal-foot">
               <button className="btn ghost" onClick={onClose}>
                 Cancelar

@@ -148,8 +148,9 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
       ]);
       setEvAtual(ea);
       setEvProx(ep);
-      setPrioAtualIds(pa.map((p) => p.tarefa_id));
-      setPrioProxIds(pp.length ? pp.map((p) => p.tarefa_id) : null);
+      // as avulsas (tarefa_id null) ficam de fora da revisão — são pontuais do dia
+      setPrioAtualIds(pa.map((p) => p.tarefa_id).filter((id): id is string => id !== null));
+      setPrioProxIds(pp.length ? pp.map((p) => p.tarefa_id).filter((id): id is string => id !== null) : null);
       setTriadas(tr);
       setIncubadas(inc);
       setSeqRev(sr);
@@ -246,7 +247,7 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
   };
 
   const aplicarPrio = async () => {
-    const err = await definirPrioridades(userId, "semana", semProx, selPrio);
+    const err = await definirPrioridades(userId, "semana", semProx, selPrio.map((id) => ({ tarefa_id: id })));
     if (err) return onToast(`Erro ao salvar: ${err}`);
     setPrioFeito(true);
     onChanged();

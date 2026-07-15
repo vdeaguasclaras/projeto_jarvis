@@ -11,6 +11,8 @@ export type Container = {
   descricao: string | null;
   objetivo: string | null;
   prazo: string | null;
+  /** projeto pode pertencer a uma área (PARA) */
+  area_id: string | null;
 };
 export type Pessoa = { id: string; nome: string };
 export type InboxItem = { id: string; texto: string };
@@ -22,6 +24,8 @@ export type Tarefa = {
   status: TarefaStatus;
   prazo: string | null;
   container_id: string | null;
+  responsavel_id: string | null;
+  descricao: string | null;
   criada_em: string;
   concluida_em: string | null;
   agendada_inicio: string | null;
@@ -40,7 +44,14 @@ export type Evento = {
   container_id: string | null;
   dia_inteiro: boolean;
 };
-export type Prioridade = { id: string; tarefa_id: string; ordem: number };
+/** Prioridade do dia/da semana: aponta para uma tarefa OU é avulsa (só título). */
+export type Prioridade = {
+  id: string;
+  tarefa_id: string | null;
+  titulo: string | null;
+  feita: boolean; // só para as avulsas; das tarefas deriva do status
+  ordem: number;
+};
 export type EscopoPrio = "dia" | "semana";
 export type Nota = {
   id: string;
@@ -106,7 +117,7 @@ export async function listContainers(): Promise<Container[]> {
   if (!supabase) return [];
   const { data } = await supabase
     .from("kairos_containers")
-    .select("id, kind, nome, emoji, descricao, objetivo, prazo")
+    .select("id, kind, nome, emoji, descricao, objetivo, prazo, area_id")
     .is("arquivado_em", null)
     .order("criado_em");
   return (data as Container[]) ?? [];
@@ -117,20 +128,21 @@ export async function createContainer(
   kind: Kind,
   nome: string,
   emoji?: string | null,
+  areaId?: string | null,
 ): Promise<Container | null> {
   if (!supabase) return null;
   const { data, error } = await supabase
     .from("kairos_containers")
-    .insert({ user_id: userId, kind, nome, emoji: emoji ?? null })
-    .select("id, kind, nome, emoji, descricao, objetivo, prazo")
+    .insert({ user_id: userId, kind, nome, emoji: emoji ?? null, area_id: kind === "projeto" ? (areaId ?? null) : null })
+    .select("id, kind, nome, emoji, descricao, objetivo, prazo, area_id")
     .single();
   return error ? null : (data as Container);
 }
 
-/** Edição da página PARA (nome, emoji, descrição, objetivo, prazo). */
+/** Edição da página PARA (nome, ícone, descrição, objetivo, prazo, área do projeto). */
 export async function atualizarContainer(
   id: string,
-  campos: { nome?: string; emoji?: string | null; descricao?: string | null; objetivo?: string | null; prazo?: string | null },
+  campos: { nome?: string; emoji?: string | null; descricao?: string | null; objetivo?: string | null; prazo?: string | null; area_id?: string | null },
 ): Promise<string | null> {
   if (!supabase) return "sem banco";
   const { error } = await supabase.from("kairos_containers").update(campos).eq("id", id);
@@ -186,7 +198,7 @@ export async function listTarefas(): Promise<Tarefa[]> {
   const { data } = await supabase
     .from("kairos_tarefas")
     .select(
-      "id, titulo, status, prazo, container_id, criada_em, concluida_em, agendada_inicio, agendada_fim, duracao_min, recorrencia, recorre_ate",
+      "id, titulo, status, prazo, container_id, responsavel_id, descricao, criada_em, concluida_em, agendada_inicio, agendada_fim, duracao_min, recorrencia, recorre_ate",
     )
     .order("criada_em", { ascending: false });
   return (data as Tarefa[]) ?? [];
@@ -232,16 +244,21 @@ export async function mudarStatusTarefa(id: string, status: TarefaStatus): Promi
     .eq("id", id);
 }
 
-/** Edição geral da tarefa (modal de tarefa). */
+/** Edição geral da tarefa (painel lateral). */
 export async function atualizarTarefa(
   id: string,
   campos: {
     titulo?: string;
     prazo?: string | null;
     container_id?: string | null;
+    responsavel_id?: string | null;
+    descricao?: string | null;
     status?: TarefaStatus;
     recorrencia?: Recorrencia | null;
     recorre_ate?: string | null;
+    agendada_inicio?: string | null;
+    agendada_fim?: string | null;
+    duracao_min?: number | null;
   },
 ): Promise<string | null> {
   if (!supabase) return "sem banco";
@@ -403,7 +420,8 @@ export async function excluirEvento(id: string): Promise<string | null> {
   return error ? error.message : null;
 }
 
-/** Coloca a tarefa num horário do dia (drag & drop) — o prazo acompanha o dia. */
+/** Coloca a tarefa num horário do dia (drag & drop) — o prazo acompanha o dia.
+ *  A duração fica guardada para os próximos arrastos. */
 export async function agendarTarefa(
   id: string,
   inicio: string,
@@ -411,9 +429,10 @@ export async function agendarTarefa(
   prazoISO: string,
 ): Promise<string | null> {
   if (!supabase) return "sem banco";
+  const dur = Math.max(15, Math.round((new Date(fim).getTime() - new Date(inicio).getTime()) / 60000));
   const { error } = await supabase
     .from("kairos_tarefas")
-    .update({ agendada_inicio: inicio, agendada_fim: fim, prazo: prazoISO })
+    .update({ agendada_inicio: inicio, agendada_fim: fim, prazo: prazoISO, duracao_min: dur })
     .eq("id", id);
   return error ? error.message : null;
 }
@@ -427,19 +446,22 @@ export async function listPrioridades(escopo: EscopoPrio, dataISO: string): Prom
   if (!supabase) return [];
   const { data } = await supabase
     .from("kairos_prioridades")
-    .select("id, tarefa_id, ordem")
+    .select("id, tarefa_id, titulo, feita, ordem")
     .eq("escopo", escopo)
     .eq("data", dataISO)
     .order("ordem");
   return (data as Prioridade[]) ?? [];
 }
 
+/** Uma prioridade escolhida: tarefa existente OU avulsa (texto livre). */
+export type PrioEscolha = { tarefa_id?: string | null; titulo?: string | null; feita?: boolean };
+
 /** Substitui as prioridades do dia/da semana pelas escolhidas (máx. 3, na ordem dada). */
 export async function definirPrioridades(
   userId: string,
   escopo: EscopoPrio,
   dataISO: string,
-  tarefaIds: string[],
+  escolhas: PrioEscolha[],
 ): Promise<string | null> {
   if (!supabase) return "sem banco";
   const del = await supabase
@@ -448,10 +470,25 @@ export async function definirPrioridades(
     .eq("escopo", escopo)
     .eq("data", dataISO);
   if (del.error) return del.error.message;
-  if (!tarefaIds.length) return null;
+  if (!escolhas.length) return null;
   const { error } = await supabase.from("kairos_prioridades").insert(
-    tarefaIds.slice(0, 3).map((tarefa_id, ordem) => ({ user_id: userId, escopo, data: dataISO, tarefa_id, ordem })),
+    escolhas.slice(0, 3).map((e, ordem) => ({
+      user_id: userId,
+      escopo,
+      data: dataISO,
+      tarefa_id: e.tarefa_id ?? null,
+      titulo: e.titulo ?? null,
+      feita: e.feita ?? false,
+      ordem,
+    })),
   );
+  return error ? error.message : null;
+}
+
+/** Marca/desmarca uma prioridade avulsa como feita. */
+export async function marcarPrioFeita(id: string, feita: boolean): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase.from("kairos_prioridades").update({ feita }).eq("id", id);
   return error ? error.message : null;
 }
 
