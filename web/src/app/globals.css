@@ -66,6 +66,13 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
+/* Barras de rolagem discretas, no esquema de cores do sistema (pedido do Raul) */
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--line); border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--ink-3); background-clip: padding-box; }
+
 /* ═══ Shell ═══ */
 .app { display: grid; grid-template-columns: 248px 1fr; grid-template-rows: minmax(0, 1fr); height: 100vh; height: 100dvh; transition: grid-template-columns 0.3s var(--ease); }
 .app.nosb { grid-template-columns: 0 1fr; }
@@ -96,6 +103,12 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .nav-item .due-chip { margin-left: auto; font-size: 10px; background: var(--today-soft); color: var(--today); border-radius: 5px; padding: 1px 6px; font-weight: 650; }
 .para-row { display: flex; align-items: center; padding: 14px 10px 5px; }
 .para-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--ink-3); font-weight: 650; }
+/* Seções PARA expansíveis — muitos projetos/áreas não podem afogar o menu */
+.para-toggle { display: flex; align-items: center; gap: 5px; padding: 0; flex: 1; text-align: left; border-radius: 6px; }
+.para-toggle:hover .para-label { color: var(--ink-2); }
+.para-chev { color: var(--ink-3); font-size: 12px; transition: transform 0.2s var(--ease); transform: rotate(0deg); width: 10px; display: inline-block; }
+.para-chev.open { transform: rotate(90deg); }
+.para-n { font-size: 10px; color: var(--ink-3); background: var(--surface-2); border-radius: 5px; padding: 0 5px; font-variant-numeric: tabular-nums; }
 .para-add { margin-left: auto; width: 18px; height: 18px; border-radius: 5px; color: var(--ink-3); display: grid; place-items: center; font-size: 13px; line-height: 1; }
 .para-add:hover { background: var(--accent-soft); color: var(--accent-ink); }
 .proj-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
@@ -185,6 +198,15 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .prio-chip.done { color: var(--ink-3); text-decoration: line-through; font-weight: 400; }
 .prio-chip::before { content: "★ "; color: var(--today); font-size: 11px; }
 .prio-chip.done::before { content: "✓ "; color: var(--accent); }
+/* Prioridades acionáveis: ✓ conclui, texto abre, arrasta para a grade */
+.prio-chip.acion { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; }
+.prio-chip.acion::before, .prio-chip.acion.done::before { content: none; }
+.prio-chip.acion .prio-do { color: var(--today); font-size: 12px; padding: 0 2px; border-radius: 50%; line-height: 1.4; }
+.prio-chip.acion .prio-do:hover { background: var(--today-soft); transform: scale(1.15); }
+.prio-chip.acion.done .prio-do { color: var(--accent); }
+.prio-chip.acion .prio-open { padding: 1px 0; color: inherit; text-decoration: inherit; font-weight: inherit; }
+.prio-chip.acion .prio-open:hover { color: var(--accent-ink); }
+.prio-chip.acion[draggable="true"] { cursor: grab; }
 
 .prio-row .p-set {
   margin-left: auto; font-size: 11.5px; color: var(--accent-ink); font-weight: 600;
@@ -224,11 +246,47 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .tri-select { margin-bottom: 10px; background: var(--surface); }
 .traychip:active { cursor: grabbing; }
 
+/* Dia: grade + coluna de tarefas sem horário (uma tarefa não precisa de hora) */
+.daybody { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 16px; align-items: start; }
+.dayside {
+  border: 1px dashed var(--line); border-radius: 10px; background: var(--surface);
+  padding: 10px 12px; position: sticky; top: 0;
+}
+.dayside-h { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--task); font-weight: 700; margin-bottom: 8px; display: flex; gap: 6px; align-items: baseline; }
+.dayside-h .count { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.dayside-item {
+  display: flex; align-items: flex-start; gap: 8px; padding: 7px 8px; margin-bottom: 6px;
+  border: 1px dashed var(--task); background: var(--task-soft); border-radius: 8px;
+  font-size: 12.5px; cursor: grab; user-select: none; touch-action: none;
+}
+.dayside-item:active { cursor: grabbing; }
+.dayside-item .box {
+  width: 16px; height: 16px; border: 1.5px solid var(--task); border-radius: 5px; flex: none;
+  display: grid; place-items: center; color: transparent; font-size: 10px; margin-top: 1px; cursor: pointer;
+}
+.dayside-item .box:hover { border-color: var(--accent); color: var(--accent); }
+.dayside-item .txt { flex: 1; min-width: 0; text-align: left; padding: 0; overflow-wrap: anywhere; color: var(--ink); border-radius: 4px; }
+.dayside-item .txt:hover { color: var(--accent-ink); }
+.dayside-add { width: 100%; margin-top: 4px; }
+@media (max-width: 900px) {
+  .daybody { grid-template-columns: 1fr; }
+  .dayside { position: static; order: -1; }
+}
+/* Navegação do dia: seletor de data enxuto */
+.weeknav-date {
+  border: 1px solid var(--line); border-radius: 8px; padding: 2px 8px; font-size: 12px;
+  background: var(--surface); color: var(--ink-2); font-family: inherit;
+}
+.weeknav-date:hover, .weeknav-date:focus { border-color: var(--accent); color: var(--accent-ink); outline: none; }
+.weeknav button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
 /* Grade de horas */
 .timegrid { display: grid; grid-template-columns: 52px 1fr; }
 .timegrid.week { grid-template-columns: 52px repeat(7, 1fr); }
 .weekhead { display: grid; grid-template-columns: 52px repeat(7, 1fr); margin-bottom: 6px; }
 .weekhead .wd { text-align: center; font-size: 12px; color: var(--ink-2); padding: 4px 0; }
+.weekhead .wd.clicavel { border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+.weekhead .wd.clicavel:hover { background: var(--accent-soft); color: var(--accent-ink); }
 .weekhead .wd b { display: block; font-size: 16px; font-weight: 600; color: var(--ink); }
 .weekhead .wd.today b {
   background: var(--today); color: #fff; width: 28px; height: 28px; line-height: 28px;
@@ -382,6 +440,22 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .sp-quando { font-size: 12.5px; color: var(--ink-2); margin: 4px 0 8px; }
 .sp-btn { margin-top: 6px; align-self: flex-start; border: 1px solid var(--line); }
 .sp-foot { margin-top: auto; padding-top: 18px; display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+/* Painel da tarefa: título editável + checkbox de concluir no cabeçalho */
+.sp-title-in {
+  flex: 1; min-width: 0; font-size: 16px; font-weight: 650; border: none;
+  background: transparent; color: var(--ink); border-radius: 6px; padding: 1px 4px;
+}
+.sp-title-in:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sp-check {
+  width: 20px; height: 20px; border: 1.5px solid var(--ink-3); border-radius: 6px; flex: none;
+  display: grid; place-items: center; color: transparent; font-size: 12px; margin-top: 2px; cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+.sp-check:hover { border-color: var(--accent); color: var(--accent); }
+.sp-check.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+/* Campo livre do ícone (cole qualquer emoji) */
+.icone-livre { width: 90px; flex: none; text-align: center; }
+.icone-livre.on { border-color: var(--accent); background: var(--accent-soft); }
 
 /* Fase 3 — Notas (Zettelkasten), o módulo do protótipo v6 */
 .notes-wrap { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }

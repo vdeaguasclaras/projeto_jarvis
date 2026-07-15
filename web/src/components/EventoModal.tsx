@@ -47,14 +47,19 @@ export default function EventoModal({ inicial, containers, onSave, onDelete, onN
     onSave({ ...inicial, titulo: titulo.trim(), dataISO, hIni, hFim, container_id: containerId });
   };
 
+  // Painel lateral (não mais modal) — o padrão "clicar abre aba lateral" do Raul
   return (
     <>
       <div className="scrim show" onClick={onClose} />
-      <div className="modal-wrap">
-        <div className="modal open" role="dialog" aria-label={editando ? "Editar evento" : "Novo evento"}>
-          <div className="modal-pad">
-            <h2>{editando ? "Editar evento" : "Novo evento"}</h2>
-            <p className="sub">Evento local do Kairós — a sincronia com Google/Outlook chega na Fase 2.</p>
+      <aside className="side-panel" role="dialog" aria-label={editando ? "Editar evento" : "Novo evento"}>
+        <div className="sp-head">
+          <h2>{editando ? "Editar evento" : "Novo evento"}</h2>
+          <button className="sp-close" onClick={onClose} aria-label="Fechar">
+            ✕
+          </button>
+        </div>
+        <p className="sp-quando">Evento local do Kairós — os do Google se editam lá; o sync espelha aqui.</p>
+        <div>
             <input
               className="tri-input"
               value={titulo}
@@ -91,27 +96,26 @@ export default function EventoModal({ inicial, containers, onSave, onDelete, onN
                 </option>
               ))}
             </select>
-            <div className="modal-foot">
-              {editando && onDelete && (
-                <button className="btn ghost" style={{ marginRight: "auto", color: "var(--today)" }} onClick={onDelete}>
-                  Excluir
-                </button>
-              )}
-              {editando && onNota && (
-                <button className="btn ghost" title="A nota nasce do evento — vínculo sem duplicar" onClick={onNota}>
-                  ✎ Nota do evento
-                </button>
-              )}
-              <button className="btn ghost" onClick={onClose}>
-                Cancelar
-              </button>
-              <button className="btn primary" onClick={salvar}>
-                {editando ? "Salvar" : "Criar"}
-              </button>
-            </div>
-          </div>
         </div>
-      </div>
+        <div className="sp-foot">
+          {editando && onDelete && (
+            <button className="btn ghost" style={{ marginRight: "auto", color: "var(--today)" }} onClick={onDelete}>
+              Excluir
+            </button>
+          )}
+          {editando && onNota && (
+            <button className="btn ghost" title="A nota nasce do evento — vínculo sem duplicar" onClick={onNota}>
+              ✎ Nota
+            </button>
+          )}
+          <button className="btn ghost" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="btn primary" onClick={salvar}>
+            {editando ? "Salvar" : "Criar"}
+          </button>
+        </div>
+      </aside>
     </>
   );
 }

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { hojeISO, somaDias, type Container, type Tarefa, type TarefaStatus } from "@/lib/db";
+import { hojeISO, somaDias, type Container, type Pessoa, type Tarefa, type TarefaStatus } from "@/lib/db";
 import { normalizar } from "@/lib/parser";
 
 type Props = {
   tarefas: Tarefa[];
   containers: Container[];
+  pessoas: Pessoa[];
   logged: boolean;
   onConclude: (id: string) => void;
   onEdit: (t: Tarefa) => void;
@@ -39,7 +40,7 @@ function prazoChip(prazo: string | null): { txt: string; late: boolean } | null 
   return { txt, late: prazo < hoje };
 }
 
-export default function TasksView({ tarefas, containers, logged, onConclude, onEdit, onToast }: Props) {
+export default function TasksView({ tarefas, containers, pessoas, logged, onConclude, onEdit, onToast }: Props) {
   const [busca, setBusca] = useState("");
   const [fPrazo, setFPrazo] = useState<FiltroPrazo>("todas");
   const [fContainer, setFContainer] = useState<string>("todos");
@@ -128,6 +129,7 @@ export default function TasksView({ tarefas, containers, logged, onConclude, onE
             {itens.map((t) => {
               const pc = prazoChip(t.prazo);
               const cont = containerDe(t.container_id);
+              const quem = pessoas.find((p) => p.id === t.responsavel_id) ?? null;
               const feita = t.status === "concluida";
               return (
                 <div key={t.id} className={`todo${feita ? " done" : ""}`}>
@@ -153,6 +155,7 @@ export default function TasksView({ tarefas, containers, logged, onConclude, onE
                           {pc.late ? `venceu ${pc.txt}` : pc.txt}
                         </span>
                       )}
+                      {quem && <span className="chip person">@{quem.nome}</span>}
                       {t.recorrencia && <span className="chip muted">⟳ {REC_LABEL[t.recorrencia]}</span>}
                     </div>
                   </button>

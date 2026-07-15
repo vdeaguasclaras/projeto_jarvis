@@ -136,6 +136,8 @@ type Props = {
   onDrop?: (info: DropInfo, dataISO: string, hora: number) => void;
   onBlocoClick?: (b: Bloco) => void;
   onBlocoDblClick?: (b: Bloco) => void;
+  /** clique no cabeçalho do dia (semana) abre aquele dia */
+  onDiaClick?: (dataISO: string) => void;
 };
 
 export default function TimeGrid({
@@ -147,6 +149,7 @@ export default function TimeGrid({
   onDrop,
   onBlocoClick,
   onBlocoDblClick,
+  onDiaClick,
 }: Props) {
   const [now, setNow] = useState<number | null>(null);
   const [overDia, setOverDia] = useState<string | null>(null);
@@ -197,10 +200,15 @@ export default function TimeGrid({
         <div className="weekhead stagger" style={{ ["--i" as string]: 0.5 }}>
           <div />
           {dias.map((d, i) => (
-            <div key={d} className={`wd${d === hoje ? " today" : ""}`}>
+            <button
+              key={d}
+              className={`wd${d === hoje ? " today" : ""}${onDiaClick ? " clicavel" : ""}`}
+              title={onDiaClick ? "Abrir este dia" : undefined}
+              onClick={onDiaClick ? () => onDiaClick(d) : undefined}
+            >
               {WD[i]}
               <b>{Number(d.slice(8))}</b>
-            </div>
+            </button>
           ))}
         </div>
       )}

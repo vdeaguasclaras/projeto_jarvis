@@ -8,6 +8,8 @@ import type { Container, Pessoa } from "@/lib/db";
 type Props = {
   view: ViewId;
   title: [string, string];
+  /** dia sendo visto na visão Dia (pode não ser hoje) */
+  diaAtual: string;
   containers: Container[];
   pessoas: Pessoa[];
   onView: (v: ViewId) => void;
@@ -20,14 +22,15 @@ const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "jul
 
 type Sugestao = { insere: string; mostra: string; tipo: string };
 
-export default function Topbar({ view, title, containers, pessoas, onView, onToggleSidebar, onCapture }: Props) {
+export default function Topbar({ view, title, diaAtual, containers, pessoas, onView, onToggleSidebar, onCapture }: Props) {
   const [text, setText] = useState("");
   const parsed = useMemo(() => (text.trim() ? parseCapture(text) : null), [text]);
 
   const today = useMemo(() => {
-    const d = new Date();
+    const [a, m, dd] = diaAtual.split("-").map(Number);
+    const d = new Date(a, m - 1, dd);
     return `${WEEKDAYS[d.getDay()]}, ${d.getDate()} de ${MONTHS[d.getMonth()]}`;
-  }, []);
+  }, [diaAtual]);
 
   // Autocompletar: sugestões para o token em digitação (@pessoa, #projeto, /área)
   const ac = useMemo(() => {
@@ -89,6 +92,7 @@ export default function Topbar({ view, title, containers, pessoas, onView, onTog
       <div className="capture">
         <span className="plus">+</span>
         <input
+          id="captura-input"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -98,9 +102,12 @@ export default function Topbar({ view, title, containers, pessoas, onView, onTog
               return;
             }
             if (e.key === "Enter") submit();
-            if (e.key === "Escape") setText("");
+            if (e.key === "Escape") {
+              setText("");
+              (e.target as HTMLInputElement).blur();
+            }
           }}
-          placeholder="Capturar… ex.: revisar edital dia 24 14h @Ana #Sede /Financeiro"
+          placeholder="Capturar (atalho: c)… ex.: revisar edital dia 24 14h @Ana #Sede"
           autoComplete="off"
         />
         {parsed && (

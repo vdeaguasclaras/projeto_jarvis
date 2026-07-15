@@ -36,10 +36,12 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Próximos passos (na ordem)
 
-1. Feedback do Raul sobre a 2ª rodada (docs/15): check redesenhado, dia inteiro, páginas PARA.
-2. Candidatos: renovação do token Google sem relogar (Edge Function), Web Push com app fechado,
+1. Feedback do Raul sobre a 3ª rodada (docs/16) e **escolha do protótipo do topo do Dia**
+   (`prototipos/topo-dia-{a,b,c}.html`) para implementar no app.
+2. Se aprovado: imagem na captura (Supabase Storage) — esboçada no protótipo C.
+3. Candidatos: renovação do token Google sem relogar (Edge Function), Web Push com app fechado,
    apertar políticas `jim_*` antes de compartilhar, gamificação plena / auto-agendamento sugerido.
-3. **OAuth Microsoft/Outlook: ADIADO por decisão do Raul (14/07)** — não implementar por ora.
+4. **OAuth Microsoft/Outlook: ADIADO por decisão do Raul (14/07)** — não implementar por ora.
 
 Feitos: Marcos 1–7 completos (login Google incluído), revisão semanal (wizard), Mês/Ano, importador do
 Todoist (migração 0004), Fase 3 completa (Notas + Grafo, migração 0005), **Fase 2 Google** (sync de
@@ -49,4 +51,7 @@ painel lateral de evento, check do dia com escolha de item + agendamento do dia,
 vira tarefa agendada, filtros nas Tarefas, recorrência (migração 0007), rolagem corrigida. **2ª rodada**
 (docs/15): check do dia com dia/hora/grupo por tarefa, eventos de dia inteiro (migração 0008, faixa
 "o dia todo"), **páginas PARA** (descrição/objetivo editáveis, progresso, tarefas, notas, arquivar,
-lista no celular).
+lista no celular). **3ª rodada** (docs/16): painel lateral da tarefa em tudo (padrão Notion), coluna
+"sem horário" no Dia, navegação entre dias (Semana→Dia), prioridades acionáveis + avulsas (migração
+0009), projeto↔área exposto, ícone com colagem livre, sidebar expansível, captura com texto
+persistente + @pessoa→responsável, duração padrão 30 min, atalho "c", grafo com PARA completo.
