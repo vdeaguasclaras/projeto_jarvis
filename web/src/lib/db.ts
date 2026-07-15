@@ -15,7 +15,7 @@ export type Container = {
   area_id: string | null;
 };
 export type Pessoa = { id: string; nome: string };
-export type InboxItem = { id: string; texto: string };
+export type InboxItem = { id: string; texto: string; imagem_path: string | null };
 export type TarefaStatus = "a_fazer" | "em_andamento" | "em_espera" | "concluida" | "algum_dia";
 export type Recorrencia = "diaria" | "semanal" | "quinzenal" | "mensal";
 export type Tarefa = {
@@ -33,6 +33,7 @@ export type Tarefa = {
   duracao_min: number | null;
   recorrencia: Recorrencia | null;
   recorre_ate: string | null;
+  imagem_path: string | null;
 };
 export type EventoOrigem = "local" | "google" | "outlook";
 export type Evento = {
@@ -169,17 +170,35 @@ export async function listInbox(): Promise<InboxItem[]> {
   if (!supabase) return [];
   const { data } = await supabase
     .from("kairos_inbox")
-    .select("id, texto")
+    .select("id, texto, imagem_path")
     .is("triado_em", null)
     .or(`incubada_ate.is.null,incubada_ate.lte.${hojeISO()}`)
     .order("criado_em");
   return (data as InboxItem[]) ?? [];
 }
 
-export async function capturar(userId: string, texto: string): Promise<string | null> {
+export async function capturar(userId: string, texto: string, imagemPath?: string | null): Promise<string | null> {
   if (!supabase) return "sem banco";
-  const { error } = await supabase.from("kairos_inbox").insert({ user_id: userId, texto });
+  const { error } = await supabase
+    .from("kairos_inbox")
+    .insert({ user_id: userId, texto, imagem_path: imagemPath ?? null });
   return error ? error.message : null;
+}
+
+/** Sobe a imagem da captura para o Storage (bucket privado "capturas"). */
+export async function subirImagemCaptura(userId: string, arquivo: File): Promise<{ path: string | null; err: string | null }> {
+  if (!supabase) return { path: null, err: "sem banco" };
+  const ext = (arquivo.name.split(".").pop() || "png").toLowerCase().slice(0, 5);
+  const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage.from("capturas").upload(path, arquivo, { contentType: arquivo.type || "image/png" });
+  return error ? { path: null, err: error.message } : { path, err: null };
+}
+
+/** URL temporária (1h) para exibir uma imagem do bucket privado. */
+export async function urlDaImagem(path: string): Promise<string | null> {
+  if (!supabase) return null;
+  const { data } = await supabase.storage.from("capturas").createSignedUrl(path, 3600);
+  return data?.signedUrl ?? null;
 }
 
 export async function marcarTriado(inboxId: string): Promise<void> {
@@ -198,7 +217,7 @@ export async function listTarefas(): Promise<Tarefa[]> {
   const { data } = await supabase
     .from("kairos_tarefas")
     .select(
-      "id, titulo, status, prazo, container_id, responsavel_id, descricao, criada_em, concluida_em, agendada_inicio, agendada_fim, duracao_min, recorrencia, recorre_ate",
+      "id, titulo, status, prazo, container_id, responsavel_id, descricao, criada_em, concluida_em, agendada_inicio, agendada_fim, duracao_min, recorrencia, recorre_ate, imagem_path",
     )
     .order("criada_em", { ascending: false });
   return (data as Tarefa[]) ?? [];
@@ -217,6 +236,7 @@ export async function criarTarefa(
     agendada_inicio?: string | null;
     agendada_fim?: string | null;
     concluida?: boolean;
+    imagem_path?: string | null;
   },
 ): Promise<string | null> {
   if (!supabase) return "sem banco";
@@ -232,6 +252,7 @@ export async function criarTarefa(
     agendada_inicio: campos.agendada_inicio ?? null,
     agendada_fim: campos.agendada_fim ?? null,
     concluida_em: campos.concluida ? new Date().toISOString() : null,
+    imagem_path: campos.imagem_path ?? null,
   });
   return error ? error.message : null;
 }

@@ -113,6 +113,28 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .para-add:hover { background: var(--accent-soft); color: var(--accent-ink); }
 .proj-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .sidebar-foot { margin-top: auto; padding: 12px 8px 2px; border-top: 1px solid var(--line); }
+/* Check do dia mora na sidebar (proposta B): cartão vivo com anel de progresso */
+.check-vivo {
+  margin: 8px 2px; padding: 10px 11px; border: 1px solid var(--line); border-left: 3px solid var(--today);
+  border-radius: 10px; background: linear-gradient(120deg, var(--today-soft), var(--surface));
+}
+.check-vivo > b { font-size: 12.5px; display: flex; align-items: center; gap: 8px; }
+.check-vivo small { color: var(--ink-2); display: block; margin-top: 6px; font-size: 11.5px; }
+.check-vivo > button {
+  margin-top: 8px; width: 100%; background: var(--today); color: #fff; border-radius: 8px;
+  padding: 5px 0; font-size: 12px; font-weight: 600; transition: transform 0.15s var(--ease);
+}
+.check-vivo > button:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+.anel {
+  width: 28px; height: 28px; border-radius: 50%; flex: none;
+  background: conic-gradient(var(--accent) calc(var(--p, 0) * 1%), var(--surface-2) 0);
+  display: grid; place-items: center;
+}
+.anel i {
+  width: 20px; height: 20px; border-radius: 50%; background: var(--surface);
+  display: grid; place-items: center; font-style: normal; font-size: 8.5px; color: var(--ink-2);
+  font-variant-numeric: tabular-nums; font-weight: 650;
+}
 .theme-toggle { font-size: 12px; color: var(--ink-3); padding: 6px 4px; }
 .theme-toggle:hover { color: var(--ink); }
 
@@ -133,21 +155,55 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .views button.active { color: var(--ink); font-weight: 600; background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
 .views kbd { font-family: inherit; font-size: 10px; color: var(--ink-3); margin-left: 5px; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
 
-/* ═══ Captura ═══ */
-.capture { position: relative; flex: 1; min-width: 200px; max-width: 440px; margin-left: auto; }
-.capture input {
-  width: 100%; padding: 8px 12px 8px 34px; border: 1px solid var(--line);
-  border-radius: 9px; background: var(--bg); font-size: 13px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+/* ═══ Captura em destaque (proposta C): botão flutuante + compositor ═══ */
+.fab {
+  position: fixed; right: 24px; bottom: 24px; z-index: 60;
+  width: 54px; height: 54px; border-radius: 50%; background: var(--accent); color: #fff;
+  font-size: 26px; box-shadow: var(--shadow-lg); transition: transform 0.2s var(--ease);
 }
-.capture input::placeholder { color: var(--ink-3); }
-.capture input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
-.capture .plus { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--accent); font-size: 16px; font-weight: 600; pointer-events: none; }
-.capture-chips {
-  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
-  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
-  box-shadow: var(--shadow); padding: 9px 11px;
+.fab:hover { transform: scale(1.08); }
+.fab kbd {
+  position: absolute; top: -6px; right: -4px; font-family: inherit; font-size: 10px;
+  background: var(--ink); color: var(--bg); border-radius: 5px; padding: 0 5px; line-height: 1.5;
 }
+.compositor {
+  position: fixed; right: 24px; bottom: 90px; z-index: 61;
+  width: min(440px, calc(100vw - 48px)); background: var(--surface);
+  border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow-lg);
+  padding: 14px 16px; display: none;
+}
+.compositor.aberto { display: block; animation: compSobe 0.25s var(--ease) both; }
+@keyframes compSobe { from { opacity: 0; transform: translateY(14px); } }
+.compositor textarea {
+  width: 100%; border: 1px solid var(--line); border-radius: 9px; background: var(--bg);
+  color: var(--ink); padding: 9px 11px; font-size: 13px; resize: none; min-height: 56px;
+}
+.compositor textarea:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+.comp-parse { margin: 6px 0 8px; }
+.comp-anexo {
+  display: block; width: 100%; border: 1.5px dashed var(--line); border-radius: 9px;
+  padding: 9px 10px; text-align: center; color: var(--ink-3); font-size: 12px; margin-bottom: 10px;
+  transition: border-color 0.15s;
+}
+.comp-anexo:hover { border-color: var(--accent); color: var(--ink-2); }
+.comp-anexo b, .comp-anexo u { color: var(--accent-ink); }
+.comp-anexo.com-img { display: flex; align-items: center; gap: 10px; cursor: default; }
+.comp-anexo.com-img img { max-height: 76px; max-width: 60%; border-radius: 7px; border: 1px solid var(--line); }
+.comp-anexo.com-img button { color: var(--today); font-size: 12px; font-weight: 600; margin-left: auto; }
+.comp-acoes { display: flex; gap: 8px; align-items: center; }
+.comp-acoes .btn { padding: 6px 12px; font-size: 12.5px; }
+.comp-acoes .btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+.comp-drop {
+  position: absolute; inset: 0; border-radius: 14px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--accent-soft) 88%, transparent); color: var(--accent-ink);
+  font-weight: 650; pointer-events: none; border: 2px dashed var(--accent);
+}
+/* Imagem da captura (triagem, painel da tarefa) */
+.cap-img { display: block; margin: 8px 0 10px; }
+.cap-img img { max-width: 100%; max-height: 200px; border-radius: 9px; border: 1px solid var(--line); box-shadow: var(--shadow); }
+.cap-img.carregando { color: var(--ink-3); font-size: 12px; border: 1px dashed var(--line); border-radius: 9px; padding: 12px; text-align: center; }
+.capture-hint { font-size: 11px; color: var(--ink-3); margin-top: 5px; }
+
 .chip {
   display: inline-block; font-size: 11.5px; border-radius: 6px; padding: 2px 8px;
   margin: 2px 4px 2px 0; background: var(--accent-soft); color: var(--accent-ink); font-weight: 600;
@@ -173,22 +229,28 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .stagger { animation: rise 0.45s var(--ease) both; animation-delay: calc(var(--i, 0) * 40ms); }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
 
-/* Check do dia + placar */
-.daycheck {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
-  background: linear-gradient(120deg, var(--today-soft), var(--surface));
-  border: 1px solid var(--line); border-left: 3px solid var(--today);
-  border-radius: 10px; padding: 10px 14px;
-}
-.daycheck .ttl { font-weight: 650; font-size: 13px; }
-.daycheck .sub { font-size: 12px; color: var(--ink-2); }
-.daycheck .go { margin-left: auto; background: var(--today); color: #fff; border-radius: 8px; padding: 6px 14px; font-size: 12.5px; font-weight: 600; flex: none; transition: transform 0.2s var(--ease); }
-.daycheck .go:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+/* Barra de progresso genérica (revisão semanal) */
 .gamebar { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; flex: 1; min-width: 90px; max-width: 220px; }
 .gamebar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); transition: width 0.8s var(--ease) 0.2s; }
-.game-lbl { font-size: 11.5px; color: var(--ink-2); white-space: nowrap; }
+.game-lbl { font-size: 11.5px; color: var(--ink-2); }
 .game-lbl b { color: var(--ink); }
 .game-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+
+/* Faixa compacta do check no celular (no desktop ele mora na sidebar) */
+.check-mobile {
+  display: none; align-items: center; gap: 10px; margin-bottom: 12px;
+  background: linear-gradient(120deg, var(--today-soft), var(--surface));
+  border: 1px solid var(--line); border-radius: 99px; padding: 6px 8px 6px 14px;
+  font-size: 12px; color: var(--ink-2);
+}
+.check-mobile b { color: var(--ink); }
+.check-mobile .mini-bar { width: 56px; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; flex: none; }
+.check-mobile .mini-bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.check-mobile span:not(.mini-bar) { flex: 1; min-width: 0; }
+.check-mobile .mini-check {
+  background: var(--today); color: #fff; border-radius: 99px; padding: 4px 12px;
+  font-size: 12px; font-weight: 600; flex: none;
+}
 .prio-row {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 14px;
   padding: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
@@ -719,18 +781,13 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   .date-title { font-size: 15px; min-width: 0; }
   .views { overflow-x: auto; max-width: 100%; }
   .views kbd { display: none; }
-  .capture {
-    position: fixed; left: 10px; right: 10px; z-index: 32;
-    bottom: calc(64px + env(safe-area-inset-bottom)); max-width: none; margin: 0;
-  }
-  .capture input { box-shadow: var(--shadow); background: var(--surface); }
-  .capture-chips { top: auto; bottom: calc(100% + 6px); }
   .canvas { padding: 12px 10px 150px; }
-  /* O box do check quebra linha: texto em cima, botão embaixo (sem estourar a tela) */
-  .daycheck { flex-wrap: wrap; }
-  .daycheck > div { flex-basis: 100%; min-width: 0; }
-  .daycheck .go { margin-left: auto; }
-  .game-lbl { white-space: normal; }
+  /* Sem sidebar no celular: a faixa compacta do check aparece */
+  .check-mobile { display: flex; }
+  /* FAB acima do menu inferior */
+  .fab { bottom: calc(76px + env(safe-area-inset-bottom)); right: 14px; }
+  .fab kbd { display: none; }
+  .compositor { right: 14px; left: 14px; width: auto; bottom: calc(140px + env(safe-area-inset-bottom)); }
   .timegrid { grid-template-columns: 40px 1fr; }
   .timegrid.week { grid-template-columns: 40px repeat(7, 1fr); }
   .weekhead { grid-template-columns: 40px repeat(7, 1fr); }

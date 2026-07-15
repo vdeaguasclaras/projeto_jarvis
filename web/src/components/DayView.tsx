@@ -136,40 +136,29 @@ export default function DayView({
         <span className="range">{rotuloDia(dia, hoje)}</span>
       </div>
 
+      {/* No desktop o check mora na sidebar (proposta B); no celular, sem sidebar,
+          fica esta faixa compacta */}
       {vendoHoje && (
-        <div className="daycheck stagger" style={{ ["--i" as string]: 0.3 }}>
-          <div style={{ flex: 1 }}>
-            <div className="ttl">◉ Check do dia</div>
-            <div className="sub">
-              {inboxCount > 0 ? (
-                <>
-                  Sua Inbox tem <b>{inboxCount}</b> {inboxCount === 1 ? "item esperando" : "itens esperando"} triagem —
-                  etapa <b>Organizar</b> do CODE.
-                </>
-              ) : (
-                <>Inbox zero — capture à vontade, a triagem organiza depois.</>
-              )}
-            </div>
-            <div className="game-row">
-              <div className="gamebar">
-                <i style={{ width: `${pct}%` }} />
-              </div>
-              <span className="game-lbl">
-                Placar de hoje: <b>{placar.done} de {placar.total}</b>
-                {" · 🔥 "}
-                {seq > 1 ? (
-                  <>
-                    <b>{seq} dias</b> de check em sequência
-                  </>
-                ) : seq === 1 ? (
-                  <b>check de hoje feito</b>
-                ) : (
-                  <>a sequência começa hoje</>
-                )}
-              </span>
-            </div>
-          </div>
-          <button className="go" onClick={onCheck}>
+        <div className="check-mobile stagger" style={{ ["--i" as string]: 0.3 }}>
+          <span className="mini-bar">
+            <i style={{ width: `${pct}%` }} />
+          </span>
+          <span>
+            <b>
+              {placar.done}/{placar.total}
+            </b>
+            {inboxCount > 0 ? (
+              <>
+                {" · Inbox "}
+                <b>{inboxCount}</b>
+              </>
+            ) : (
+              " · Inbox zero"
+            )}
+            {" · 🔥 "}
+            {seq > 1 ? `${seq} dias` : seq === 1 ? "feito" : "começa hoje"}
+          </span>
+          <button className="mini-check" onClick={onCheck}>
             Fazer o check
           </button>
         </div>
