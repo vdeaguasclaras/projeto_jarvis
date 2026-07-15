@@ -314,8 +314,23 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
   border: 1px dashed var(--line); border-radius: 10px; background: var(--surface);
   padding: 10px 12px; position: sticky; top: 0;
 }
-.dayside-h { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--task); font-weight: 700; margin-bottom: 8px; display: flex; gap: 6px; align-items: baseline; }
+.dayside-h {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--task);
+  font-weight: 700; margin-bottom: 8px; display: flex; gap: 6px; align-items: baseline;
+  width: 100%; text-align: left; padding: 0; border-radius: 6px;
+}
+.dayside-h:hover { color: var(--accent-ink); }
 .dayside-h .count { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.dayside-h .dayside-chev { margin-left: auto; color: var(--ink-3); }
+.dayside.fechada { padding-bottom: 6px; }
+.dayside.fechada .dayside-h { margin-bottom: 0; }
+.dayside-pager {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: 11px; color: var(--ink-3); margin: 2px 0 6px; font-variant-numeric: tabular-nums;
+}
+.dayside-pager button { border: 1px solid var(--line); border-radius: 7px; padding: 1px 9px; color: var(--ink-2); }
+.dayside-pager button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-ink); }
+.dayside-pager button:disabled { opacity: 0.4; cursor: default; }
 .dayside-item {
   display: flex; align-items: flex-start; gap: 8px; padding: 7px 8px; margin-bottom: 6px;
   border: 1px dashed var(--task); background: var(--task-soft); border-radius: 8px;

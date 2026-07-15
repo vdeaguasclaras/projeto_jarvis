@@ -36,8 +36,9 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Próximos passos (na ordem)
 
-1. Teste do Raul no topo novo (docs/17): check na sidebar (anel), FAB de captura com imagem
-   (Storage bucket `capturas`, migração 0010), faixa compacta no celular.
+1. Teste do Raul no topo novo (docs/17) e nos ajustes de docs/18: check na sidebar (anel), FAB de
+   captura com imagem (Storage bucket `capturas`, migração 0010), faixa compacta no celular,
+   coluna "sem horário" recolhível/paginada, projeto em várias áreas.
 2. Candidatos: renovação do token Google sem relogar (Edge Function), Web Push com app fechado,
    apertar políticas `jim_*` antes de compartilhar, gamificação plena / auto-agendamento sugerido.
 3. **OAuth Microsoft/Outlook: ADIADO por decisão do Raul (14/07)** — não implementar por ora.
@@ -52,5 +53,6 @@ vira tarefa agendada, filtros nas Tarefas, recorrência (migração 0007), rolag
 "o dia todo"), **páginas PARA** (descrição/objetivo editáveis, progresso, tarefas, notas, arquivar,
 lista no celular). **3ª rodada** (docs/16): painel lateral da tarefa em tudo (padrão Notion), coluna
 "sem horário" no Dia, navegação entre dias (Semana→Dia), prioridades acionáveis + avulsas (migração
-0009), projeto↔área exposto, ícone com colagem livre, sidebar expansível, captura com texto
+0009), projeto↔áreas N:N (migração 0011; a área lista as tarefas dos projetos com chip), ícone
+com colagem livre, sidebar expansível, captura com texto
 persistente + @pessoa→responsável, duração padrão 30 min, atalho "c", grafo com PARA completo.

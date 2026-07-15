@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { DAY_EVENTS, DAY_PRIORITIES } from "@/lib/demo";
 import { cobreDia, somaDias, type Evento, type Tarefa } from "@/lib/db";
 import TimeGrid, { arrasteToque, blocoDeEvento, blocoDeTarefa, hhmm, type Bloco, type DropInfo } from "@/components/TimeGrid";
@@ -68,6 +69,16 @@ export default function DayView({
 }: Props) {
   const pct = Math.min(100, Math.round((placar.done / Math.max(placar.total, 1)) * 100));
   const vendoHoje = dia === hoje;
+
+  // Coluna "sem horário": recolhida por padrão no celular (a lista empilhada
+  // ficava longa demais) e paginada para nunca passar da altura da grade.
+  const [sideAberto, setSideAberto] = useState(true);
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 900px)").matches) setSideAberto(false);
+  }, []);
+  const POR_PAGINA = 7;
+  const [pagina, setPagina] = useState(0);
+  useEffect(() => setPagina(0), [dia]);
 
   // Eventos de dia inteiro ficam na faixa própria, fora da grade de horas
   const diaInteiro = logged ? eventos.filter((e) => cobreDia(e, dia)) : [];
@@ -200,49 +211,76 @@ export default function DayView({
           onBlocoDblClick={(b) => logged && b.tipo === "tarefa" && !b.feita && onConcluirTarefa(b.id)}
         />
         {logged && (
-          <aside className="dayside" aria-label="Tarefas do dia sem horário">
-            <div className="dayside-h">
+          <aside className={`dayside${sideAberto ? "" : " fechada"}`} aria-label="Tarefas do dia sem horário">
+            <button className="dayside-h" aria-expanded={sideAberto} onClick={() => setSideAberto((v) => !v)}>
               ☐ Sem horário <span className="count">{semHorario.length || ""}</span>
-            </div>
-            {semHorario.length === 0 && <p className="empty-hint">nada por aqui — capture ou arraste de volta</p>}
-            {semHorario.map((t) => (
-              <div
-                key={t.id}
-                className="dayside-item"
-                draggable
-                onDragStart={(e) =>
-                  e.dataTransfer.setData(
-                    "application/json",
-                    JSON.stringify({ tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 30 } satisfies DropInfo),
-                  )
-                }
-                onPointerDown={(e) => arrasteToque(e, { tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 30 }, t.titulo, onDrop)}
-              >
-                <button className="box" role="checkbox" aria-checked={false} title="Concluir" onClick={() => onConcluirTarefa(t.id)}>
-                  ✓
-                </button>
-                <button className="txt" title="Abrir a tarefa" onClick={() => onEditTarefa(t)}>
-                  {t.titulo}
-                  {vendoHoje && t.prazo && t.prazo < hoje && (
-                    <span className="chip muted" style={{ color: "var(--today)", display: "block", width: "fit-content" }}>
-                      venceu {t.prazo.split("-").reverse().slice(0, 2).join("/")}
-                    </span>
-                  )}
-                </button>
-              </div>
-            ))}
-            <input
-              className="note-search dayside-add"
-              placeholder="+ tarefa p/ este dia…"
-              onKeyDown={(e) => {
-                const v = (e.target as HTMLInputElement).value.trim();
-                if (e.key === "Enter" && v) {
-                  onNovaTarefaDia(v, dia);
-                  (e.target as HTMLInputElement).value = "";
-                }
-              }}
-            />
-            <p className="empty-hint" style={{ marginTop: 6 }}>arraste para a grade para dar hora · clique para abrir</p>
+              <span className="dayside-chev">{sideAberto ? "▴" : "▾"}</span>
+            </button>
+            {sideAberto && (
+              <>
+                {semHorario.length === 0 && <p className="empty-hint">nada por aqui — capture ou arraste de volta</p>}
+                {(() => {
+                  const totalPaginas = Math.max(1, Math.ceil(semHorario.length / POR_PAGINA));
+                  const pag = Math.min(pagina, totalPaginas - 1);
+                  const visiveis = semHorario.slice(pag * POR_PAGINA, (pag + 1) * POR_PAGINA);
+                  return (
+                    <>
+                      {visiveis.map((t) => (
+                        <div
+                          key={t.id}
+                          className="dayside-item"
+                          draggable
+                          onDragStart={(e) =>
+                            e.dataTransfer.setData(
+                              "application/json",
+                              JSON.stringify({ tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 30 } satisfies DropInfo),
+                            )
+                          }
+                          onPointerDown={(e) => arrasteToque(e, { tipo: "tarefa", id: t.id, durMin: t.duracao_min ?? 30 }, t.titulo, onDrop)}
+                        >
+                          <button className="box" role="checkbox" aria-checked={false} title="Concluir" onClick={() => onConcluirTarefa(t.id)}>
+                            ✓
+                          </button>
+                          <button className="txt" title="Abrir a tarefa" onClick={() => onEditTarefa(t)}>
+                            {t.titulo}
+                            {vendoHoje && t.prazo && t.prazo < hoje && (
+                              <span className="chip muted" style={{ color: "var(--today)", display: "block", width: "fit-content" }}>
+                                venceu {t.prazo.split("-").reverse().slice(0, 2).join("/")}
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      ))}
+                      {totalPaginas > 1 && (
+                        <div className="dayside-pager">
+                          <button disabled={pag === 0} onClick={() => setPagina(pag - 1)} aria-label="Página anterior">
+                            ‹
+                          </button>
+                          <span>
+                            {pag + 1} / {totalPaginas}
+                          </span>
+                          <button disabled={pag >= totalPaginas - 1} onClick={() => setPagina(pag + 1)} aria-label="Próxima página">
+                            ›
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+                <input
+                  className="note-search dayside-add"
+                  placeholder="+ tarefa p/ este dia…"
+                  onKeyDown={(e) => {
+                    const v = (e.target as HTMLInputElement).value.trim();
+                    if (e.key === "Enter" && v) {
+                      onNovaTarefaDia(v, dia);
+                      (e.target as HTMLInputElement).value = "";
+                    }
+                  }}
+                />
+                <p className="empty-hint" style={{ marginTop: 6 }}>arraste para a grade para dar hora · clique para abrir</p>
+              </>
+            )}
           </aside>
         )}
       </div>

@@ -5,9 +5,11 @@ import {
   arquivarContainer,
   atualizarContainer,
   criarTarefa,
+  definirAreasDoProjeto,
   hojeISO,
   type Container,
   type Nota,
+  type ProjetoArea,
   type Tarefa,
 } from "@/lib/db";
 import IconePicker from "@/components/IconePicker";
@@ -15,15 +17,17 @@ import { snippetDe } from "@/lib/markdown";
 
 /** Páginas PARA — projeto, área ou recurso com descrição, objetivo,
  *  progresso, tarefas do grupo e notas vinculadas (protótipo v6).
- *  3ª rodada: projeto pode pertencer a uma área (e a área lista seus projetos). */
+ *  Um projeto pode pertencer a VÁRIAS áreas (N:N); a área mostra os
+ *  projetos vinculados e as tarefas deles, com o chip do projeto. */
 
 const KIND_LABEL = { projeto: "Projeto", area: "Área", recurso: "Recurso" } as const;
 
 type Props = {
   userId: string;
   container: Container;
-  /** todos os containers — área do projeto, projetos da área */
+  /** todos os containers — áreas do projeto, projetos da área */
   containers: Container[];
+  projetoAreas: ProjetoArea[];
   tarefas: Tarefa[];
   notas: Nota[];
   onBack: () => void;
@@ -39,6 +43,7 @@ export default function ParaPage({
   userId,
   container: c,
   containers,
+  projetoAreas,
   tarefas,
   notas,
   onBack,
@@ -55,20 +60,39 @@ export default function ParaPage({
   const [fDesc, setFDesc] = useState(c.descricao ?? "");
   const [fObj, setFObj] = useState(c.objetivo ?? "");
   const [fPrazo, setFPrazo] = useState(c.prazo ?? "");
-  const [fArea, setFArea] = useState<string | null>(c.area_id);
+  const [fAreas, setFAreas] = useState<string[]>(() =>
+    projetoAreas.filter((l) => l.projeto_id === c.id).map((l) => l.area_id),
+  );
   const [novaTarefa, setNovaTarefa] = useState("");
 
-  const doGrupo = tarefas.filter((t) => t.container_id === c.id);
+  const hoje = hojeISO();
+  const notasDoGrupo = notas.filter((n) => n.container_id === c.id);
+
+  // Projeto ↔ áreas (N:N): as áreas deste projeto e os projetos desta área
+  const areasDoProjeto =
+    c.kind === "projeto"
+      ? projetoAreas
+          .filter((l) => l.projeto_id === c.id)
+          .map((l) => containers.find((x) => x.id === l.area_id))
+          .filter((x): x is Container => !!x)
+      : [];
+  const projetosDaArea =
+    c.kind === "area"
+      ? projetoAreas
+          .filter((l) => l.area_id === c.id)
+          .map((l) => containers.find((x) => x.id === l.projeto_id))
+          .filter((x): x is Container => !!x)
+      : [];
+  const areas = containers.filter((x) => x.kind === "area" && x.id !== c.id);
+
+  // A área contempla as tarefas dos projetos vinculados (com chip do projeto)
+  const idsDoEscopo = [c.id, ...projetosDaArea.map((p) => p.id)];
+  const doGrupo = tarefas.filter((t) => t.container_id !== null && idsDoEscopo.includes(t.container_id));
   const abertas = doGrupo.filter((t) => t.status !== "concluida" && t.status !== "algum_dia");
   const concluidas = doGrupo.filter((t) => t.status === "concluida");
   const pct = doGrupo.length ? Math.round((concluidas.length / doGrupo.length) * 100) : 0;
-  const notasDoGrupo = notas.filter((n) => n.container_id === c.id);
-  const hoje = hojeISO();
-
-  // Projeto ↔ área (PARA): a área-mãe do projeto e os projetos desta área
-  const areaDoProjeto = c.kind === "projeto" && c.area_id ? containers.find((x) => x.id === c.area_id) ?? null : null;
-  const projetosDaArea = c.kind === "area" ? containers.filter((x) => x.kind === "projeto" && x.area_id === c.id) : [];
-  const areas = containers.filter((x) => x.kind === "area" && x.id !== c.id);
+  const projetoDe = (t: Tarefa) =>
+    t.container_id !== c.id ? projetosDaArea.find((p) => p.id === t.container_id) ?? null : null;
 
   const salvar = async () => {
     if (!fNome.trim()) return;
@@ -78,10 +102,10 @@ export default function ParaPage({
       descricao: fDesc.trim() || null,
       objetivo: fObj.trim() || null,
       prazo: c.kind === "projeto" ? fPrazo || null : undefined,
-      area_id: c.kind === "projeto" ? fArea : undefined,
     });
+    const errAreas = c.kind === "projeto" ? await definirAreasDoProjeto(userId, c.id, fAreas) : null;
     setEditando(false);
-    if (err) return onToast(`Erro ao salvar: ${err}`);
+    if (err || errAreas) return onToast(`Erro ao salvar: ${err ?? errAreas}`);
     onChanged();
     onToast("Página atualizada ✓");
   };
@@ -122,18 +146,23 @@ export default function ParaPage({
               <input className="tri-input" value={fNome} onChange={(e) => setFNome(e.target.value)} autoFocus />
               <div className="flab">Ícone</div>
               <IconePicker valor={fEmoji} onChange={setFEmoji} />
-              {c.kind === "projeto" && (
+              {c.kind === "projeto" && areas.length > 0 && (
                 <>
-                  <div className="flab">Parte de qual área? (opcional)</div>
-                  <select className="tri-input" value={fArea ?? ""} onChange={(e) => setFArea(e.target.value || null)}>
-                    <option value="">— nenhuma —</option>
+                  <div className="flab">Parte de quais áreas? (pode ser mais de uma)</div>
+                  <div className="pillrow">
                     {areas.map((a) => (
-                      <option key={a.id} value={a.id}>
+                      <button
+                        key={a.id}
+                        className={`pill-opt${fAreas.includes(a.id) ? " on" : ""}`}
+                        onClick={() =>
+                          setFAreas((prev) => (prev.includes(a.id) ? prev.filter((x) => x !== a.id) : [...prev, a.id]))
+                        }
+                      >
                         {a.emoji ? `${a.emoji} ` : ""}
                         {a.nome}
-                      </option>
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </>
               )}
               <div className="flab">Descrição — do que se trata</div>
@@ -163,17 +192,18 @@ export default function ParaPage({
               </h1>
               <div className="page-props">
                 <span className="chip">{KIND_LABEL[c.kind]}</span>
-                {areaDoProjeto && (
+                {areasDoProjeto.map((a) => (
                   <button
+                    key={a.id}
                     className="chip"
                     style={{ cursor: "pointer" }}
-                    title={`Abrir a área ${areaDoProjeto.nome}`}
-                    onClick={() => onOpenContainer(areaDoProjeto.id)}
+                    title={`Abrir a área ${a.nome}`}
+                    onClick={() => onOpenContainer(a.id)}
                   >
-                    ▣ parte de {areaDoProjeto.emoji ? `${areaDoProjeto.emoji} ` : ""}
-                    {areaDoProjeto.nome}
+                    ▣ {a.emoji ? `${a.emoji} ` : ""}
+                    {a.nome}
                   </button>
-                )}
+                ))}
                 {c.prazo && (
                   <span className="chip muted" style={c.prazo < hoje ? { color: "var(--today)" } : undefined}>
                     prazo {c.prazo.split("-").reverse().slice(0, 2).join("/")}
@@ -203,6 +233,7 @@ export default function ParaPage({
                   </div>
                   <div className="progress-lbl">
                     {pct}% — {concluidas.length} de {doGrupo.length} tarefas concluídas
+                    {c.kind === "area" && projetosDaArea.length > 0 ? " (incluindo os projetos vinculados)" : ""}
                   </div>
                 </>
               )}
@@ -214,7 +245,7 @@ export default function ParaPage({
           <div className="page-sec">
             <h3>Projetos desta área</h3>
             {projetosDaArea.length === 0 && (
-              <p className="empty-hint">Nenhum ainda — vincule pelo “✎ editar” do projeto (parte de qual área).</p>
+              <p className="empty-hint">Nenhum ainda — vincule pelo “✎ editar” do projeto (parte de quais áreas).</p>
             )}
             {projetosDaArea.map((pr) => {
               const doProjeto = tarefas.filter((t) => t.container_id === pr.id);
@@ -265,6 +296,12 @@ export default function ParaPage({
                 <button className="txt txt-btn" onClick={() => onEditTarefa(t)} title="Editar tarefa">
                   {t.titulo}
                   <div className="chips">
+                    {projetoDe(t) && (
+                      <span className="chip" title="Tarefa de um projeto vinculado a esta área">
+                        {projetoDe(t)!.emoji ? `${projetoDe(t)!.emoji} ` : "▶ "}
+                        {projetoDe(t)!.nome}
+                      </span>
+                    )}
                     {t.prazo && (
                       <span className="chip muted" style={t.prazo < hoje ? { color: "var(--today)" } : undefined}>
                         {t.prazo < hoje ? "venceu " : ""}
