@@ -23,6 +23,9 @@ type Props = {
   onInbox: () => void;
   onNew: (kind: Kind) => void;
   onOpenContainer: (id: string) => void;
+  /** abre o Arquivo (o A do PARA) */
+  onArquivo: () => void;
+  arquivadosCount: number;
   onWeekly: () => void;
   /** revisão da semana atual já registrada */
   weeklyDone: boolean;
@@ -181,8 +184,8 @@ export default function Sidebar(p: Props) {
       <div className="para-row">
         <span className="para-label">&nbsp;</span>
       </div>
-      <button className="nav-item" onClick={() => p.onSoon("Arquivo")}>
-        <span className="nav-ico">▤</span> Arquivo
+      <button className="nav-item" onClick={p.onArquivo}>
+        <span className="nav-ico">▤</span> Arquivo <span className="count">{p.arquivadosCount || ""}</span>
       </button>
 
       <div className="sidebar-foot">

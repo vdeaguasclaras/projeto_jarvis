@@ -11,6 +11,8 @@ export type Container = {
   descricao: string | null;
   objetivo: string | null;
   prazo: string | null;
+  /** preenchido quando o container foi arquivado (PARA: Archives) */
+  arquivado_em: string | null;
 };
 /** Vínculo N:N — um projeto pode pertencer a várias áreas ao mesmo tempo. */
 export type ProjetoArea = { projeto_id: string; area_id: string };
@@ -114,12 +116,13 @@ export function somaDias(dataISO: string, dias: number): string {
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
 }
 
+/** Todos os containers, INCLUINDO os arquivados (quem chama separa pelos
+ *  `arquivado_em` — o Arquivo é o A do PARA, nada se perde). */
 export async function listContainers(): Promise<Container[]> {
   if (!supabase) return [];
   const { data } = await supabase
     .from("kairos_containers")
-    .select("id, kind, nome, emoji, descricao, objetivo, prazo")
-    .is("arquivado_em", null)
+    .select("id, kind, nome, emoji, descricao, objetivo, prazo, arquivado_em")
     .order("criado_em");
   return (data as Container[]) ?? [];
 }
@@ -157,7 +160,7 @@ export async function createContainer(
   const { data, error } = await supabase
     .from("kairos_containers")
     .insert({ user_id: userId, kind, nome, emoji: emoji ?? null })
-    .select("id, kind, nome, emoji, descricao, objetivo, prazo")
+    .select("id, kind, nome, emoji, descricao, objetivo, prazo, arquivado_em")
     .single();
   if (error || !data) return null;
   const c = data as Container;
@@ -181,6 +184,16 @@ export async function arquivarContainer(id: string): Promise<string | null> {
   const { error } = await supabase
     .from("kairos_containers")
     .update({ arquivado_em: new Date().toISOString() })
+    .eq("id", id);
+  return error ? error.message : null;
+}
+
+/** Desarquivar: o container volta para a sidebar e as listas ativas. */
+export async function desarquivarContainer(id: string): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase
+    .from("kairos_containers")
+    .update({ arquivado_em: null })
     .eq("id", id);
   return error ? error.message : null;
 }

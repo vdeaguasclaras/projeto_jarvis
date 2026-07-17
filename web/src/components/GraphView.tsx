@@ -1,21 +1,24 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Container, Nota, Pessoa, ProjetoArea } from "@/lib/db";
 import { linksDe, pessoasDe } from "@/lib/markdown";
 import { normalizar } from "@/lib/parser";
 
 /** Fase 3 — Grafo de conexões (protótipo v6 sobre dados reais):
  *  nós = notas, projetos/áreas/recursos e @pessoas; arestas = [[links]],
- *  agrupamentos e menções. Arraste para reorganizar; clique numa nota abre. */
+ *  agrupamentos e menções. Arraste para reorganizar; clique numa nota abre.
+ *  Filtros: por tipo de nó, por um container em foco (só a vizinhança dele)
+ *  e arquivados — que aparecem apagados, o A do PARA sem sumir da rede. */
 
 type Tipo = "nota" | "projeto" | "area" | "recurso" | "pessoa";
-type No = { id: string; label: string; tipo: Tipo; x: number; y: number; vx: number; vy: number };
+type No = { id: string; label: string; tipo: Tipo; arq: boolean; x: number; y: number; vx: number; vy: number };
 
 type Props = {
   logged: boolean;
   notas: Nota[];
   containers: Container[];
+  arquivados: Container[];
   projetoAreas: ProjetoArea[];
   pessoas: Pessoa[];
   onAbrirNota: (id: string) => void;
@@ -31,8 +34,47 @@ const COR: Record<Tipo, string> = {
   pessoa: "--today",
 };
 
-export default function GraphView({ logged, notas, containers, projetoAreas, pessoas, onAbrirNota, onAbrirContainer, onToast }: Props) {
+const TIPO_LABEL: [Tipo, string][] = [
+  ["nota", "Notas"],
+  ["projeto", "Projetos"],
+  ["area", "Áreas"],
+  ["recurso", "Recursos"],
+  ["pessoa", "Pessoas"],
+];
+
+const KIND_GRUPO = { projeto: "Projetos", area: "Áreas", recurso: "Recursos" } as const;
+
+export default function GraphView({
+  logged,
+  notas,
+  containers,
+  arquivados,
+  projetoAreas,
+  pessoas,
+  onAbrirNota,
+  onAbrirContainer,
+  onToast,
+}: Props) {
   const cvRef = useRef<HTMLCanvasElement | null>(null);
+  // ── filtros (pedido do Raul): tipos visíveis, arquivados e um foco opcional ──
+  const [tipos, setTipos] = useState<Record<Tipo, boolean>>({
+    nota: true,
+    projeto: true,
+    area: true,
+    recurso: true,
+    pessoa: true,
+  });
+  const [comArquivados, setComArquivados] = useState(true);
+  const [focoId, setFocoId] = useState<string>("");
+
+  // todos os containers, com a marca de arquivado (aparecem apagados)
+  const todosContainers = useMemo(
+    () => [
+      ...containers.map((c) => ({ c, arq: false })),
+      ...arquivados.map((c) => ({ c, arq: true })),
+    ],
+    [containers, arquivados],
+  );
 
   useEffect(() => {
     if (!logged) return;
@@ -40,11 +82,11 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
     const ctx = cv?.getContext("2d");
     if (!cv || !ctx) return;
 
-    // ── monta os nós: TODOS os projetos/áreas/recursos + notas + pessoas citadas.
-    //    (antes só containers ligados a notas apareciam — feedback do Raul) ──
+    // ── monta os nós: TODOS os projetos/áreas/recursos (inclusive arquivados,
+    //    apagados) + notas + pessoas citadas ──
     const nos: No[] = [];
     const porChave = new Map<string, No>();
-    const addNo = (chave: string, label: string, tipo: Tipo) => {
+    const addNo = (chave: string, label: string, tipo: Tipo, arq = false) => {
       let n = porChave.get(chave);
       if (!n) {
         const i = nos.length;
@@ -52,6 +94,7 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
           id: chave,
           label: label.length > 26 ? label.slice(0, 24) + "…" : label,
           tipo,
+          arq,
           x: 0.5 + 0.36 * Math.cos((i / 9) * Math.PI * 2 + i * 0.7),
           y: 0.5 + 0.36 * Math.sin((i / 9) * Math.PI * 2 + i * 0.7),
           vx: 0,
@@ -68,7 +111,8 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
       if (a !== b && !arestas.some(([x, y]) => (x === a && y === b) || (x === b && y === a))) arestas.push([a, b]);
     };
 
-    for (const c of containers) addNo(`c:${c.id}`, `${c.emoji ? c.emoji + " " : ""}${c.nome}`, c.kind as Tipo);
+    const rotulo = (c: Container, arq: boolean) => `${arq ? "▤ " : ""}${c.emoji ? c.emoji + " " : ""}${c.nome}`;
+    for (const { c, arq } of todosContainers) addNo(`c:${c.id}`, rotulo(c, arq), c.kind as Tipo, arq);
     // projeto pode pertencer a várias áreas → arestas estruturais do PARA
     for (const l of projetoAreas) {
       const p = porChave.get(`c:${l.projeto_id}`);
@@ -79,8 +123,8 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
     for (const n of notas) {
       const eu = porChave.get(`nota:${n.id}`)!;
       if (n.container_id) {
-        const c = containers.find((x) => x.id === n.container_id);
-        if (c) liga(eu, addNo(`c:${c.id}`, `${c.emoji ? c.emoji + " " : ""}${c.nome}`, c.kind as Tipo));
+        const alvo = porChave.get(`c:${n.container_id}`);
+        if (alvo) liga(eu, alvo);
       }
       for (const t of linksDe(n.md)) {
         const alvoNota = notas.find((x) => normalizar(x.titulo) === normalizar(t));
@@ -88,14 +132,32 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
           liga(eu, porChave.get(`nota:${alvoNota.id}`)!);
           continue;
         }
-        const alvoC = containers.find((x) => normalizar(x.nome) === normalizar(t));
-        if (alvoC) liga(eu, addNo(`c:${alvoC.id}`, `${alvoC.emoji ? alvoC.emoji + " " : ""}${alvoC.nome}`, alvoC.kind as Tipo));
+        const alvoC = todosContainers.find(({ c }) => normalizar(c.nome) === normalizar(t));
+        if (alvoC) liga(eu, porChave.get(`c:${alvoC.c.id}`)!);
       }
       for (const p of pessoasDe(n.md)) {
         const pe = pessoas.find((x) => normalizar(x.nome) === normalizar(p));
         liga(eu, addNo(`p:${pe?.id ?? p}`, `@${pe?.nome ?? p}`, "pessoa"));
       }
     }
+
+    // ── aplica os filtros: foco (só a vizinhança), tipos e arquivados ──
+    let visiveis = new Set<No>(nos);
+    const focoNo = focoId ? porChave.get(`c:${focoId}`) ?? null : null;
+    if (focoNo) {
+      const viz = new Set<No>([focoNo]);
+      for (const [a, b] of arestas) {
+        if (a === focoNo) viz.add(b);
+        if (b === focoNo) viz.add(a);
+      }
+      visiveis = viz;
+    }
+    for (const n of [...visiveis]) {
+      if (n === focoNo) continue; // o foco fica sempre visível
+      if (!tipos[n.tipo] || (n.arq && !comArquivados)) visiveis.delete(n);
+    }
+    const nosVis = nos.filter((n) => visiveis.has(n));
+    const arestasVis = arestas.filter(([a, b]) => visiveis.has(a) && visiveis.has(b));
 
     // ── simulação (a mesma física do protótipo) ──
     const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -125,11 +187,11 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     const tick = () => {
-      for (const n of nos) {
+      for (const n of nosVis) {
         if (n === dragging) continue;
         let fx = (0.5 - n.x) * 0.0012;
         let fy = (0.5 - n.y) * 0.0012;
-        for (const m of nos) {
+        for (const m of nosVis) {
           if (m === n) continue;
           const dx = n.x - m.x;
           const dy = n.y - m.y;
@@ -140,7 +202,7 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
         n.vx = (n.vx + fx) * 0.86;
         n.vy = (n.vy + fy) * 0.86;
       }
-      for (const [a, b] of arestas) {
+      for (const [a, b] of arestasVis) {
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const d = Math.hypot(dx, dy) || 0.001;
@@ -154,7 +216,7 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
           b.vy -= (dy / d) * f;
         }
       }
-      for (const n of nos) {
+      for (const n of nosVis) {
         if (n === dragging) continue;
         n.x = Math.min(0.96, Math.max(0.04, n.x + n.vx));
         n.y = Math.min(0.94, Math.max(0.06, n.y + n.vy));
@@ -163,15 +225,19 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
     const draw = () => {
       const C = cores();
       ctx.clearRect(0, 0, W, H);
-      ctx.strokeStyle = C.line;
       ctx.lineWidth = 1.2;
-      for (const [a, b] of arestas) {
+      for (const [a, b] of arestasVis) {
+        // aresta que encosta num arquivado fica apagada como ele
+        ctx.globalAlpha = a.arq || b.arq ? 0.4 : 1;
+        ctx.strokeStyle = C.line;
         ctx.beginPath();
         ctx.moveTo(a.x * W, a.y * H);
         ctx.lineTo(b.x * W, b.y * H);
         ctx.stroke();
       }
-      for (const n of nos) {
+      for (const n of nosVis) {
+        // arquivado = mais apagado (o A do PARA continua na rede, sem gritar)
+        ctx.globalAlpha = n.arq ? 0.38 : 1;
         const r = n.tipo === "projeto" || n.tipo === "area" ? 10 : n.tipo === "nota" ? 7.5 : 6.5;
         ctx.beginPath();
         ctx.arc(n.x * W, n.y * H, r + (n === hover ? 2.5 : 0), 0, Math.PI * 2);
@@ -182,6 +248,7 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
         ctx.textAlign = "center";
         ctx.fillText(n.label, n.x * W, n.y * H + r + 14);
       }
+      ctx.globalAlpha = 1;
     };
     const loop = () => {
       tick();
@@ -192,7 +259,7 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
       const r = cv.getBoundingClientRect();
       const x = (e.clientX - r.left) / W;
       const y = (e.clientY - r.top) / H;
-      return nos.find((n) => Math.hypot(n.x - x, n.y - y) < 0.04) ?? null;
+      return nosVis.find((n) => Math.hypot(n.x - x, n.y - y) < 0.04) ?? null;
     };
     const onDown = (e: PointerEvent) => {
       downAt = { x: e.clientX, y: e.clientY };
@@ -242,7 +309,7 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
       cv.removeEventListener("pointerup", onUp);
       removeEventListener("resize", onResize);
     };
-  }, [logged, notas, containers, projetoAreas, pessoas, onAbrirNota, onAbrirContainer, onToast]);
+  }, [logged, notas, todosContainers, projetoAreas, pessoas, tipos, comArquivados, focoId, onAbrirNota, onAbrirContainer, onToast]);
 
   if (!logged) {
     return (
@@ -256,14 +323,60 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
     );
   }
 
+  const foco = todosContainers.find(({ c }) => c.id === focoId);
+
   return (
     <div className="view-in">
       <p className="year-note stagger" style={{ ["--i" as string]: 0 }}>
-        {notas.length === 0 && containers.length === 0
+        {notas.length === 0 && todosContainers.length === 0
           ? "O grafo nasce dos seus projetos, áreas e notas — crie e ligue com [[links]]."
-          : "Conexões entre notas, projetos, áreas, recursos e pessoas. Arraste os nós; clique para abrir a página."}
+          : foco
+            ? `Em foco: ${foco.c.emoji ? foco.c.emoji + " " : ""}${foco.c.nome} e tudo o que se liga a ele.`
+            : "Conexões entre notas, projetos, áreas, recursos e pessoas. Arraste os nós; clique para abrir a página."}
       </p>
-      <div className="graphwrap stagger" style={{ ["--i" as string]: 1 }}>
+      <div className="pillrow graph-filtros stagger" style={{ ["--i" as string]: 1 }}>
+        {TIPO_LABEL.map(([t, label]) => (
+          <button
+            key={t}
+            className={`pill-opt${tipos[t] ? " on" : ""}`}
+            title={`Mostrar/ocultar ${label.toLowerCase()}`}
+            onClick={() => setTipos((prev) => ({ ...prev, [t]: !prev[t] }))}
+          >
+            <i className="dot" style={{ background: `var(${COR[t]})` }} />
+            {label}
+          </button>
+        ))}
+        <button
+          className={`pill-opt${comArquivados ? " on" : ""}`}
+          title="Arquivados aparecem apagados — o A do PARA sem sair da rede"
+          onClick={() => setComArquivados((v) => !v)}
+        >
+          ▤ Arquivados{arquivados.length ? ` (${arquivados.length})` : ""}
+        </button>
+        <select
+          className="graph-foco"
+          value={focoId}
+          onChange={(e) => setFocoId(e.target.value)}
+          title="Focar num projeto, área ou recurso: só ele e a vizinhança dele"
+        >
+          <option value="">Foco: tudo</option>
+          {(["projeto", "area", "recurso"] as const).map((kind) => {
+            const doKind = todosContainers.filter(({ c }) => c.kind === kind);
+            return doKind.length ? (
+              <optgroup key={kind} label={KIND_GRUPO[kind]}>
+                {doKind.map(({ c, arq }) => (
+                  <option key={c.id} value={c.id}>
+                    {arq ? "▤ " : ""}
+                    {c.emoji ? `${c.emoji} ` : ""}
+                    {c.nome}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null;
+          })}
+        </select>
+      </div>
+      <div className="graphwrap stagger" style={{ ["--i" as string]: 2 }}>
         <canvas ref={cvRef} className="graphcv" />
         <div className="graphlegend">
           <span><i style={{ background: "var(--accent)" }} />Nota</span>
@@ -271,6 +384,7 @@ export default function GraphView({ logged, notas, containers, projetoAreas, pes
           <span><i style={{ background: "var(--google)" }} />Área</span>
           <span><i style={{ background: "var(--ink-3)" }} />Recurso</span>
           <span><i style={{ background: "var(--today)" }} />Pessoa</span>
+          <span><i style={{ background: "var(--ink-3)", opacity: 0.38 }} />Arquivado</span>
         </div>
       </div>
     </div>

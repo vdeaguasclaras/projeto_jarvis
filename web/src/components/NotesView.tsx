@@ -21,6 +21,8 @@ type Props = {
   logged: boolean;
   userId: string | null;
   containers: Container[];
+  /** arquivados: a nota agrupada neles continua mostrando o grupo, apagado */
+  arquivados: Container[];
   /** id de nota para abrir ao montar (ex.: nota que nasceu de um evento) */
   abrirId: string | null;
   onToast: (msg: string) => void;
@@ -34,7 +36,7 @@ function dataCurta(ts: string): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export default function NotesView({ logged, userId, containers, abrirId, onToast, onChanged }: Props) {
+export default function NotesView({ logged, userId, containers, arquivados, abrirId, onToast, onChanged }: Props) {
   const [notas, setNotas] = useState<Nota[]>([]);
   const [curId, setCurId] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
@@ -169,7 +171,8 @@ export default function NotesView({ logged, userId, containers, abrirId, onToast
   };
 
   // ── derivados ──
-  const grupoDe = (n: Nota) => containers.find((c) => c.id === n.container_id) ?? null;
+  const grupoDe = (n: Nota) =>
+    containers.find((c) => c.id === n.container_id) ?? arquivados.find((c) => c.id === n.container_id) ?? null;
   const backlinks = useMemo(
     () => (nota ? notas.filter((n) => n.id !== nota.id && linksDe(n.md).some((t) => normalizar(t) === normalizar(nota.titulo))) : []),
     [notas, nota],
@@ -193,7 +196,7 @@ export default function NotesView({ logged, userId, containers, abrirId, onToast
     }
     return [["", filtradas]];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modo, notas, busca, containers]);
+  }, [modo, notas, busca, containers, arquivados]);
 
   if (!logged) {
     return (
@@ -223,7 +226,8 @@ export default function NotesView({ logged, userId, containers, abrirId, onToast
       <span className="snip">{snippetDe(n.md) || "— vazia —"}</span>
       <span className="chips">
         {grupoDe(n) ? (
-          <span className="chip">
+          <span className={`chip${grupoDe(n)!.arquivado_em ? " arch" : ""}`}>
+            {grupoDe(n)!.arquivado_em ? "▤ " : ""}
             {grupoDe(n)!.emoji ? `${grupoDe(n)!.emoji} ` : ""}
             {grupoDe(n)!.nome}
           </span>
@@ -303,12 +307,15 @@ export default function NotesView({ logged, userId, containers, abrirId, onToast
                 </span>
               )}
               <button
-                className={`chip${grupoDe(nota) ? "" : " muted"}`}
+                className={`chip${grupoDe(nota) ? (grupoDe(nota)!.arquivado_em ? " arch" : "") : " muted"}`}
                 style={{ cursor: "pointer" }}
-                title="Agrupar é opcional — os links estruturam"
+                title={grupoDe(nota)?.arquivado_em ? "Este grupo está no Arquivo" : "Agrupar é opcional — os links estruturam"}
                 onClick={() => setMetaAberto((v) => !v)}
               >
-                {grupoDe(nota) ? `${grupoDe(nota)!.emoji ? grupoDe(nota)!.emoji + " " : ""}${grupoDe(nota)!.nome}` : "sem grupo"} ▾
+                {grupoDe(nota)
+                  ? `${grupoDe(nota)!.arquivado_em ? "▤ " : ""}${grupoDe(nota)!.emoji ? grupoDe(nota)!.emoji + " " : ""}${grupoDe(nota)!.nome}`
+                  : "sem grupo"}{" "}
+                ▾
               </button>
               {tagsDe(nota.md).map((t) => (
                 <span key={t} className="chip muted">
