@@ -93,6 +93,8 @@ export default function AppShell() {
   const [session, setSession] = useState<Session | null>(null);
   const [demoInbox, setDemoInbox] = useState<string[]>(DEMO_INBOX);
   const [containers, setContainers] = useState<Container[]>([]);
+  // O A do PARA: arquivados ficam fora das listas ativas, mas visíveis no Arquivo e no grafo
+  const [arquivados, setArquivados] = useState<Container[]>([]);
   const [projetoAreas, setProjetoAreas] = useState<ProjetoArea[]>([]);
   const [pessoas, setPessoas] = useState<Pessoa[]>([]);
   const [inboxItems, setInboxItems] = useState<InboxItem[]>([]);
@@ -127,6 +129,12 @@ export default function AppShell() {
     toastTimer.current = setTimeout(() => setToast(null), 2600);
   }, []);
 
+  // listContainers traz todos — aqui separamos ativos do Arquivo
+  const aplicarContainers = useCallback((cs: Container[]) => {
+    setContainers(cs.filter((c) => !c.arquivado_em));
+    setArquivados(cs.filter((c) => !!c.arquivado_em));
+  }, []);
+
   useEffect(() => {
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -151,7 +159,7 @@ export default function AppShell() {
       revisaoDaSemanaFeita(),
       listNotas(),
     ]);
-    setContainers(cs);
+    aplicarContainers(cs);
     setProjetoAreas(pa);
     setPessoas(ps);
     setInboxItems(inb);
@@ -163,13 +171,14 @@ export default function AppShell() {
     setPrioSemana(psem);
     setRevisaoFeita(rev);
     setNotas(ns);
-  }, [session, weekStart, diaAtual]);
+  }, [session, weekStart, diaAtual, aplicarContainers]);
 
   useEffect(() => {
     if (session) {
       refresh();
     } else {
       setContainers([]);
+      setArquivados([]);
       setProjetoAreas([]);
       setInboxItems([]);
       setTarefas([]);
@@ -368,7 +377,7 @@ export default function AppShell() {
       const c = await createContainer(session.user.id, newKind, nome, icone, areaIds);
       setNewKind(null);
       if (c) {
-        setContainers(await listContainers());
+        aplicarContainers(await listContainers());
         setProjetoAreas(await listProjetoAreas());
         showToast(
           `${newKind === "area" ? "Área" : newKind === "projeto" ? "Projeto" : "Recurso"} ${icone ? icone + " " : ""}"${nome}" criado ✓`,
@@ -377,7 +386,7 @@ export default function AppShell() {
         showToast("Não foi possível criar — tente de novo");
       }
     },
-    [session, newKind, showToast],
+    [session, newKind, showToast, aplicarContainers],
   );
 
   // Tarefa rápida da coluna "sem horário" do Dia — nasce com prazo no dia visto
@@ -651,6 +660,8 @@ export default function AppShell() {
         onInbox={openTriage}
         onNew={(kind) => (session ? setNewKind(kind) : showToast("Entre para criar os seus de verdade"))}
         onOpenContainer={setPaginaId}
+        onArquivo={() => (session ? setPaginaId("arquivo") : showToast("Entre para ver o seu Arquivo"))}
+        arquivadosCount={arquivados.length}
         onWeekly={openWeekly}
         weeklyDone={revisaoFeita}
         onLogout={logout}
@@ -666,13 +677,19 @@ export default function AppShell() {
         />
         <div className="canvas">
           {!session && <AuthBar onToast={showToast} />}
-          {session && paginaId === "lista" ? (
-            <ParaLista containers={containers} tarefas={tarefas} onOpen={setPaginaId} />
-          ) : session && paginaId && containers.some((c) => c.id === paginaId) ? (
+          {session && (paginaId === "lista" || paginaId === "arquivo") ? (
+            <ParaLista
+              containers={containers}
+              arquivados={arquivados}
+              tarefas={tarefas}
+              soArquivo={paginaId === "arquivo"}
+              onOpen={setPaginaId}
+            />
+          ) : session && paginaId && [...containers, ...arquivados].some((c) => c.id === paginaId) ? (
             <ParaPage
               key={paginaId}
               userId={session.user.id}
-              container={containers.find((c) => c.id === paginaId)!}
+              container={[...containers, ...arquivados].find((c) => c.id === paginaId)!}
               containers={containers}
               projetoAreas={projetoAreas}
               tarefas={tarefas}
@@ -775,6 +792,7 @@ export default function AppShell() {
               logged={!!session}
               userId={session?.user.id ?? null}
               containers={containers}
+              arquivados={arquivados}
               abrirId={notaAbrir}
               onToast={showToast}
               onChanged={refresh}
@@ -785,6 +803,7 @@ export default function AppShell() {
               logged={!!session}
               notas={notas}
               containers={containers}
+              arquivados={arquivados}
               projetoAreas={projetoAreas}
               pessoas={pessoas}
               onAbrirNota={(id) => {
@@ -806,7 +825,7 @@ export default function AppShell() {
             ["tarefas", "☑", "Tarefas", () => irParaView("tarefas")],
             ["inbox", "↓", "Inbox", openTriage],
             ["projetos", "▶", "Projetos", () => (session ? setPaginaId("lista") : showToast("Entre para ver os seus"))],
-            ["arquivo", "▤", "Arquivo", () => showToast("Arquivo — em construção nesta fase")],
+            ["arquivo", "▤", "Arquivo", () => (session ? setPaginaId("arquivo") : showToast("Entre para ver o seu Arquivo"))],
           ] as [string, string, string, () => void][]
         ).map(([id, ico, label, fn]) => (
           <button key={id} className={(id === "dia" && view === "dia") || (id === "tarefas" && view === "tarefas") ? "active" : ""} onClick={fn}>

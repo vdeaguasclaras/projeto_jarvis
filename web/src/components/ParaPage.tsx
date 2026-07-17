@@ -6,6 +6,7 @@ import {
   atualizarContainer,
   criarTarefa,
   definirAreasDoProjeto,
+  desarquivarContainer,
   hojeISO,
   type Container,
   type Nota,
@@ -129,6 +130,13 @@ export default function ParaPage({
     onToast(`"${c.nome}" arquivado — o A do PARA ▤`);
   };
 
+  const desarquivar = async () => {
+    const err = await desarquivarContainer(c.id);
+    if (err) return onToast(`Erro ao desarquivar: ${err}`);
+    onChanged();
+    onToast(`"${c.nome}" de volta à ativa ✓`);
+  };
+
   const criarRapida = async () => {
     const titulo = novaTarefa.trim();
     if (!titulo) return;
@@ -192,12 +200,17 @@ export default function ParaPage({
             </div>
           ) : (
             <>
-              <h1>
+              <h1 className={c.arquivado_em ? "arquivado" : undefined}>
                 {c.emoji ? `${c.emoji} ` : ""}
                 {c.nome}
               </h1>
               <div className="page-props">
                 <span className="chip">{KIND_LABEL[c.kind]}</span>
+                {c.arquivado_em && (
+                  <span className="chip arch" title="Este container está no Arquivo — nada foi apagado">
+                    ▤ arquivado em {c.arquivado_em.slice(0, 10).split("-").reverse().slice(0, 2).join("/")}
+                  </span>
+                )}
                 {areasDoProjeto.map((a) => (
                   <button
                     key={a.id}
@@ -221,9 +234,15 @@ export default function ParaPage({
                 <button className="chip" style={{ cursor: "pointer" }} onClick={() => setEditando(true)}>
                   ✎ editar
                 </button>
-                <button className="chip muted" style={{ cursor: "pointer" }} onClick={arquivar}>
-                  ▤ arquivar
-                </button>
+                {c.arquivado_em ? (
+                  <button className="chip" style={{ cursor: "pointer" }} onClick={desarquivar}>
+                    ↩ desarquivar
+                  </button>
+                ) : (
+                  <button className="chip muted" style={{ cursor: "pointer" }} onClick={arquivar}>
+                    ▤ arquivar
+                  </button>
+                )}
               </div>
               {c.descricao && <p className="page-desc">{c.descricao}</p>}
               {c.objetivo && (
@@ -358,22 +377,29 @@ export default function ParaPage({
   );
 }
 
-/** Lista PARA (celular): projetos, áreas e recursos → página. */
+/** Lista PARA (celular): projetos, áreas e recursos → página.
+ *  Com soArquivo, vira a página do Arquivo (o A do PARA): só os arquivados. */
 export function ParaLista({
   containers,
+  arquivados,
   tarefas,
+  soArquivo = false,
   onOpen,
 }: {
   containers: Container[];
+  arquivados: Container[];
   tarefas: Tarefa[];
+  soArquivo?: boolean;
   onOpen: (id: string) => void;
 }) {
   const abertas = (id: string) => tarefas.filter((t) => t.container_id === id && t.status !== "concluida").length;
-  const grupos: [string, Container[]][] = [
-    ["Projetos", containers.filter((x) => x.kind === "projeto")],
-    ["Áreas", containers.filter((x) => x.kind === "area")],
-    ["Recursos", containers.filter((x) => x.kind === "recurso")],
-  ];
+  const grupos: [string, Container[]][] = soArquivo
+    ? []
+    : [
+        ["Projetos", containers.filter((x) => x.kind === "projeto")],
+        ["Áreas", containers.filter((x) => x.kind === "area")],
+        ["Recursos", containers.filter((x) => x.kind === "recurso")],
+      ];
   return (
     <div className="view-in">
       <div className="pagewrap">
@@ -390,6 +416,23 @@ export function ParaLista({
               </button>
             ))}
           </div>
+        ))}
+        <div className="note-group-h">▤ Arquivo</div>
+        {arquivados.length === 0 && (
+          <p className="empty-hint">
+            Nada arquivado ainda — ao concluir um projeto, arquive-o na página dele (nada se perde).
+          </p>
+        )}
+        {arquivados.map((x) => (
+          <button key={x.id} className="listrow arquivado" onClick={() => onOpen(x.id)}>
+            {x.emoji ? `${x.emoji} ` : ""}
+            {x.nome}
+            <span className="chip arch">{KIND_LABEL[x.kind]}</span>
+            {x.arquivado_em && (
+              <span className="count">{x.arquivado_em.slice(0, 10).split("-").reverse().slice(0, 2).join("/")}</span>
+            )}
+            <span className="go">›</span>
+          </button>
         ))}
       </div>
     </div>

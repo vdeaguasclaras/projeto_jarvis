@@ -19,7 +19,8 @@ function mdInline(s: string): string {
       .replace(/(^|[\s(])\*([^*\n]+)\*(?=$|[\s).,;:!?])/g, "$1<em>$2</em>")
       .replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,;:!?])/g, "$1<em>$2</em>")
       .replace(/~~(.+?)~~/g, "<s>$1</s>")
-      .replace(/\[\[([^\]]+)\]\]/g, '<a class="wikilink" data-nota="$1">[[$1]]</a>')
+      // na leitura o link aparece limpo, sem os colchetes (como no Obsidian)
+      .replace(/\[\[([^\]]+)\]\]/g, '<a class="wikilink" data-nota="$1">$1</a>')
       .replace(/\[([^\]]+)\]\(file:[^)]*\)/g, '<span class="chip file">📄 $1</span>')
       .replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
       .replace(/(^|\s)#([\wÀ-ú-]+)/g, '$1<span class="note-tag">#$2</span>')
@@ -51,7 +52,7 @@ export function mdToHtml(md: string): string {
         list = "ul";
       }
       const feita = /^[-*] \[x\]/.test(l);
-      html += `<li class="mdtask"><span class="bx">${feita ? "☑" : "☐"}</span>${mdInline(l.slice(6))}</li>`;
+      html += `<li class="mdtask${feita ? " done" : ""}"><span class="bx${feita ? " on" : ""}"></span>${mdInline(l.slice(6))}</li>`;
       continue;
     }
     if (/^[-*] /.test(l)) {
