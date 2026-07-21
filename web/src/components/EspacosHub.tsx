@@ -1,6 +1,7 @@
 "use client";
 
 import { ParaLista } from "@/components/ParaPage";
+import { VERSAO } from "@/lib/versao";
 import type { Container, Kind, Tarefa } from "@/lib/db";
 
 /** Espaços — hub provisório da Etapa A do redesign: reúne num lugar só o que
@@ -41,6 +42,7 @@ export default function EspacosHub(p: Props) {
         tarefas={p.tarefas}
         onOpen={p.onOpen}
       />
+      <p className="versao" style={{ marginTop: 18 }}>Kairós v{VERSAO} · em teste</p>
     </div>
   );
 }

@@ -27,6 +27,13 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 - O fluxo de publicação: commit no branch `claude/...` → push → PR → merge (o Raul autorizou eu mesmo mergear para publicar).
 - ⚠️ As tabelas `jim_*` têm políticas permissivas (qualquer autenticado pode tudo). Enquanto só o Raul loga no Kairós, ok; **antes de compartilhar o app, apertar essas políticas**.
 
+## Versionamento (regra do Raul, 21/07)
+
+- Versão visível no app (menu do avatar e rodapé dos Espaços), fonte única em `web/src/lib/versao.ts`
+  (espelhar no `version` do `web/package.json`). Formato **0.X.Y**: mudança de **frontend soma no X**;
+  de **backend** (migração, Edge Function, storage) **soma no Y**. A 0.2.0 = tudo até a Etapa A do
+  redesign. **Toda sessão publicada precisa atualizar a versão.**
+
 ## Regras de produto que o Raul definiu
 
 - Captura com `#projeto` ou `/área` reconhecidos vira tarefa **direto** (Inbox é só para o não classificado).
