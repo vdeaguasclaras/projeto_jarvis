@@ -55,6 +55,7 @@ import {
   listProjetoAreas,
   listTarefas,
   marcarPrioFeita,
+  mudarStatusTarefa,
   revisaoDaSemanaFeita,
   segundaDe,
   sequenciaCheck,
@@ -71,6 +72,7 @@ import {
   type Prioridade,
   type ProjetoArea,
   type Tarefa,
+  type TarefaStatus,
 } from "@/lib/db";
 
 const TITLES: Record<ViewId, [string, string]> = {
@@ -345,6 +347,26 @@ export default function AppShell() {
       );
     },
     [tarefas, session, showToast],
+  );
+
+  // Kanban (Etapa E): arrastar um card entre colunas muda o status
+  const moverTarefa = useCallback(
+    async (id: string, status: TarefaStatus) => {
+      await mudarStatusTarefa(id, status);
+      setTarefas(await listTarefas());
+      const rotulo =
+        status === "a_fazer"
+          ? "De volta ao “A fazer”"
+          : status === "em_andamento"
+            ? "Em andamento →"
+            : status === "em_espera"
+              ? "Em espera — lembre de combinar a cobrança"
+              : status === "algum_dia"
+                ? "Guardada no “Algum dia”"
+                : "Status atualizado";
+      showToast(`${rotulo} ✓`);
+    },
+    [showToast],
   );
 
   const salvarTarefa = useCallback(
@@ -884,8 +906,10 @@ export default function AppShell() {
               tarefas={tarefas}
               containers={containers}
               pessoas={pessoas}
+              prioDia={prioDia}
               logged={!!session}
               onConclude={conclude}
+              onStatus={moverTarefa}
               onEdit={setTarefaEdit}
               onToast={showToast}
             />
