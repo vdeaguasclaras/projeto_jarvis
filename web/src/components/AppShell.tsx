@@ -6,7 +6,7 @@ import Rail, { type RailAtivo } from "@/components/Rail";
 import TabBar from "@/components/TabBar";
 import EspacosHub from "@/components/EspacosHub";
 import Topbar from "@/components/Topbar";
-import CaptureFab from "@/components/CaptureFab";
+import Captura, { type TipoCaptura } from "@/components/Captura";
 import DayView from "@/components/DayView";
 import WeekView from "@/components/WeekView";
 import MonthView from "@/components/MonthView";
@@ -91,8 +91,9 @@ const DEMO_INBOX = [
 
 export default function AppShell() {
   const [view, setView] = useState<ViewId>("dia");
-  // incrementa a cada + (trilho/tab bar) para abrir o compositor de captura
+  // incrementa a cada + (trilho/tab bar) para abrir a paleta de captura
   const [capSinal, setCapSinal] = useState(0);
+  const [capTab, setCapTab] = useState<TipoCaptura>("tarefa");
   const [session, setSession] = useState<Session | null>(null);
   const [demoInbox, setDemoInbox] = useState<string[]>(DEMO_INBOX);
   const [containers, setContainers] = useState<Container[]>([]);
@@ -594,7 +595,7 @@ export default function AppShell() {
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      // o atalho "c" da captura vive no CaptureFab
+      // os atalhos "c" e ⌘K da captura vivem na paleta (Captura.tsx)
       const match = VIEWS.find((v) => v.key === e.key);
       if (match) irParaView(match.id);
       // atalho global do redesign: D abre o Despacho
@@ -628,7 +629,67 @@ export default function AppShell() {
     setPaginaId("lista");
   }, [session, showToast]);
 
-  const abrirCaptura = useCallback(() => setCapSinal((n) => n + 1), []);
+  const abrirCaptura = useCallback((tipo: TipoCaptura = "tarefa") => {
+    setCapTab(tipo);
+    setCapSinal((n) => n + 1);
+  }, []);
+
+  // ── Etapa C: a paleta cria tarefa (regras de sempre), nota ou evento ──
+  const criarDaPaleta = useCallback(
+    async (tipo: TipoCaptura, texto: string, imagem: File | null) => {
+      if (tipo === "tarefa") {
+        await capture(texto, imagem);
+        return;
+      }
+      if (!session) {
+        showToast("Entre para criar notas e eventos de verdade");
+        return;
+      }
+      const c = parseCapture(texto);
+      const alvo =
+        encontraContainer(c.project, containers, ["projeto"]) ??
+        encontraContainer(c.area, containers, ["area"]);
+      if (tipo === "nota") {
+        // primeira linha vira o título; o corpo se escreve no editor
+        const { id, err } = await criarNota(session.user.id, c.title, "", alvo?.id ?? null);
+        if (err || !id) {
+          showToast(`Erro ao criar a nota: ${err}`);
+          return;
+        }
+        await refresh();
+        setNotaAbrir(id);
+        irParaView("notas");
+        showToast(`Nota criada${alvo ? ` em ${alvo.nome}` : ""} ✎ — escreva à vontade`);
+        return;
+      }
+      // evento: data do parser (sem data = o dia visto); sem hora = dia inteiro
+      const data = resolveDataCaptura(c.date) ?? diaAtual;
+      const m = c.time?.match(/^(\d{1,2})h(\d{2})?$/);
+      const err = m
+        ? await criarEvento(session.user.id, {
+            titulo: c.title,
+            inicio: isoDe(data, Number(m[1]) + Number(m[2] ?? 0) / 60),
+            fim: isoDe(data, Number(m[1]) + Number(m[2] ?? 0) / 60 + 1),
+            container_id: alvo?.id ?? null,
+          })
+        : await criarEvento(session.user.id, {
+            titulo: c.title,
+            inicio: isoDe(data, 0),
+            fim: isoDe(somaDias(data, 1), 0),
+            container_id: alvo?.id ?? null,
+            dia_inteiro: true,
+          });
+      if (err) {
+        showToast(`Erro ao criar o evento: ${err}`);
+        return;
+      }
+      await refresh();
+      showToast(
+        `Evento criado: "${c.title}" · ${data.split("-").reverse().slice(0, 2).join("/")}${m ? ` às ${c.time}` : " · o dia todo"} ✓`,
+      );
+    },
+    [session, containers, capture, refresh, showToast, irParaView, diaAtual],
+  );
 
   const inboxCount = session ? inboxItems.length : demoInbox.length;
   const hoje = hojeISO();
@@ -686,7 +747,7 @@ export default function AppShell() {
         weeklyDone={revisaoFeita}
         onHoje={irHoje}
         onAgenda={() => irParaView("semana")}
-        onCapturar={abrirCaptura}
+        onCapturar={() => abrirCaptura("tarefa")}
         onTarefas={() => irParaView("tarefas")}
         onEspacos={irEspacos}
         onSync={() => (session ? syncAgenda() : showToast("Entre com Google para trazer a sua agenda"))}
@@ -952,14 +1013,13 @@ export default function AppShell() {
         />
       )}
 
-      <CaptureFab
+      <Captura
         logged={!!session}
-        recuar={!!(eventoPanel || eventoForm || tarefaEdit)}
         abrirSinal={capSinal}
-        semBotao
+        tabInicial={capTab}
         containers={containers}
         pessoas={pessoas}
-        onCapture={capture}
+        onCriar={criarDaPaleta}
         onToast={showToast}
       />
 
