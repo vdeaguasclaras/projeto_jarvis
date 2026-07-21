@@ -5,14 +5,14 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Idioma e estilo
 
-- **Tudo em pt-BR**: conversa, commits, código de UI, docs. Termos das metodologias mantidos (check do dia, triagem, incubar, destilar).
-- Design tokens e interações: a especificação é `prototipos/prototipo-v6.html` — divergências devem ser decididas, não acidentais.
+- **Tudo em pt-BR**: conversa, commits, código de UI, docs. Termos das metodologias mantidos (Despacho — novo nome do check do dia —, triagem, incubar, destilar).
+- Design tokens e interações: a especificação é o **handoff do redesign** em `prototipos/redesign-2026-07/` (README + TOKENS.md + DARK-MODE.md + canvas `design/kairos-mobile.dc.html`) — substituiu o protótipo v6. Divergências devem ser decididas, não acidentais.
 
 ## Estrutura
 
 - `docs/01-07` — plano do produto, decisões de cada rodada de design, kickoff técnico (schema, marcos).
 - `docs/08+` — status por sessão de desenvolvimento (ler o mais recente antes de continuar).
-- `prototipos/` — protótipos HTML v1–v6 (v6 = final).
+- `prototipos/` — protótipos HTML v1–v6 (histórico) e `redesign-2026-07/` (handoff vigente).
 - `web/` — app Next.js 15 + TypeScript + Tailwind 4 + Supabase. `npm run build` precisa passar antes de push.
 
 ## Infraestrutura (decisões vigentes)
@@ -36,12 +36,15 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Próximos passos (na ordem)
 
-1. Teste do Raul no topo novo (docs/17) e nos ajustes de docs/18: check na sidebar (anel), FAB de
-   captura com imagem (Storage bucket `capturas`, migração 0010), faixa compacta no celular,
-   coluna "sem horário" recolhível/paginada, projeto em várias áreas.
-2. Candidatos: renovação do token Google sem relogar (Edge Function), Web Push com app fechado,
+**O redesign de 2026-07 é o roteiro vigente**: seguir as etapas A–J de `docs/20-plano-redesign.md`
+(shell+tokens+tema escuro → Hoje → captura ⌘K → Despacho → kanban → Espaços → notas → grafo →
+revisão semanal formato jornal → polimento PWA). Como o app já tem quase todas as
+funcionalidades, as etapas são majoritariamente **revestir com o design novo**, criando o que
+falta (modo escuro, kanban, hub Espaços, página de Pessoas). Fora do redesign continuam na fila:
+
+1. Renovação do token Google sem relogar (Edge Function), Web Push com app fechado,
    apertar políticas `jim_*` antes de compartilhar, gamificação plena / auto-agendamento sugerido.
-3. **OAuth Microsoft/Outlook: ADIADO por decisão do Raul (14/07)** — não implementar por ora.
+2. **OAuth Microsoft/Outlook: ADIADO por decisão do Raul (14/07)** — não implementar por ora.
 
 Feitos: Marcos 1–7 completos (login Google incluído), revisão semanal (wizard), Mês/Ano, importador do
 Todoist (migração 0004), Fase 3 completa (Notas + Grafo, migração 0005), **Fase 2 Google** (sync de
