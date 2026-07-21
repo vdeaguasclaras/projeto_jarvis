@@ -330,7 +330,7 @@ export default function RevisaoModal({ userId, tarefas, containers, inboxCount, 
 
   const aplicarProj = async () => {
     if (!parado || !projTitulo.trim()) return;
-    const err = await criarTarefa(userId, {
+    const { err } = await criarTarefa(userId, {
       titulo: projTitulo.trim(),
       status: "a_fazer",
       prazo: somaDias(semProx, projDia),

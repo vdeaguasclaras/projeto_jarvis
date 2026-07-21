@@ -140,7 +140,7 @@ export default function ParaPage({
   const criarRapida = async () => {
     const titulo = novaTarefa.trim();
     if (!titulo) return;
-    const err = await criarTarefa(userId, { titulo, status: "a_fazer", container_id: c.id });
+    const { err } = await criarTarefa(userId, { titulo, status: "a_fazer", container_id: c.id });
     if (err) return onToast(`Erro: ${err}`);
     setNovaTarefa("");
     onChanged();
