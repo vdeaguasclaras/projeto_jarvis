@@ -451,7 +451,7 @@ export async function listEventos(deISO: string, ateISO: string): Promise<Evento
 
 export async function criarEvento(
   userId: string,
-  campos: { titulo: string; inicio: string; fim: string; container_id?: string | null },
+  campos: { titulo: string; inicio: string; fim: string; container_id?: string | null; dia_inteiro?: boolean },
 ): Promise<string | null> {
   if (!supabase) return "sem banco";
   const { error } = await supabase.from("kairos_eventos").insert({
@@ -460,6 +460,7 @@ export async function criarEvento(
     inicio: campos.inicio,
     fim: campos.fim,
     container_id: campos.container_id ?? null,
+    dia_inteiro: campos.dia_inteiro ?? false,
   });
   return error ? error.message : null;
 }
