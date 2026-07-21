@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { IconeAgenda, IconeEspacos, IconeHoje, IconeMais, IconeTarefas } from "@/components/Icones";
 import { LembreteCheck } from "@/components/Pwa";
 import { aplicarTema, proximoTema, ROTULO_TEMA, temaPref, type TemaPref } from "@/lib/tema";
+import { VERSAO } from "@/lib/versao";
 
 /** Trilho esquerdo de 76px (redesign 10a): K, Hoje, Agenda, + central,
  *  Tarefas, Espaços; embaixo ◐ tema e o avatar (menu da conta). */
@@ -88,6 +89,7 @@ export default function Rail(p: Props) {
           {p.userEmail && (
             <button onClick={() => { setMenu(false); p.onLogout(); }}>← Sair</button>
           )}
+          <div className="versao">Kairós v{VERSAO} · em teste</div>
         </div>
       )}
     </nav>

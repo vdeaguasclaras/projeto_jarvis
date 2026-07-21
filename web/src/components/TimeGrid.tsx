@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type DragEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { Evento, Tarefa } from "@/lib/db";
+import type { CorContainer } from "@/lib/cores";
 
 /** Grade de horas do Dia e da Semana — eventos reais + blocos de tarefa agendada. */
 
@@ -15,6 +16,8 @@ export type Bloco = {
   classe: "" | "g" | "o" | "task";
   feita?: boolean;
   durMin: number;
+  /** cor do container (redesign): pinta borda, fundo e título do bloco */
+  cor?: CorContainer;
 };
 
 export type DropInfo = { tipo: "evento" | "tarefa"; id: string; durMin: number };
@@ -239,8 +242,12 @@ export default function TimeGrid({
               .map((b) => (
                 <div
                   key={`${b.tipo}-${b.id}`}
-                  className={`evt ${b.classe}${b.feita ? " done" : ""}`}
-                  style={{ top: (b.inicio - H0) * ROW, height: (b.fim - b.inicio) * ROW - 3 }}
+                  className={`evt ${b.classe}${b.feita ? " done" : ""}${b.cor ? " colorido" : ""}`}
+                  style={{
+                    top: (b.inicio - H0) * ROW,
+                    height: (b.fim - b.inicio) * ROW - 3,
+                    ...(b.cor ? { borderLeftColor: b.cor.borda, background: b.cor.fundo } : {}),
+                  }}
                   role="button"
                   tabIndex={0}
                   draggable={!!onDrop}
@@ -260,7 +267,7 @@ export default function TimeGrid({
                     onBlocoDblClick?.(b);
                   }}
                 >
-                  <span className="t">{b.titulo}</span>
+                  <span className="t" style={b.cor ? { color: b.cor.texto } : undefined}>{b.titulo}</span>
                   <span className="h">
                     {hhmm(b.inicio)} – {hhmm(b.fim)}
                   </span>

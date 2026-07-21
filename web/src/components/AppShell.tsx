@@ -597,10 +597,12 @@ export default function AppShell() {
       // o atalho "c" da captura vive no CaptureFab
       const match = VIEWS.find((v) => v.key === e.key);
       if (match) irParaView(match.id);
+      // atalho global do redesign: D abre o Despacho
+      if (e.key === "d" && !e.metaKey && !e.ctrlKey && !e.altKey) openTriage();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [irParaView]);
+  }, [irParaView, openTriage]);
 
   // Qual item do trilho/tab bar está aceso (Espaços cobre PARA, notas, grafo e arquivo)
   const railAtivo: RailAtivo = paginaId
@@ -630,6 +632,14 @@ export default function AppShell() {
 
   const inboxCount = session ? inboxItems.length : demoInbox.length;
   const hoje = hojeISO();
+  // Saudação do header: primeiro nome do login Google, senão o prefixo do e-mail
+  const meta = (session?.user.user_metadata ?? {}) as { full_name?: string; name?: string };
+  const primeiroNome = session
+    ? (() => {
+        const bruto = (meta.full_name || meta.name || session.user.email?.split("@")[0] || "").trim().split(/\s+/)[0];
+        return bruto ? bruto.charAt(0).toUpperCase() + bruto.slice(1) : null;
+      })()
+    : null;
   const feitasHoje = tarefas.filter((t) => t.status === "concluida" && (t.concluida_em ?? "").slice(0, 10) === hoje).length;
   const paraHoje = tarefas.filter((t) => t.status !== "concluida" && t.status !== "algum_dia" && t.prazo !== null && t.prazo <= hoje).length;
   const placar = session ? { done: feitasHoje, total: Math.max(feitasHoje + paraHoje, 1) } : { done: 1, total: 3 };
@@ -684,7 +694,18 @@ export default function AppShell() {
         onLogout={logout}
       />
       <main className="main">
-        <Topbar view={view} title={TITLES[view]} diaAtual={diaAtual} onView={irParaView} />
+        <Topbar
+          view={view}
+          title={TITLES[view]}
+          diaAtual={diaAtual}
+          hoje={hoje}
+          nome={primeiroNome}
+          seq={session ? seq : 0}
+          placar={placar}
+          onView={irParaView}
+          onNavDia={(d) => (session ? setDiaAtual(d) : showToast("Entre para navegar pelos seus dias"))}
+          onNavSemana={(d) => setWeekStart(d === 0 ? segundaDe(hoje) : somaDias(weekStart, d * 7))}
+        />
         <div className="canvas">
           {!session && <AuthBar onToast={showToast} />}
           {session && paginaId === "lista" ? (
@@ -733,10 +754,10 @@ export default function AppShell() {
               dia={diaAtual}
               hoje={hoje}
               inboxCount={inboxCount}
-              placar={placar}
-              seq={seq}
+              seq={session ? seq : 0}
               eventos={eventosDia}
               tarefas={tarefas}
+              pessoas={pessoas}
               prioridades={itensDePrio(prioDia)}
               onNavDia={setDiaAtual}
               onCheck={openTriage}
