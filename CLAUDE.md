@@ -5,8 +5,8 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Idioma e estilo
 
-- **Tudo em pt-BR**: conversa, commits, código de UI, docs. Termos das metodologias mantidos (check do dia, triagem, incubar, destilar).
-- Design tokens e interações: a especificação é `prototipos/prototipo-v6.html` — divergências devem ser decididas, não acidentais.
+- **Tudo em pt-BR**: conversa, commits, código de UI, docs. Termos das metodologias mantidos (Despacho — novo nome do check do dia —, triagem, incubar, destilar).
+- Design tokens e interações: a especificação é o **handoff do redesign** em `prototipos/redesign-2026-07/` (README + TOKENS.md + DARK-MODE.md + canvas `design/kairos-mobile.dc.html`) — substituiu o protótipo v6. Divergências devem ser decididas, não acidentais.
 
 ## Estrutura
 
@@ -36,8 +36,9 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Próximos passos (na ordem)
 
-1. **Marco 5** — calendário real: `kairos_eventos` no Dia/Semana, arrastar tarefa para o dia, prioridades do dia persistentes.
-2. **Revisão semanal** (domingo) com placar e decisões — espelhar o protótipo v6.
-3. **Marco 7** — PWA completo (service worker, notificação do check do dia).
-4. **OAuth Google/Microsoft** (Marco 2 restante) e **Fase 2** — sync Google Calendar/Outlook.
-5. **Fase 5** — importador do Todoist (conector MCP do Todoist já autorizado nesta conta).
+O redesign de 2026-07 reorganizou o roteiro: seguir as **etapas A–J de `docs/09-plano-redesign.md`**
+(shell+tokens → Hoje/Marco 5 → captura ⌘K → Despacho → kanban → Espaços → notas → grafo →
+revisão semanal → PWA/Marco 7). Depois delas continuam valendo:
+
+1. **OAuth Google/Microsoft** (Marco 2 restante) e **Fase 2** — sync Google Calendar/Outlook.
+2. **Fase 5** — importador do Todoist (conector MCP do Todoist já autorizado nesta conta).
