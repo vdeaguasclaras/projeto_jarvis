@@ -13,15 +13,19 @@ type Sugestao = { insere: string; mostra: string; tipo: string };
 
 type Props = {
   logged: boolean;
-  /** uma aba lateral está aberta — o botão desliza para o lado (não sobrepor o Salvar) */
+  /** uma aba lateral está aberta — o compositor desliza para o lado (não sobrepor o Salvar) */
   recuar: boolean;
+  /** incrementa para abrir o compositor de fora (o + do trilho/tab bar do redesign) */
+  abrirSinal?: number;
+  /** o + agora mora no trilho/tab bar — sem o botão flutuante do canto */
+  semBotao?: boolean;
   containers: Container[];
   pessoas: Pessoa[];
   onCapture: (texto: string, imagem: File | null) => Promise<void> | void;
   onToast: (msg: string) => void;
 };
 
-export default function CaptureFab({ logged, recuar, containers, pessoas, onCapture, onToast }: Props) {
+export default function CaptureFab({ logged, recuar, abrirSinal = 0, semBotao = false, containers, pessoas, onCapture, onToast }: Props) {
   const [aberto, setAberto] = useState(false);
   const [text, setText] = useState("");
   const [imagem, setImagem] = useState<File | null>(null);
@@ -43,6 +47,14 @@ export default function CaptureFab({ logged, recuar, containers, pessoas, onCapt
     setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [imagem]);
+
+  // o + do trilho/tab bar abre (e alterna) o compositor
+  useEffect(() => {
+    if (abrirSinal > 0) {
+      setAberto(true);
+      requestAnimationFrame(() => taRef.current?.focus());
+    }
+  }, [abrirSinal]);
 
   // atalho global: "c" abre o compositor
   useEffect(() => {
@@ -231,17 +243,19 @@ export default function CaptureFab({ logged, recuar, containers, pessoas, onCapt
         </div>
         {arrastando && <div className="comp-drop">solte a imagem aqui</div>}
       </div>
-      <button
-        className={`fab${recuar ? " recuado" : ""}`}
-        aria-label="Capturar (atalho: c)"
-        title="Capturar (atalho: c)"
-        onClick={() => {
-          setAberto((v) => !v);
-          if (!aberto) requestAnimationFrame(() => taRef.current?.focus());
-        }}
-      >
-        +<kbd>c</kbd>
-      </button>
+      {!semBotao && (
+        <button
+          className={`fab${recuar ? " recuado" : ""}`}
+          aria-label="Capturar (atalho: c)"
+          title="Capturar (atalho: c)"
+          onClick={() => {
+            setAberto((v) => !v);
+            if (!aberto) requestAnimationFrame(() => taRef.current?.focus());
+          }}
+        >
+          +<kbd>c</kbd>
+        </button>
+      )}
     </>
   );
 }

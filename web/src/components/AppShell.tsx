@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import Sidebar from "@/components/Sidebar";
+import Rail, { type RailAtivo } from "@/components/Rail";
+import TabBar from "@/components/TabBar";
+import EspacosHub from "@/components/EspacosHub";
 import Topbar from "@/components/Topbar";
 import CaptureFab from "@/components/CaptureFab";
 import DayView from "@/components/DayView";
@@ -89,7 +91,8 @@ const DEMO_INBOX = [
 
 export default function AppShell() {
   const [view, setView] = useState<ViewId>("dia");
-  const [collapsed, setCollapsed] = useState(false);
+  // incrementa a cada + (trilho/tab bar) para abrir o compositor de captura
+  const [capSinal, setCapSinal] = useState(0);
   const [session, setSession] = useState<Session | null>(null);
   const [demoInbox, setDemoInbox] = useState<string[]>(DEMO_INBOX);
   const [containers, setContainers] = useState<Container[]>([]);
@@ -599,6 +602,32 @@ export default function AppShell() {
     return () => document.removeEventListener("keydown", onKey);
   }, [irParaView]);
 
+  // Qual item do trilho/tab bar está aceso (Espaços cobre PARA, notas, grafo e arquivo)
+  const railAtivo: RailAtivo = paginaId
+    ? "espacos"
+    : view === "dia"
+      ? "hoje"
+      : view === "semana" || view === "mes" || view === "ano"
+        ? "agenda"
+        : view === "tarefas"
+          ? "tarefas"
+          : "espacos";
+
+  const irHoje = useCallback(() => {
+    setDiaAtual(hojeISO());
+    irParaView("dia");
+  }, [irParaView]);
+
+  const irEspacos = useCallback(() => {
+    if (!session) {
+      showToast("Entre para ver os seus Espaços");
+      return;
+    }
+    setPaginaId("lista");
+  }, [session, showToast]);
+
+  const abrirCaptura = useCallback(() => setCapSinal((n) => n + 1), []);
+
   const inboxCount = session ? inboxItems.length : demoInbox.length;
   const hoje = hojeISO();
   const feitasHoje = tarefas.filter((t) => t.status === "concluida" && (t.concluida_em ?? "").slice(0, 10) === hoje).length;
@@ -639,50 +668,42 @@ export default function AppShell() {
     (escopo === "dia" ? prioDia : prioSemana).map((p) => ({ tarefa_id: p.tarefa_id, titulo: p.titulo, feita: p.feita }));
 
   return (
-    <div className={`app${collapsed ? " nosb" : ""}`}>
+    <div className="app">
       <Pwa logged={!!session} inboxCount={inboxItems.length} />
-      <Sidebar
-        inboxCount={inboxCount}
-        placar={placar}
-        seq={session ? seq : 0}
-        activeToday={view === "dia"}
-        activeTasks={view === "tarefas"}
+      <Rail
+        ativo={railAtivo}
         userEmail={session?.user.email ?? null}
-        containers={session ? containers : null}
-        tarefas={tarefas}
-        onToday={() => {
-          setDiaAtual(hojeISO());
-          irParaView("dia");
-        }}
-        onTasks={() => irParaView("tarefas")}
-        onNotes={() => irParaView("notas")}
-        onSync={() => (session ? syncAgenda() : showToast("Entre com Google para trazer a sua agenda"))}
-        onInbox={openTriage}
-        onNew={(kind) => (session ? setNewKind(kind) : showToast("Entre para criar os seus de verdade"))}
-        onOpenContainer={setPaginaId}
-        onArquivo={() => (session ? setPaginaId("arquivo") : showToast("Entre para ver o seu Arquivo"))}
-        arquivadosCount={arquivados.length}
-        onWeekly={openWeekly}
         weeklyDone={revisaoFeita}
+        onHoje={irHoje}
+        onAgenda={() => irParaView("semana")}
+        onCapturar={abrirCaptura}
+        onTarefas={() => irParaView("tarefas")}
+        onEspacos={irEspacos}
+        onSync={() => (session ? syncAgenda() : showToast("Entre com Google para trazer a sua agenda"))}
+        onWeekly={openWeekly}
         onLogout={logout}
-        onSoon={(what) => showToast(`${what} — em construção nesta fase`)}
       />
       <main className="main">
-        <Topbar
-          view={view}
-          title={TITLES[view]}
-          diaAtual={diaAtual}
-          onView={irParaView}
-          onToggleSidebar={() => setCollapsed((c) => !c)}
-        />
+        <Topbar view={view} title={TITLES[view]} diaAtual={diaAtual} onView={irParaView} />
         <div className="canvas">
           {!session && <AuthBar onToast={showToast} />}
-          {session && (paginaId === "lista" || paginaId === "arquivo") ? (
+          {session && paginaId === "lista" ? (
+            <EspacosHub
+              containers={containers}
+              arquivados={arquivados}
+              tarefas={tarefas}
+              onOpen={setPaginaId}
+              onNotas={() => irParaView("notas")}
+              onGrafo={() => irParaView("grafo")}
+              onArquivo={() => setPaginaId("arquivo")}
+              onNovo={setNewKind}
+            />
+          ) : session && paginaId === "arquivo" ? (
             <ParaLista
               containers={containers}
               arquivados={arquivados}
               tarefas={tarefas}
-              soArquivo={paginaId === "arquivo"}
+              soArquivo
               onOpen={setPaginaId}
             />
           ) : session && paginaId && [...containers, ...arquivados].some((c) => c.id === paginaId) ? (
@@ -818,22 +839,14 @@ export default function AppShell() {
           )}
         </div>
       </main>
-      <nav className="bottomnav" aria-label="Navegação">
-        {(
-          [
-            ["dia", "◉", "Hoje", () => { setDiaAtual(hojeISO()); irParaView("dia"); }],
-            ["tarefas", "☑", "Tarefas", () => irParaView("tarefas")],
-            ["inbox", "↓", "Inbox", openTriage],
-            ["projetos", "▶", "Projetos", () => (session ? setPaginaId("lista") : showToast("Entre para ver os seus"))],
-            ["arquivo", "▤", "Arquivo", () => (session ? setPaginaId("arquivo") : showToast("Entre para ver o seu Arquivo"))],
-          ] as [string, string, string, () => void][]
-        ).map(([id, ico, label, fn]) => (
-          <button key={id} className={(id === "dia" && view === "dia") || (id === "tarefas" && view === "tarefas") ? "active" : ""} onClick={fn}>
-            <span className="ico">{ico}</span>
-            {label}
-          </button>
-        ))}
-      </nav>
+      <TabBar
+        ativo={railAtivo}
+        onHoje={irHoje}
+        onCalendario={() => irParaView("semana")}
+        onCapturar={abrirCaptura}
+        onTarefas={() => irParaView("tarefas")}
+        onEspacos={irEspacos}
+      />
 
       {revisando && session && (
         <RevisaoModal
@@ -921,6 +934,8 @@ export default function AppShell() {
       <CaptureFab
         logged={!!session}
         recuar={!!(eventoPanel || eventoForm || tarefaEdit)}
+        abrirSinal={capSinal}
+        semBotao
         containers={containers}
         pessoas={pessoas}
         onCapture={capture}

@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 import { VIEWS, type ViewId } from "@/lib/demo";
 
-/** Barra do topo — data/título e visões. A captura saiu daqui:
- *  virou o botão flutuante (CaptureFab), escolha do Raul (proposta C). */
+/** Barra do topo — data/título e visões. O ☰ saiu com a sidebar antiga
+ *  (redesign 2026-07: a navegação primária vive no trilho/tab bar). */
 
 type Props = {
   view: ViewId;
@@ -12,13 +12,12 @@ type Props = {
   /** dia sendo visto na visão Dia (pode não ser hoje) */
   diaAtual: string;
   onView: (v: ViewId) => void;
-  onToggleSidebar: () => void;
 };
 
 const WEEKDAYS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
 const MONTHS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 
-export default function Topbar({ view, title, diaAtual, onView, onToggleSidebar }: Props) {
+export default function Topbar({ view, title, diaAtual, onView }: Props) {
   const today = useMemo(() => {
     const [a, m, dd] = diaAtual.split("-").map(Number);
     const d = new Date(a, m - 1, dd);
@@ -27,9 +26,6 @@ export default function Topbar({ view, title, diaAtual, onView, onToggleSidebar 
 
   return (
     <header className="topbar">
-      <button className="sb-toggle" onClick={onToggleSidebar} aria-label="Mostrar/ocultar menu">
-        ☰
-      </button>
       <div className="date-title">
         {view === "dia" ? (
           <>
