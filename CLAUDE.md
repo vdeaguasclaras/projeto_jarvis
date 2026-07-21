@@ -12,14 +12,14 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 - `docs/01-07` — plano do produto, decisões de cada rodada de design, kickoff técnico (schema, marcos).
 - `docs/08+` — status por sessão de desenvolvimento (ler o mais recente antes de continuar).
-- `prototipos/` — protótipos HTML v1–v6 (v6 = final).
+- `prototipos/` — protótipos HTML v1–v6 (histórico) e `redesign-2026-07/` (handoff vigente).
 - `web/` — app Next.js 15 + TypeScript + Tailwind 4 + Supabase. `npm run build` precisa passar antes de push.
 
 ## Infraestrutura (decisões vigentes)
 
 - **Supabase**: projeto `mapa-de-sala` (id `budjzwlccrnxdnkaqtko`, região sa-east-1) — compartilhado com outro app do Raul (tabelas `jim_*`). As nossas são **`kairos_*`**, todas com RLS "dono" (`auth.uid() = user_id`). Migrações versionadas em `web/supabase/migrations/` e aplicadas via MCP `apply_migration`. Decisão: migrar para projeto próprio quando o Raul pagar/limpar o plano.
 - **Vercel**: projeto `projeto-jarvis` (team `team_zwdRohlmXrxBKP3dokznhfe3`), Root Directory `web`, produção em **https://projeto-jarvis-seven.vercel.app**. Deploy contínuo: merge na `main` publica. O Framework Preset do painel está "Other" — é o `web/vercel.json` (`"framework": "nextjs"`) que faz funcionar; **não remover**.
-- **Auth**: link mágico por e-mail (Supabase). Chave anon pública em `web/.env.production` (por design; segurança é o RLS). OAuth Google/Microsoft ainda não configurado (precisa de credenciais que só o Raul pode criar).
+- **Auth**: link mágico por e-mail + **Google OAuth** (o Raul criou as credenciais; login já pede o escopo `calendar.readonly`). Chave anon pública em `web/.env.production` (por design; segurança é o RLS). Microsoft/Azure ainda sem credenciais.
 
 ## Armadilhas conhecidas deste ambiente
 
@@ -36,9 +36,26 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Próximos passos (na ordem)
 
-O redesign de 2026-07 reorganizou o roteiro: seguir as **etapas A–J de `docs/09-plano-redesign.md`**
-(shell+tokens → Hoje/Marco 5 → captura ⌘K → Despacho → kanban → Espaços → notas → grafo →
-revisão semanal → PWA/Marco 7). Depois delas continuam valendo:
+**O redesign de 2026-07 é o roteiro vigente**: seguir as etapas A–J de `docs/20-plano-redesign.md`
+(shell+tokens+tema escuro → Hoje → captura ⌘K → Despacho → kanban → Espaços → notas → grafo →
+revisão semanal formato jornal → polimento PWA). Como o app já tem quase todas as
+funcionalidades, as etapas são majoritariamente **revestir com o design novo**, criando o que
+falta (modo escuro, kanban, hub Espaços, página de Pessoas). Fora do redesign continuam na fila:
 
-1. **OAuth Google/Microsoft** (Marco 2 restante) e **Fase 2** — sync Google Calendar/Outlook.
-2. **Fase 5** — importador do Todoist (conector MCP do Todoist já autorizado nesta conta).
+1. Renovação do token Google sem relogar (Edge Function), Web Push com app fechado,
+   apertar políticas `jim_*` antes de compartilhar, gamificação plena / auto-agendamento sugerido.
+2. **OAuth Microsoft/Outlook: ADIADO por decisão do Raul (14/07)** — não implementar por ora.
+
+Feitos: Marcos 1–7 completos (login Google incluído), revisão semanal (wizard), Mês/Ano, importador do
+Todoist (migração 0004), Fase 3 completa (Notas + Grafo, migração 0005), **Fase 2 Google** (sync de
+TODAS as agendas visíveis, espelho idempotente `google_id = agenda/evento`, migração 0006; Google é a
+fonte da verdade; `provider_token` vale ~1h por login) e a **1ª rodada de refino do uso real** (docs/14):
+painel lateral de evento, check do dia com escolha de item + agendamento do dia, captura com data/hora
+vira tarefa agendada, filtros nas Tarefas, recorrência (migração 0007), rolagem corrigida. **2ª rodada**
+(docs/15): check do dia com dia/hora/grupo por tarefa, eventos de dia inteiro (migração 0008, faixa
+"o dia todo"), **páginas PARA** (descrição/objetivo editáveis, progresso, tarefas, notas, arquivar,
+lista no celular). **3ª rodada** (docs/16): painel lateral da tarefa em tudo (padrão Notion), coluna
+"sem horário" no Dia, navegação entre dias (Semana→Dia), prioridades acionáveis + avulsas (migração
+0009), projeto↔áreas N:N (migração 0011; a área lista as tarefas dos projetos com chip), ícone
+com colagem livre, sidebar expansível, captura com texto
+persistente + @pessoa→responsável, duração padrão 30 min, atalho "c", grafo com PARA completo.

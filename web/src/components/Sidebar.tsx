@@ -1,10 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AREAS, PROJECTS, RESOURCES } from "@/lib/demo";
+import { LembreteCheck } from "@/components/Pwa";
 import type { Container, Kind, Tarefa } from "@/lib/db";
 
 type Props = {
   inboxCount: number;
+  /** placar do dia + sequência — o check do dia mora aqui agora (proposta B) */
+  placar: { done: number; total: number };
+  seq: number;
   activeToday: boolean;
   activeTasks: boolean;
   userEmail: string | null;
@@ -13,15 +18,47 @@ type Props = {
   tarefas: Tarefa[];
   onToday: () => void;
   onTasks: () => void;
+  onNotes: () => void;
+  onSync: () => void;
   onInbox: () => void;
   onNew: (kind: Kind) => void;
+  onOpenContainer: (id: string) => void;
+  /** abre o Arquivo (o A do PARA) */
+  onArquivo: () => void;
+  arquivadosCount: number;
+  onWeekly: () => void;
+  /** revisão da semana atual já registrada */
+  weeklyDone: boolean;
   onLogout: () => void;
   onSoon: (what: string) => void;
 };
 
 const DOT = ["var(--today)", "var(--accent)", "var(--task)", "var(--google)"];
+const LS_KEY = "kairos.sidebar.abertos";
 
 export default function Sidebar(p: Props) {
+  // Seções expansíveis (muitos projetos/áreas — pedido do Raul); estado lembrado.
+  const [aberto, setAberto] = useState<Record<string, boolean>>({ projeto: true, area: true, recurso: true });
+  useEffect(() => {
+    try {
+      const salvo = localStorage.getItem(LS_KEY);
+      if (salvo) setAberto((prev) => ({ ...prev, ...JSON.parse(salvo) }));
+    } catch {
+      /* primeiro uso */
+    }
+  }, []);
+  const toggleGrupo = (kind: Kind) => {
+    setAberto((prev) => {
+      const prox = { ...prev, [kind]: !prev[kind] };
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(prox));
+      } catch {
+        /* sem localStorage */
+      }
+      return prox;
+    });
+  };
+
   const toggleTheme = () => {
     const root = document.documentElement;
     const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -34,39 +71,54 @@ export default function Sidebar(p: Props) {
 
   const grupo = (kind: Kind, label: string, ico: string) => {
     const reais = p.containers?.filter((c) => c.kind === kind) ?? null;
+    const mostrando = aberto[kind] !== false;
+    const total = reais?.length ?? 0;
     return (
       <>
         <div className="para-row">
-          <span className="para-label">{label}</span>
+          <button
+            className="para-toggle"
+            aria-expanded={mostrando}
+            onClick={() => toggleGrupo(kind)}
+            title={mostrando ? "Recolher" : `Mostrar (${total})`}
+          >
+            <span className={`para-chev${mostrando ? " open" : ""}`}>›</span>
+            <span className="para-label">{label}</span>
+            {!mostrando && total > 0 && <span className="para-n">{total}</span>}
+          </button>
           <button className="para-add" aria-label={`Criar ${label.toLowerCase()}`} onClick={() => p.onNew(kind)}>
             +
           </button>
         </div>
-        {reais === null &&
-          (kind === "projeto" ? PROJECTS.map((x) => x.name) : kind === "area" ? AREAS : RESOURCES).map((nome, i) => (
-            <button key={nome} className="nav-item" onClick={() => p.onSoon(`Página de ${nome} (exemplo)`)}>
-              {kind === "projeto" ? (
-                <span className="proj-dot" style={{ background: DOT[i % DOT.length] }} />
-              ) : (
-                <span className="nav-ico">{ico}</span>
-              )}
-              {nome}
-            </button>
-          ))}
-        {reais !== null && reais.length === 0 && <p className="side-empty">nenhum ainda — use o +</p>}
-        {reais?.map((c, i) => (
-          <button key={c.id} className="nav-item" onClick={() => p.onSoon(`Página de ${c.nome}`)}>
-            {c.emoji ? (
-              <span className="nav-ico">{c.emoji}</span>
-            ) : kind === "projeto" ? (
-              <span className="proj-dot" style={{ background: DOT[i % DOT.length] }} />
-            ) : (
-              <span className="nav-ico">{ico}</span>
-            )}
-            {c.nome}
-            {kind === "projeto" && <span className="count">{abertas(c.id)}</span>}
-          </button>
-        ))}
+        {mostrando && (
+          <>
+            {reais === null &&
+              (kind === "projeto" ? PROJECTS.map((x) => x.name) : kind === "area" ? AREAS : RESOURCES).map((nome, i) => (
+                <button key={nome} className="nav-item" onClick={() => p.onSoon(`Página de ${nome} (exemplo)`)}>
+                  {kind === "projeto" ? (
+                    <span className="proj-dot" style={{ background: DOT[i % DOT.length] }} />
+                  ) : (
+                    <span className="nav-ico">{ico}</span>
+                  )}
+                  {nome}
+                </button>
+              ))}
+            {reais !== null && reais.length === 0 && <p className="side-empty">nenhum ainda — use o +</p>}
+            {reais?.map((c, i) => (
+              <button key={c.id} className="nav-item" onClick={() => p.onOpenContainer(c.id)}>
+                {c.emoji ? (
+                  <span className="nav-ico">{c.emoji}</span>
+                ) : kind === "projeto" ? (
+                  <span className="proj-dot" style={{ background: DOT[i % DOT.length] }} />
+                ) : (
+                  <span className="nav-ico">{ico}</span>
+                )}
+                {c.nome}
+                {kind === "projeto" && <span className="count">{abertas(c.id)}</span>}
+              </button>
+            ))}
+          </>
+        )}
       </>
     );
   };
@@ -84,18 +136,45 @@ export default function Sidebar(p: Props) {
       <button className={`nav-item${p.activeToday ? " active" : ""}`} onClick={p.onToday}>
         <span className="nav-ico">◉</span> Hoje
       </button>
-      <button className="nav-item" onClick={p.onInbox}>
-        <span className="nav-ico">↓</span> Inbox <span className="count">{p.inboxCount}</span>
-      </button>
+
+      <div className="check-vivo">
+        <b>
+          <span
+            className="anel"
+            style={{ ["--p" as string]: Math.min(100, Math.round((p.placar.done / Math.max(p.placar.total, 1)) * 100)) }}
+          >
+            <i>
+              {p.placar.done}/{p.placar.total}
+            </i>
+          </span>
+          Check do dia
+        </b>
+        <small>
+          {p.inboxCount > 0 ? (
+            <>
+              Inbox com <b>{p.inboxCount}</b> {p.inboxCount === 1 ? "item" : "itens"}
+            </>
+          ) : (
+            <>Inbox zero</>
+          )}
+          {" · 🔥 "}
+          {p.seq > 1 ? `${p.seq} dias` : p.seq === 1 ? "feito hoje" : "começa hoje"}
+        </small>
+        <button onClick={p.onInbox}>Fazer o check</button>
+      </div>
+
       <button className={`nav-item${p.activeTasks ? " active" : ""}`} onClick={p.onTasks}>
         <span className="nav-ico">☑</span> Tarefas{" "}
         <span className="count">{p.tarefas.filter((t) => t.status !== "concluida").length || ""}</span>
       </button>
-      <button className="nav-item" onClick={() => p.onSoon("Notas (Zettelkasten)")}>
+      <button className="nav-item" onClick={p.onNotes}>
         <span className="nav-ico">✎</span> Notas
       </button>
-      <button className="nav-item" onClick={() => p.onSoon("Revisão semanal")}>
-        <span className="nav-ico">⟳</span> Revisão semanal <span className="due-chip">dom</span>
+      <button className="nav-item" onClick={p.onWeekly}>
+        <span className="nav-ico">⟳</span> Revisão semanal <span className="due-chip">{p.weeklyDone ? "✓" : "dom"}</span>
+      </button>
+      <button className="nav-item" onClick={p.onSync} title="Importa os eventos do Google Calendar (janela de 67 dias)">
+        <span className="nav-ico">⇄</span> Google Agenda
       </button>
 
       {grupo("projeto", "Projetos", "▶")}
@@ -105,8 +184,8 @@ export default function Sidebar(p: Props) {
       <div className="para-row">
         <span className="para-label">&nbsp;</span>
       </div>
-      <button className="nav-item" onClick={() => p.onSoon("Arquivo")}>
-        <span className="nav-ico">▤</span> Arquivo
+      <button className="nav-item" onClick={p.onArquivo}>
+        <span className="nav-ico">▤</span> Arquivo <span className="count">{p.arquivadosCount || ""}</span>
       </button>
 
       <div className="sidebar-foot">
@@ -116,6 +195,7 @@ export default function Sidebar(p: Props) {
             <button onClick={p.onLogout}>Sair</button>
           </div>
         )}
+        <LembreteCheck />
         <button className="theme-toggle" onClick={toggleTheme}>
           ◐ Alternar tema
         </button>

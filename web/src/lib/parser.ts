@@ -13,14 +13,16 @@ export type Capture = {
   people: string[];
 };
 
-const DATE_RX =
-  /\b(hoje|amanhã|segunda|seg|terça|ter|quarta|qua|quinta|qui|sexta|sex|sábado|sab|domingo|dom)\b/i;
+// \b não funciona com acentos (amanhã, sábado…) — as bordas são explícitas
+const DIAS_PALAVRAS =
+  "hoje|amanhã|amanha|segunda|seg|terça|terca|ter|quarta|qua|quinta|qui|sexta|sex|sábado|sabado|sab|domingo|dom";
+const DATE_RX = new RegExp(`(?:^|[\\s,])(${DIAS_PALAVRAS})(?:-feira)?(?=$|[\\s,.;!?])`, "i");
 const DATEN_RX = /\b(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\b/;
 const DIA_RX = /\bdia\s+(\d{1,2})\b/i;
 const TIME_RX = /\b(\d{1,2})h(\d{2})?\b/;
 const PROJECT_RX = /(?:^|\s)#([\wÀ-ú-]+)/;
 const AREA_RX = /(?:^|\s)\/([\wÀ-ú-]+)/;
-const PEOPLE_RX = /@([\wÀ-ú]+)/g;
+const PEOPLE_RX = /@([\wÀ-ú-]+)/g;
 
 /** Normaliza para comparação: minúsculas, sem acentos, hífens viram espaços. */
 export function normalizar(s: string): string {
@@ -38,9 +40,10 @@ export function tokenDe(nome: string): string {
   return nome.trim().replace(/\s+/g, "-");
 }
 
+// chaves na forma normalizada (sem acento) — é assim que a busca chega
 const DIAS_SEMANA: Record<string, number> = {
-  domingo: 0, dom: 0, segunda: 1, seg: 1, terça: 2, ter: 2, quarta: 3, qua: 3,
-  quinta: 4, qui: 4, sexta: 5, sex: 5, sábado: 6, sab: 6,
+  domingo: 0, dom: 0, segunda: 1, seg: 1, terca: 2, ter: 2, quarta: 3, qua: 3,
+  quinta: 4, qui: 4, sexta: 5, sex: 5, sabado: 6, sab: 6,
 };
 
 function iso(d: Date): string {
@@ -80,7 +83,9 @@ export function resolveDataCaptura(date: string | null): string | null {
   return null;
 }
 
-/** Acha o container citado num token (#Projeto ou /Área): igual normalizado, ou prefixo único. */
+/** Acha o container citado num token (#Projeto ou /Área): igual normalizado, ou prefixo único.
+ *  Se nada bater no(s) tipo(s) preferido(s), tenta os demais — usar /Projeto ou #Área
+ *  por engano não pode perder o vínculo. */
 export function encontraContainer<T extends { nome: string; kind: string }>(
   token: string | null,
   lista: T[],
@@ -88,11 +93,13 @@ export function encontraContainer<T extends { nome: string; kind: string }>(
 ): T | null {
   if (!token) return null;
   const alvo = normalizar(token);
-  const cands = lista.filter((c) => kinds.includes(c.kind));
-  const exato = cands.find((c) => normalizar(c.nome) === alvo);
-  if (exato) return exato;
-  const prefixo = cands.filter((c) => normalizar(c.nome).startsWith(alvo));
-  return prefixo.length === 1 ? prefixo[0] : null;
+  const busca = (cands: T[]): T | null => {
+    const exato = cands.find((c) => normalizar(c.nome) === alvo);
+    if (exato) return exato;
+    const prefixo = cands.filter((c) => normalizar(c.nome).startsWith(alvo));
+    return prefixo.length === 1 ? prefixo[0] : null;
+  };
+  return busca(lista.filter((c) => kinds.includes(c.kind))) ?? busca(lista.filter((c) => !kinds.includes(c.kind)));
 }
 
 export function parseCapture(raw: string): Capture {
@@ -105,16 +112,24 @@ export function parseCapture(raw: string): Capture {
   const area = v.match(AREA_RX);
   const people = [...v.matchAll(PEOPLE_RX)].map((m) => m[1]);
 
+  // Título persistente: os marcadores viram parte legível do texto (só o símbolo sai);
+  // data e hora saem junto com a preposição órfã ("às", "no dia"…) para não sobrar
+  // "Enviar a programação do por e-mail, às" (feedback do Raul).
   const title =
     v
-      .replace(DATE_RX, "")
-      .replace(DIA_RX, "")
-      .replace(DATEN_RX, "")
-      .replace(TIME_RX, "")
-      .replace(/(?:^|\s)#[\wÀ-ú-]+/g, "")
-      .replace(/(?:^|\s)\/[\wÀ-ú-]+/g, "")
-      .replace(/@[\wÀ-ú]+/g, "")
+      .replace(/(^|[^\wÀ-ú]),?\s*(?:(?:às|as|ás)\s+)?\d{1,2}h(?:\d{2})?(?=$|[^\w])/i, "$1")
+      .replace(/(^|[^\wÀ-ú]),?\s*(?:(?:no|na|em|para|pra|até|ate)\s+)?dia\s+\d{1,2}(?=$|[^\w])/i, "$1")
+      .replace(/(^|[^\wÀ-ú]),?\s*(?:(?:no|na|em|para|pra|até|ate)\s+)?\d{1,2}\/\d{1,2}(?:\/\d{2,4})?(?=$|[^\w/])/, "$1")
+      .replace(
+        new RegExp(`(^|[^\\wÀ-ú]),?\\s*(?:(?:nesta|nessa|na|no|em|para|pra|até|ate)\\s+)?(?:${DIAS_PALAVRAS})(?:-feira)?(?=$|[^\\wÀ-ú])`, "i"),
+        "$1",
+      )
+      .replace(/(^|\s)#([\wÀ-ú-]+)/g, (_m, sp, tok) => sp + tok.replace(/-/g, " "))
+      .replace(/(^|\s)\/([\wÀ-ú-]+)/g, (_m, sp, tok) => sp + tok.replace(/-/g, " "))
+      .replace(/@([\wÀ-ú-]+)/g, (_m, tok) => tok.replace(/-/g, " "))
       .replace(/\s{2,}/g, " ")
+      .replace(/\s+([,.;])/g, "$1")
+      .replace(/^[\s,.;]+|[\s,.;]+$/g, "")
       .trim() || "Nova captura";
 
   return {
