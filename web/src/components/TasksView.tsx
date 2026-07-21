@@ -120,7 +120,7 @@ export default function TasksView({ tarefas, containers, pessoas, logged, onConc
             {itens.length === 0 && (
               <p className="empty-hint">
                 {status === "a_fazer"
-                  ? "Nada aqui — capture algo e faça o check do dia."
+                  ? "Nada aqui — capture algo e faça o Despacho."
                   : status === "concluida"
                     ? "Nenhuma concluída hoje ainda."
                     : "Vazio."}

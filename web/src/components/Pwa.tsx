@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { hojeISO } from "@/lib/db";
 
 /** Marco 7 — PWA: registra o service worker e dispara a notificação do
- *  check do dia (uma por dia, quando o app abre com Inbox pendente).
+ *  Despacho (uma por dia, quando o app abre com Inbox pendente).
  *  Notificação com o app fechado exige push com servidor — fica para depois. */
 
 type Props = { logged: boolean; inboxCount: number };
@@ -21,7 +21,7 @@ export default function Pwa({ logged, inboxCount }: Props) {
     if (localStorage.getItem("kairos-notif-check") === hoje) return;
     navigator.serviceWorker.ready
       .then((reg) =>
-        reg.showNotification("◉ Check do dia", {
+        reg.showNotification("◉ Despacho", {
           body: `Sua Inbox tem ${inboxCount} ${inboxCount === 1 ? "item esperando" : "itens esperando"} triagem.`,
           icon: "/icon-192.png",
           badge: "/icon-192.png",

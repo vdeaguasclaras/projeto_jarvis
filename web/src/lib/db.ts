@@ -250,6 +250,18 @@ export async function incubarItem(inboxId: string, dias = 90): Promise<string> {
   return volta;
 }
 
+/** Desfazer do Despacho: o item volta para a fila. */
+export async function destriarItem(inboxId: string): Promise<void> {
+  if (!supabase) return;
+  await supabase.from("kairos_inbox").update({ triado_em: null }).eq("id", inboxId);
+}
+
+/** Desfazer de "Incubar": limpa a data de retorno. */
+export async function desincubarItem(inboxId: string): Promise<void> {
+  if (!supabase) return;
+  await supabase.from("kairos_inbox").update({ incubada_ate: null }).eq("id", inboxId);
+}
+
 export async function listTarefas(): Promise<Tarefa[]> {
   if (!supabase) return [];
   const { data } = await supabase
@@ -276,23 +288,27 @@ export async function criarTarefa(
     concluida?: boolean;
     imagem_path?: string | null;
   },
-): Promise<string | null> {
-  if (!supabase) return "sem banco";
-  const { error } = await supabase.from("kairos_tarefas").insert({
-    user_id: userId,
-    titulo: campos.titulo,
-    status: campos.concluida ? "concluida" : (campos.status ?? "a_fazer"),
-    prazo: campos.prazo ?? null,
-    container_id: campos.container_id ?? null,
-    responsavel_id: campos.responsavel_id ?? null,
-    descricao: campos.descricao ?? null,
-    nota_origem_id: campos.nota_origem_id ?? null,
-    agendada_inicio: campos.agendada_inicio ?? null,
-    agendada_fim: campos.agendada_fim ?? null,
-    concluida_em: campos.concluida ? new Date().toISOString() : null,
-    imagem_path: campos.imagem_path ?? null,
-  });
-  return error ? error.message : null;
+): Promise<{ id: string | null; err: string | null }> {
+  if (!supabase) return { id: null, err: "sem banco" };
+  const { data, error } = await supabase
+    .from("kairos_tarefas")
+    .insert({
+      user_id: userId,
+      titulo: campos.titulo,
+      status: campos.concluida ? "concluida" : (campos.status ?? "a_fazer"),
+      prazo: campos.prazo ?? null,
+      container_id: campos.container_id ?? null,
+      responsavel_id: campos.responsavel_id ?? null,
+      descricao: campos.descricao ?? null,
+      nota_origem_id: campos.nota_origem_id ?? null,
+      agendada_inicio: campos.agendada_inicio ?? null,
+      agendada_fim: campos.agendada_fim ?? null,
+      concluida_em: campos.concluida ? new Date().toISOString() : null,
+      imagem_path: campos.imagem_path ?? null,
+    })
+    .select("id")
+    .single();
+  return { id: data?.id ?? null, err: error ? error.message : null };
 }
 
 export async function mudarStatusTarefa(id: string, status: TarefaStatus): Promise<void> {

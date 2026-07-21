@@ -16,7 +16,7 @@ import GraphView from "@/components/GraphView";
 import ComingSoon from "@/components/ComingSoon";
 import AuthBar from "@/components/AuthBar";
 import TasksView from "@/components/TasksView";
-import TriageModal from "@/components/TriageModal";
+import Despacho from "@/components/Despacho";
 import NewContainerModal from "@/components/NewContainerModal";
 import EventoModal, { type EventoForm } from "@/components/EventoModal";
 import EventoPanel from "@/components/EventoPanel";
@@ -237,7 +237,7 @@ export default function AppShell() {
             const existente = pessoas.find((p) => normalizar(p.nome) === normalizar(nome));
             responsavelId = existente?.id ?? (await criarPessoa(session.user.id, nome));
           }
-          const err = await criarTarefa(session.user.id, {
+          const { err } = await criarTarefa(session.user.id, {
             titulo: c.title,
             status: "a_fazer",
             prazo,
@@ -322,11 +322,11 @@ export default function AppShell() {
 
   const openTriage = useCallback(() => {
     if (!session) {
-      showToast("Entre com seu e-mail para triar a Inbox de verdade");
+      showToast("Entre com seu e-mail para despachar a Inbox de verdade");
       return;
     }
     if (!inboxItems.length && !tarefasSemHorario.length) {
-      showToast("Inbox zero e dia com horários no lugar — nada para triar 🎉");
+      showToast("Inbox zero e dia com horários no lugar — nada para despachar 🎉");
       return;
     }
     setTriaging(true);
@@ -397,7 +397,7 @@ export default function AppShell() {
   const novaTarefaDoDia = useCallback(
     async (titulo: string, dia: string) => {
       if (!session) return;
-      const err = await criarTarefa(session.user.id, { titulo, status: "a_fazer", prazo: dia });
+      const { err } = await criarTarefa(session.user.id, { titulo, status: "a_fazer", prazo: dia });
       if (err) {
         showToast(`Erro ao criar: ${err}`);
         return;
@@ -942,11 +942,12 @@ export default function AppShell() {
         />
       )}
       {triaging && session && (
-        <TriageModal
+        <Despacho
           userId={session.user.id}
           items={inboxItems}
           containers={containers}
           tarefasSemHorario={tarefasSemHorario}
+          seq={seq}
           onClose={() => setTriaging(false)}
           onChanged={refresh}
           onToast={showToast}
