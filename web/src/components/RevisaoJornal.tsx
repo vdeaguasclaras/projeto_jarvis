@@ -560,7 +560,7 @@ export default function RevisaoJornal({ userId, tarefas, containers, notas, inbo
                   </div>
                   {inboxCount > 0 && (
                     <div className="rvj-dica">
-                      📥 {inboxCount} item{inboxCount > 1 ? "s" : ""} na Inbox — faça o Despacho depois de começar a semana.
+                      📥 {inboxCount} {inboxCount > 1 ? "itens" : "item"} na Inbox — faça o Despacho depois de começar a semana.
                     </div>
                   )}
                   <div className="rvj-cta">

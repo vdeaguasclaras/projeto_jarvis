@@ -43,14 +43,12 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Próximos passos (na ordem)
 
-**O redesign de 2026-07 é o roteiro vigente**: seguir as etapas A–J de `docs/20-plano-redesign.md`
-(shell+tokens+tema escuro → Hoje → captura ⌘K → Despacho → kanban → Espaços → notas → grafo →
-revisão semanal formato jornal → polimento PWA). Como o app já tem quase todas as
-funcionalidades, as etapas são majoritariamente **revestir com o design novo**, criando o que
-falta (modo escuro, kanban, hub Espaços, página de Pessoas). Fora do redesign continuam na fila:
+**O redesign de 2026-07 está COMPLETO** (etapas A–J de `docs/20-plano-redesign.md`, v0.11.0 —
+ver `docs/28`). A fila volta a ser a do produto:
 
 1. Renovação do token Google sem relogar (Edge Function), Web Push com app fechado,
-   apertar políticas `jim_*` antes de compartilhar, gamificação plena / auto-agendamento sugerido.
+   apertar políticas `jim_*` antes de compartilhar (decisão + SQL prontos em `docs/28`),
+   gamificação plena / auto-agendamento sugerido.
 2. **OAuth Microsoft/Outlook: ADIADO por decisão do Raul (14/07)** — não implementar por ora.
 
 Feitos: Marcos 1–7 completos (login Google incluído), revisão semanal (wizard), Mês/Ano, importador do

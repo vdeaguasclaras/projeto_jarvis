@@ -1061,7 +1061,9 @@ button.nc-chip.wl:hover { outline: 1.5px solid var(--purple-border); }
 }
 
 /* Grafo — Etapa H do redesign (12c · 8b) */
-.graph-filtros { margin: 0 0 10px; align-items: center; }
+/* z-index: como no kanban, a linha de filtros (com o dropdown da busca) precisa
+   vencer o graphwrap — ambos são .stagger e a animação cria stacking context. */
+.graph-filtros { margin: 0 0 10px; align-items: center; position: relative; z-index: 30; }
 .graph-filtros .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
 .gpill {
   border: 1px solid var(--border); border-radius: 999px; padding: 5px 13px;
@@ -1322,7 +1324,7 @@ button.nc-chip.wl:hover { outline: 1.5px solid var(--purple-border); }
   .rvj-epigrafe blockquote { margin: 10px 0 0; }
   .rvj-tiles { display: grid; }
   .rvj-narrativa { display: none; }
-  .rvj-editor-bloco.rvj-passo.p2 { display: flex; }
+  .rvj[data-passo="2"] .rvj-editor-bloco.p2 { display: flex; }
   .rvj-editor { min-height: 200px; }
   .rvj-manchete { font-size: 24px; }
   .rvj-cta { display: none; }
