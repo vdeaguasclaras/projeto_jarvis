@@ -17,7 +17,7 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Infraestrutura (decisões vigentes)
 
-- **Supabase**: projeto `mapa-de-sala` (id `budjzwlccrnxdnkaqtko`, região sa-east-1). As tabelas `jim_*` do app antigo do Jim foram **removidas em 22/07/2026** (migração 0012; backup entregue ao Raul) — hoje só existem as **`kairos_*`**, todas com RLS "dono" (`auth.uid() = user_id`). Migrações versionadas em `web/supabase/migrations/` e aplicadas via MCP `apply_migration`. No storage restam os buckets `sumulas` (público, do Jim) e `cartoes-resposta` — decisão sobre eles pendente do Raul.
+- **Supabase**: projeto `mapa-de-sala` (id `budjzwlccrnxdnkaqtko`, região sa-east-1). As tabelas `jim_*` do app antigo do Jim foram **removidas em 22/07/2026** (migração 0012; backup entregue ao Raul) — hoje só existem as **`kairos_*`**, todas com RLS "dono" (`auth.uid() = user_id`). Migrações versionadas em `web/supabase/migrations/` e aplicadas via MCP `apply_migration`. No storage restam os buckets `sumulas` e `cartoes-resposta` (do Jim, já privados e sem políticas; o Raul vai apagá-los pelo painel — SQL não apaga storage e o proxy bloqueia a API).
 - **Vercel**: projeto `projeto-jarvis` (team `team_zwdRohlmXrxBKP3dokznhfe3`), Root Directory `web`, produção em **https://projeto-jarvis-seven.vercel.app**. Deploy contínuo: merge na `main` publica. O Framework Preset do painel está "Other" — é o `web/vercel.json` (`"framework": "nextjs"`) que faz funcionar; **não remover**.
 - **Auth**: link mágico por e-mail + **Google OAuth** (o Raul criou as credenciais; login já pede o escopo `calendar.readonly`). Chave anon pública em `web/.env.production` (por design; segurança é o RLS). Microsoft/Azure ainda sem credenciais.
 

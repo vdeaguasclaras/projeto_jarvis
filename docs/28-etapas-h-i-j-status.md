@@ -65,11 +65,15 @@ colunas/constraints/índices) foi entregue ao Raul na conversa
 (`backup-jim-2026-07-22.zip`). O banco ficou só com as 10 `kairos_*`, todas com
 RLS "dono" — o alerta de segurança que existia desde docs/08 deixou de existir.
 
-**Sobras no storage** (arquivos não são exportáveis desta sessão — o proxy
-bloqueia o endpoint de storage): bucket `sumulas` (público, 58 arquivos, 171 MB,
-súmulas digitalizadas do Jim) e `cartoes-resposta` (privado, 2 arquivos, 23 MB,
-origem incerta). Decisão do Raul pendente: baixar pelo painel do Supabase antes
-de eu apagar, apagar direto, ou manter.
+**Storage** (mesma conversa): o Raul confirmou que `sumulas` (58 arquivos,
+171 MB) e `cartoes-resposta` (2 arquivos, 23 MB) também são do Jim e já baixou
+backup próprio. O Supabase não permite apagar storage via SQL (proteção contra
+órfãos) e o proxy da sessão bloqueia a API de Storage, então ficou assim:
+`sumulas` **deixou de ser público** e as 4 políticas `sumulas_*` foram
+derrubadas — nenhum arquivo está mais acessível a clientes. O advisor de
+segurança ficou limpo (só o aviso genérico de senha vazada, irrelevante para
+login sem senha). **Passo final do Raul**: apagar os 2 buckets no painel
+(Storage → bucket → ⋮ → Delete bucket) para liberar os ~194 MB do plano.
 
 ## Como foi verificado
 
