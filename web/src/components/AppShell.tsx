@@ -976,12 +976,14 @@ export default function AppShell() {
               arquivados={arquivados}
               projetoAreas={projetoAreas}
               pessoas={pessoas}
+              tarefas={tarefas}
               onAbrirNota={(id) => {
                 setNotaAbrir(id);
                 irParaView("notas");
               }}
               onAbrirContainer={setPaginaId}
-              onToast={showToast}
+              onAbrirPessoas={() => setPaginaId("pessoas")}
+              onVoltar={() => setPaginaId("lista")}
             />
           ) : (
             <ComingSoon key={view} title={TITLES[view][0]} info={ROADMAP[view]} />
