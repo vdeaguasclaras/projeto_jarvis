@@ -51,12 +51,32 @@ function useAgora(): Date | null {
   return now;
 }
 
+/** true em telas ≤900px (o mesmo corte do CSS) — começa false para a
+ *  hidratação bater com o prerender; o efeito corrige na montagem. */
+function useCelular(): boolean {
+  const [celular, setCelular] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 900px)");
+    const atualiza = () => setCelular(mq.matches);
+    atualiza();
+    mq.addEventListener("change", atualiza);
+    return () => mq.removeEventListener("change", atualiza);
+  }, []);
+  return celular;
+}
+
+/** No celular a lista mostra até este tanto de itens recolhida —
+ *  no desktop o card tem rolagem própria e não precisa disso. */
+const LIMITE_LISTA_CELULAR = 6;
+
 function ddmm(iso: string): string {
   return iso.split("-").reverse().slice(0, 2).join("/");
 }
 
 export default function DayView(p: Props) {
   const now = useAgora();
+  const celular = useCelular();
+  const [listaAberta, setListaAberta] = useState(false);
   const vendoHoje = p.dia === p.hoje;
 
   // ── Blocos da timeline, com a cor do container (paleta estável por id) ──
@@ -116,6 +136,22 @@ export default function DayView(p: Props) {
   const feitas = doDia.filter((t) => t.status === "concluida");
   const totalDia = abertas.length + feitas.length + avulsas.length;
   const feitasTotal = feitas.length + avulsas.filter((a) => a.feita).length;
+
+  // ── Lista expansível no celular: recolhida mostra até o limite (avulsas ★
+  //    e abertas primeiro); "mostrar mais" abre o resto. Só vale a pena
+  //    esconder se sobrar mais de 1 item. ──
+  const recolhivel = celular && totalDia > LIMITE_LISTA_CELULAR + 1;
+  const recolhida = recolhivel && !listaAberta;
+  let vagas = recolhida ? LIMITE_LISTA_CELULAR : Infinity;
+  const cabem = <T,>(arr: T[]): T[] => {
+    const v = vagas > 0 ? arr.slice(0, vagas) : [];
+    vagas -= v.length;
+    return v;
+  };
+  const avulsasVis = cabem(avulsas);
+  const abertasVis = cabem(abertas);
+  const feitasVis = cabem(feitas);
+  const ocultas = totalDia - (avulsasVis.length + abertasVis.length + feitasVis.length);
 
   // ── Em espera (delegadas, com data de cobrança) e Amanhã ──
   const emEspera = p.logged ? p.tarefas.filter((t) => t.status === "em_espera").slice(0, 3) : [];
@@ -272,7 +308,7 @@ export default function DayView(p: Props) {
               </span>
             </div>
             <div className="tdd-lista">
-              {avulsas.map((a) => (
+              {avulsasVis.map((a) => (
                 <div key={a.id} className="tdd-item">
                   <button
                     className={`tdd-box${a.feita ? " on" : ""}`}
@@ -288,9 +324,14 @@ export default function DayView(p: Props) {
                   {!a.feita && <span className="tdd-star">★</span>}
                 </div>
               ))}
-              {abertas.map(linhaTarefa)}
-              {feitas.map(linhaTarefa)}
+              {abertasVis.map(linhaTarefa)}
+              {feitasVis.map(linhaTarefa)}
               {totalDia === 0 && <p className="empty-hint">nada para este dia — capture ou arraste da agenda</p>}
+              {recolhivel && (
+                <button className="tdd-vermais" onClick={() => setListaAberta((v) => !v)}>
+                  {recolhida ? `mostrar mais ${ocultas} ▾` : "mostrar menos ▴"}
+                </button>
+              )}
             </div>
             <input
               className="note-search tdd-add"

@@ -245,6 +245,8 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
 .views button.active { color: var(--ink); font-weight: 600; background: var(--seg-ativo); box-shadow: var(--seg-sombra); }
 :root[data-theme="dark"] .views { border-color: var(--border); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .views { border-color: var(--border); } }
+/* Avatar da conta no topo — só existe no celular (no desktop, o trilho tem o dele) */
+.mob-avatar { display: none; }
 /* Título simples (Tarefas, Notas, Grafo) reaproveita .saudacao/.titulo-pagina */
 .date-title { font-size: 17px; font-weight: 650; min-width: 180px; }
 .date-title small { display: block; font-size: 11.5px; font-weight: 400; color: var(--ink-3); }
@@ -1611,6 +1613,22 @@ button.nc-chip.wl:hover { outline: 1.5px solid var(--purple-border); }
   .prog-dia, .nav-hoje { display: none; }
   .topo-dir { margin-left: 0; width: 100%; }
   .views { overflow-x: auto; max-width: 100%; flex: 1; }
+  /* No Hoje o zoom temporal some — ele pertence à aba Calendário
+     (a navegação do dia fica com o seletor de 7 dias) */
+  .topbar-dia .topo-dir { display: none; }
+  /* Avatar redondo no canto direito abre o menu da conta (bug do teste mobile) */
+  .mob-avatar {
+    display: grid; place-items: center; width: 36px; height: 36px; flex: none;
+    margin-left: auto; border-radius: 50%; background: var(--green);
+    color: var(--on-accent); font-weight: 700; font-size: 14px;
+  }
+  .rail-menu.mob-menu { left: auto; right: 12px; top: 62px; bottom: auto; }
+  /* "mostrar mais/menos" da lista de tarefas do dia (recolhida por padrão) */
+  .tdd-vermais {
+    width: 100%; text-align: center; padding: 8px 0 2px; margin-top: 2px;
+    font-size: 12.5px; font-weight: 600; color: var(--green-deep);
+    border-top: 1px dashed var(--border-subtle);
+  }
   .canvas { padding: 12px 10px 150px; }
   .hoje-grid { grid-template-columns: 1fr; gap: 12px; }
   .hoje-timeline { max-height: none; overflow: visible; padding: 8px 10px 8px 4px; }

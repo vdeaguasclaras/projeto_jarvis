@@ -1,13 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { somaDias } from "@/lib/db";
 import type { ViewId } from "@/lib/demo";
+import { entrarComGoogle } from "@/lib/gcal";
+import { aplicarTema, proximoTema, ROTULO_TEMA, temaPref, type TemaPref } from "@/lib/tema";
+import { LembreteCheck } from "@/components/Pwa";
+import { VERSAO } from "@/lib/versao";
 
 /** Header do redesign (10a). Nas visões de calendário: saudação em Lora +
  *  sequência 🔥, progresso do dia, navegação ‹ hoje › e o zoom temporal
  *  Dia/Semana/Mês/Ano. Nas demais (Tarefas, Notas, Grafo): título simples —
- *  a navegação primária vive no trilho/tab bar. */
+ *  a navegação primária vive no trilho/tab bar. No celular, um avatar
+ *  redondo no canto direito abre o menu da conta (o trilho some lá). */
 
 type Props = {
   view: ViewId;
@@ -17,11 +22,17 @@ type Props = {
   hoje: string;
   /** primeiro nome (login Google) — sem login a saudação fica sozinha */
   nome: string | null;
+  userEmail: string | null;
+  weeklyDone: boolean;
   seq: number;
   placar: { done: number; total: number };
   onView: (v: ViewId) => void;
   onNavDia: (novoDia: string) => void;
   onNavSemana: (delta: -1 | 0 | 1) => void;
+  onSync: () => void;
+  onWeekly: () => void;
+  onLogout: () => void;
+  onToast: (msg: string) => void;
 };
 
 const WEEKDAYS = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
@@ -39,8 +50,87 @@ function saudacaoDe(hora: number): string {
   return "Boa noite";
 }
 
-export default function Topbar({ view, title, diaAtual, hoje, nome, seq, placar, onView, onNavDia, onNavSemana }: Props) {
+/** Avatar + menu da conta — só aparece no celular (o desktop tem o trilho).
+ *  Com login: nome, revisão semanal, sync do Google, tema e sair.
+ *  Sem login: entrar com Google (que já traz a agenda junto). */
+function MenuConta(p: Pick<Props, "nome" | "userEmail" | "weeklyDone" | "onSync" | "onWeekly" | "onLogout" | "onToast">) {
+  const [aberto, setAberto] = useState(false);
+  const [tema, setTema] = useState<TemaPref>("sistema");
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => setTema(temaPref()), []);
+
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent | TouchEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener("mousedown", fora);
+    document.addEventListener("touchstart", fora);
+    return () => {
+      document.removeEventListener("mousedown", fora);
+      document.removeEventListener("touchstart", fora);
+    };
+  }, [aberto]);
+
+  const alternarTema = () => {
+    const prox = proximoTema(tema);
+    aplicarTema(prox);
+    setTema(prox);
+  };
+
+  const inicial = (p.nome?.[0] ?? p.userEmail?.[0] ?? "K").toUpperCase();
+
+  return (
+    <>
+      <button className="mob-avatar" onClick={() => setAberto((a) => !a)} aria-label="Conta" title={p.userEmail ?? "Conta"}>
+        {inicial}
+      </button>
+      {aberto && (
+        <div className="rail-menu mob-menu" ref={ref} role="menu">
+          {p.userEmail ? (
+            <div className="quem">
+              {p.nome ? `${p.nome} · ` : ""}
+              {p.userEmail}
+            </div>
+          ) : (
+            <div className="quem">Você não está conectado</div>
+          )}
+          {p.userEmail ? (
+            <>
+              <button onClick={() => { setAberto(false); p.onWeekly(); }}>
+                ⟳ Revisão semanal <span className="due-chip">{p.weeklyDone ? "✓" : "dom"}</span>
+              </button>
+              <button onClick={() => { setAberto(false); p.onSync(); }} title="Importa os eventos do Google Calendar (janela de 67 dias)">
+                ⇄ Google Agenda
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={async () => {
+                setAberto(false);
+                const err = await entrarComGoogle();
+                if (err) p.onToast(`Não foi possível entrar com Google: ${err}`);
+              }}
+            >
+              G Entrar com Google
+            </button>
+          )}
+          <button onClick={alternarTema}>◐ Tema: {ROTULO_TEMA[tema]}</button>
+          <LembreteCheck />
+          {p.userEmail && (
+            <button onClick={() => { setAberto(false); p.onLogout(); }}>← Sair</button>
+          )}
+          <div className="versao">Kairós v{VERSAO} · em teste</div>
+        </div>
+      )}
+    </>
+  );
+}
+
+export default function Topbar({ view, title, diaAtual, hoje, nome, userEmail, weeklyDone, seq, placar, onView, onNavDia, onNavSemana, onSync, onWeekly, onLogout, onToast }: Props) {
   const calendario = view === "dia" || view === "semana" || view === "mes" || view === "ano";
+  const conta = { nome, userEmail, weeklyDone, onSync, onWeekly, onLogout, onToast };
 
   const rotuloDia = useMemo(() => {
     const [a, m, dd] = diaAtual.split("-").map(Number);
@@ -55,6 +145,7 @@ export default function Topbar({ view, title, diaAtual, hoje, nome, seq, placar,
           <h1 className="titulo-pagina">{title[0]}</h1>
           <small>{title[1]}</small>
         </div>
+        <MenuConta {...conta} />
       </header>
     );
   }
@@ -67,7 +158,9 @@ export default function Topbar({ view, title, diaAtual, hoje, nome, seq, placar,
   const paraHoje = () => (view === "dia" ? onNavDia(hoje) : onNavSemana(0));
 
   return (
-    <header className="topbar">
+    // topbar-dia: no celular o zoom Dia/Semana/Mês/Ano some do Hoje — ele
+    // pertence à aba Calendário (o seletor de 7 dias cuida da navegação)
+    <header className={`topbar${view === "dia" ? " topbar-dia" : ""}`}>
       <div className="saudacao">
         {/* a hora do prerender difere da do cliente — só o texto muda, o React corrige */}
         <h1 className="saudacao-lora" suppressHydrationWarning>
@@ -80,6 +173,8 @@ export default function Topbar({ view, title, diaAtual, hoje, nome, seq, placar,
           {seq > 1 ? `${seq} dias` : seq === 1 ? "feito hoje" : "começa hoje"}
         </small>
       </div>
+      {/* no celular o avatar fica na 1ª linha, ao lado da saudação */}
+      <MenuConta {...conta} />
       <div className="prog-dia" title="Tarefas do dia concluídas">
         <span className="prog-barra">
           <i style={{ width: `${pct}%` }} />
