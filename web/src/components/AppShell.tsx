@@ -785,18 +785,28 @@ export default function AppShell() {
         onLogout={logout}
       />
       <main className="main">
-        <Topbar
-          view={view}
-          title={TITLES[view]}
-          diaAtual={diaAtual}
-          hoje={hoje}
-          nome={primeiroNome}
-          seq={session ? seq : 0}
-          placar={placar}
-          onView={irParaView}
-          onNavDia={(d) => (session ? setDiaAtual(d) : showToast("Entre para navegar pelos seus dias"))}
-          onNavSemana={(d) => setWeekStart(d === 0 ? segundaDe(hoje) : somaDias(weekStart, d * 7))}
-        />
+        {/* Páginas de Espaços (hub, PARA, Pessoas, Arquivo) têm título próprio —
+            o Topbar aqui duplicava o da view anterior (bug do teste mobile) */}
+        {!paginaId && (
+          <Topbar
+            view={view}
+            title={TITLES[view]}
+            diaAtual={diaAtual}
+            hoje={hoje}
+            nome={primeiroNome}
+            userEmail={session?.user.email ?? null}
+            weeklyDone={revisaoFeita}
+            seq={session ? seq : 0}
+            placar={placar}
+            onView={irParaView}
+            onNavDia={(d) => (session ? setDiaAtual(d) : showToast("Entre para navegar pelos seus dias"))}
+            onNavSemana={(d) => setWeekStart(d === 0 ? segundaDe(hoje) : somaDias(weekStart, d * 7))}
+            onSync={() => (session ? syncAgenda() : showToast("Entre com Google para trazer a sua agenda"))}
+            onWeekly={openWeekly}
+            onLogout={logout}
+            onToast={showToast}
+          />
+        )}
         <div className="canvas">
           {!session && <AuthBar onToast={showToast} />}
           {session && paginaId === "lista" ? (
