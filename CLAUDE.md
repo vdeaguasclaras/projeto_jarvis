@@ -17,7 +17,7 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 ## Infraestrutura (decisões vigentes)
 
-- **Supabase**: projeto `mapa-de-sala` (id `budjzwlccrnxdnkaqtko`, região sa-east-1) — compartilhado com outro app do Raul (tabelas `jim_*`). As nossas são **`kairos_*`**, todas com RLS "dono" (`auth.uid() = user_id`). Migrações versionadas em `web/supabase/migrations/` e aplicadas via MCP `apply_migration`. Decisão: migrar para projeto próprio quando o Raul pagar/limpar o plano.
+- **Supabase**: projeto `mapa-de-sala` (id `budjzwlccrnxdnkaqtko`, região sa-east-1). As tabelas `jim_*` do app antigo do Jim foram **removidas em 22/07/2026** (migração 0012; backup entregue ao Raul) — hoje só existem as **`kairos_*`**, todas com RLS "dono" (`auth.uid() = user_id`). Migrações versionadas em `web/supabase/migrations/` e aplicadas via MCP `apply_migration`. No storage restam os buckets `sumulas` (público, do Jim) e `cartoes-resposta` — decisão sobre eles pendente do Raul.
 - **Vercel**: projeto `projeto-jarvis` (team `team_zwdRohlmXrxBKP3dokznhfe3`), Root Directory `web`, produção em **https://projeto-jarvis-seven.vercel.app**. Deploy contínuo: merge na `main` publica. O Framework Preset do painel está "Other" — é o `web/vercel.json` (`"framework": "nextjs"`) que faz funcionar; **não remover**.
 - **Auth**: link mágico por e-mail + **Google OAuth** (o Raul criou as credenciais; login já pede o escopo `calendar.readonly`). Chave anon pública em `web/.env.production` (por design; segurança é o RLS). Microsoft/Azure ainda sem credenciais.
 
@@ -25,7 +25,7 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 
 - O proxy da sessão **bloqueia** `*.supabase.co` e `*.vercel.app` — teste o banco via MCP (`execute_sql`, assumindo `role authenticated` + `request.jwt.claims` para RLS real) e a produção via `mcp__Vercel__web_fetch_vercel_url`.
 - O fluxo de publicação: commit no branch `claude/...` → push → PR → merge (o Raul autorizou eu mesmo mergear para publicar).
-- ⚠️ As tabelas `jim_*` têm políticas permissivas (qualquer autenticado pode tudo). Enquanto só o Raul loga no Kairós, ok; **antes de compartilhar o app, apertar essas políticas**.
+- O proxy também bloqueia o **storage** do Supabase — arquivos de buckets não podem ser baixados desta sessão (só metadados via `execute_sql` em `storage.objects`).
 
 ## Versionamento (regra do Raul, 21/07)
 
@@ -47,8 +47,8 @@ Nome aprovado: **Kairós** ("o tempo oportuno"). Todo o design foi validado em 6
 ver `docs/28`). A fila volta a ser a do produto:
 
 1. Renovação do token Google sem relogar (Edge Function), Web Push com app fechado,
-   apertar políticas `jim_*` antes de compartilhar (decisão + SQL prontos em `docs/28`),
-   gamificação plena / auto-agendamento sugerido.
+   gamificação plena / auto-agendamento sugerido. (As políticas `jim_*` deixaram de ser
+   pendência: tabelas removidas em 22/07 — migração 0012.)
 2. **OAuth Microsoft/Outlook: ADIADO por decisão do Raul (14/07)** — não implementar por ora.
 
 Feitos: Marcos 1–7 completos (login Google incluído), revisão semanal (wizard), Mês/Ano, importador do
