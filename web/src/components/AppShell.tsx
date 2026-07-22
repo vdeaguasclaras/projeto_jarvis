@@ -25,7 +25,7 @@ import ParaPage, { ParaLista } from "@/components/ParaPage";
 import PessoasPage from "@/components/PessoasPage";
 import ArquivoPage from "@/components/ArquivoPage";
 import PrioModal from "@/components/PrioModal";
-import RevisaoModal from "@/components/RevisaoModal";
+import RevisaoJornal from "@/components/RevisaoJornal";
 import Pwa from "@/components/Pwa";
 import { isoDe, type DropInfo } from "@/components/TimeGrid";
 import type { PrioItem } from "@/components/PrioRow";
@@ -976,12 +976,14 @@ export default function AppShell() {
               arquivados={arquivados}
               projetoAreas={projetoAreas}
               pessoas={pessoas}
+              tarefas={tarefas}
               onAbrirNota={(id) => {
                 setNotaAbrir(id);
                 irParaView("notas");
               }}
               onAbrirContainer={setPaginaId}
-              onToast={showToast}
+              onAbrirPessoas={() => setPaginaId("pessoas")}
+              onVoltar={() => setPaginaId("lista")}
             />
           ) : (
             <ComingSoon key={view} title={TITLES[view][0]} info={ROADMAP[view]} />
@@ -998,10 +1000,11 @@ export default function AppShell() {
       />
 
       {revisando && session && (
-        <RevisaoModal
+        <RevisaoJornal
           userId={session.user.id}
           tarefas={tarefas}
           containers={containers}
+          notas={notas}
           inboxCount={inboxItems.length}
           onClose={() => setRevisando(false)}
           onChanged={refresh}
