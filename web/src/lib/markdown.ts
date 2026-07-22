@@ -84,6 +84,45 @@ export function mdToHtml(md: string): string {
   return html;
 }
 
+/** ── Markdown vivo (Etapa G, telas 12a/8a): highlight EM CIMA do texto cru ──
+ *  Usado no overlay do editor: o HTML gerado precisa ter EXATAMENTE os mesmos
+ *  caracteres do texto digitado (marcas incluídas), senão o colorido desalinha
+ *  do textarea transparente. Por isso: nada de mudar tamanho de fonte, nada de
+ *  padding horizontal nos "chips" — só cor, peso e fundo. */
+
+function vivoInline(s: string): string {
+  return (
+    esc(s)
+      .replace(/`([^`]+)`/g, '<span class="mv-code">`$1`</span>')
+      .replace(/\*\*(.+?)\*\*/g, '<span class="mv-m">**</span><b>$1</b><span class="mv-m">**</span>')
+      .replace(/__(.+?)__/g, '<span class="mv-m">__</span><b>$1</b><span class="mv-m">__</span>')
+      .replace(/(^|[\s(])\*([^*\n]+)\*(?=$|[\s).,;:!?])/g, '$1<span class="mv-m">*</span><i>$2</i><span class="mv-m">*</span>')
+      .replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,;:!?])/g, '$1<span class="mv-m">_</span><i>$2</i><span class="mv-m">_</span>')
+      .replace(/~~(.+?)~~/g, '<span class="mv-m">~~</span><s>$1</s><span class="mv-m">~~</span>')
+      .replace(/\[\[([^\]]+)\]\]/g, '<span class="mv-wl">[[$1]]</span>')
+      .replace(/(^|\s)#([\wÀ-ú-]+)/g, '$1<span class="mv-tag">#$2</span>')
+      .replace(/(^|\s)@([\wÀ-ú]+)/g, '$1<span class="mv-at">@$2</span>')
+  );
+}
+
+export function mdVivoHtml(md: string): string {
+  return md
+    .split("\n")
+    .map((l) => {
+      const titulo = l.match(/^(#{1,4}) (.*)$/);
+      if (titulo) return `<span class="mv-h">${titulo[1]}</span> <b>${vivoInline(titulo[2])}</b>`;
+      if (/^(-{3,}|\*{3,}|_{3,})$/.test(l)) return `<span class="mv-m">${l}</span>`;
+      const check = l.match(/^([-*] \[[ x]\] )(.*)$/);
+      if (check) return `<span class="mv-b">${esc(check[1])}</span>${vivoInline(check[2])}`;
+      const item = l.match(/^([-*] |\d+\. )(.*)$/);
+      if (item) return `<span class="mv-b">${esc(item[1])}</span>${vivoInline(item[2])}`;
+      const cit = l.match(/^(> )(.*)$/);
+      if (cit) return `<span class="mv-h">&gt; </span><span class="mv-q">${vivoInline(cit[2])}</span>`;
+      return vivoInline(l);
+    })
+    .join("\n");
+}
+
 /** [[títulos]] citados no texto. */
 export function linksDe(md: string): string[] {
   return [...md.matchAll(/\[\[([^\]]+)\]\]/g)].map((m) => m[1]);

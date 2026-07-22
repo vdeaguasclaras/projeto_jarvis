@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   atualizarNota,
   criarNota,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/db";
 import { encaminhamentosDe, linksDe, mdToHtml, pessoasDe, snippetDe, tagsDe } from "@/lib/markdown";
 import { normalizar } from "@/lib/parser";
+import EditorVivo from "@/components/EditorVivo";
 
 /** Fase 3 — Notas (Zettelkasten), o módulo do protótipo v6 sobre dados reais:
  *  markdown, [[links]] com autocompletar, backlinks, agrupamento OPCIONAL
@@ -43,6 +45,9 @@ export default function NotesView({ logged, userId, containers, arquivados, abri
   const [modo, setModo] = useState<Modo>("fluxo");
   const [editando, setEditando] = useState(false);
   const [metaAberto, setMetaAberto] = useState(false);
+  const [guiaAberto, setGuiaAberto] = useState(false);
+  const [expandida, setExpandida] = useState(false);
+  const [salvo, setSalvo] = useState(true);
   const [ac, setAc] = useState<string[]>([]);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const salvarTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,10 +75,12 @@ export default function NotesView({ logged, userId, containers, arquivados, abri
   // ── persistência com atraso (autosave) ──
   const agendarSalvar = useCallback(
     (id: string, campos: { titulo?: string; md?: string }) => {
+      setSalvo(false);
       if (salvarTimer.current) clearTimeout(salvarTimer.current);
       salvarTimer.current = setTimeout(async () => {
         const err = await atualizarNota(id, campos);
         if (err) onToast(`Erro ao salvar a nota: ${err}`);
+        else setSalvo(true);
       }, 700);
     },
     [onToast],
@@ -170,6 +177,63 @@ export default function NotesView({ logged, userId, containers, arquivados, abri
     });
   };
 
+  // ── barra de formatação (8a): insere a marcação no cursor ──
+  const inserir = useCallback(
+    (antes: string, depois = "", linha = false) => {
+      const ta = taRef.current;
+      const n = notas.find((x) => x.id === curId);
+      if (!ta || !n) return;
+      const [i, f] = [ta.selectionStart, ta.selectionEnd];
+      let md: string;
+      let pos: number;
+      if (linha) {
+        // prefixo de linha (## , - ): entra no começo da linha atual
+        const ini = ta.value.lastIndexOf("\n", i - 1) + 1;
+        md = ta.value.slice(0, ini) + antes + ta.value.slice(ini);
+        pos = f + antes.length;
+      } else {
+        const sel = ta.value.slice(i, f);
+        md = ta.value.slice(0, i) + antes + sel + depois + ta.value.slice(f);
+        pos = (sel ? f : i) + antes.length + (sel ? depois.length : 0);
+      }
+      editarLocal(n.id, { md });
+      agendarSalvar(n.id, { md });
+      requestAnimationFrame(() => {
+        ta.focus();
+        ta.setSelectionRange(pos, pos);
+      });
+    },
+    [notas, curId, agendarSalvar],
+  );
+
+  // ── atalhos da tela (12a/13a): n nova · e expande · ? guia · Esc volta ──
+  useEffect(() => {
+    if (!logged) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (guiaAberto) setGuiaAberto(false);
+        else if (expandida) setExpandida(false);
+        return;
+      }
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "n") {
+        e.preventDefault();
+        novaNota();
+      } else if (e.key === "e" && curId) {
+        e.preventDefault();
+        setExpandida(true);
+      } else if (e.key === "?") {
+        e.preventDefault();
+        setGuiaAberto((v) => !v);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logged, guiaAberto, expandida, curId, userId]);
+
   // ── derivados ──
   const grupoDe = (n: Nota) =>
     containers.find((c) => c.id === n.container_id) ?? arquivados.find((c) => c.id === n.container_id) ?? null;
@@ -211,6 +275,106 @@ export default function NotesView({ logged, userId, containers, arquivados, abri
   }
 
   const encaminhamentos = nota ? encaminhamentosDe(nota.md).length : 0;
+
+  // ── pedaços compartilhados entre o painel (12a) e a nota expandida (12b) ──
+  const corpoEdicao = nota && (
+    <>
+      <EditorVivo
+        valor={nota.md}
+        taRef={taRef}
+        placeholder={"Uma ideia por nota. Use [[título]] para ligar a outra nota, #tag para temas, @pessoa para gente.\n\n- [ ] linhas assim viram tarefas com um clique"}
+        onMudar={(md) => {
+          editarLocal(nota.id, { md });
+          agendarSalvar(nota.id, { md });
+          requestAnimationFrame(refreshAc);
+        }}
+        onCursor={refreshAc}
+        onEsc={() => setAc([])}
+      />
+      {ac.length > 0 && (
+        <div className="ac-list">
+          {ac.map((t) => (
+            <button key={t} className="ac-item" onMouseDown={(e) => (e.preventDefault(), completarAc(t))}>
+              [[{t}]]
+            </button>
+          ))}
+        </div>
+      )}
+      {/* 8a — barra de formatação sobre o teclado (só no celular, via CSS) */}
+      <div className="mdbar">
+        <button style={{ fontWeight: 700 }} onClick={() => inserir("**", "**")} title="Negrito">B</button>
+        <button style={{ fontStyle: "italic" }} onClick={() => inserir("*", "*")} title="Itálico">I</button>
+        <button className="mv-verde" onClick={() => inserir("## ", "", true)} title="Título de seção">H2</button>
+        <button className="mv-terra" onClick={() => inserir("- ", "", true)} title="Item de lista">•—</button>
+        <button className="mv-lilas" onClick={() => inserir("[[", "]]")} title="Conectar a outra nota">[[ ]]</button>
+        <button className="mv-terra" onClick={() => inserir("@")} title="Mencionar pessoa">@</button>
+        <button className="mv-verde" onClick={() => inserir("#")} title="Ligar a projeto/tema">#</button>
+      </div>
+    </>
+  );
+
+  const corpoLeitura = nota && (
+    <div
+      className="note note-render"
+      dangerouslySetInnerHTML={{ __html: mdToHtml(nota.md) || "<p style='color:var(--ink-3)'>— nota vazia — clique em Editar para escrever</p>" }}
+      onClick={(e) => {
+        const wl = (e.target as HTMLElement).closest(".wikilink") as HTMLElement | null;
+        if (wl?.dataset.nota) abrirWikilink(wl.dataset.nota);
+      }}
+    />
+  );
+
+  const conexoes = nota && (
+    <div className="nota-conex">
+      <span className="nc-lbl">Conexões</span>
+      {[...new Set(linksDe(nota.md))].map((t) => (
+        <button key={t} className="nc-chip wl" onClick={() => abrirWikilink(t)}>
+          [[{t}]]
+        </button>
+      ))}
+      {grupoDe(nota) && (
+        <span className="nc-chip grupo">
+          {grupoDe(nota)!.kind === "projeto" ? "▶ " : "▣ "}
+          {grupoDe(nota)!.nome}
+        </span>
+      )}
+      {pessoasDe(nota.md).map((p) => (
+        <span key={p} className="nc-chip at">
+          @{p}
+        </span>
+      ))}
+      <span className="nc-back">
+        {backlinks.length
+          ? `${backlinks.length} nota${backlinks.length > 1 ? "s apontam" : " aponta"} para cá`
+          : "nada aponta para cá ainda"}
+      </span>
+    </div>
+  );
+
+  const indicadorSalvo = <span className={`nv-salvo${salvo ? "" : " salvando"}`}>{salvo ? "Salvo ✓" : "salvando…"}</span>;
+
+  const guia = guiaAberto && (
+    <div className="guia-pop">
+      <div className="guia-head">
+        <span>Guia de marcações</span>
+        <button onClick={() => setGuiaAberto(false)} aria-label="Fechar">✕</button>
+      </div>
+      <div className="guia-grid">
+        <code className="mv-verde">#</code><span>Título grande</span>
+        <code className="mv-verde">##</code><span>Título de seção</span>
+        <code className="mv-verde">###</code><span>Subtítulo</span>
+        <code>**texto**</code><span><b>negrito</b></span>
+        <code>*texto*</code><span><i>itálico</i></span>
+        <code className="mv-terra">-</code><span>item de lista</span>
+        <code className="mv-terra">- [ ]</code><span>vira tarefa</span>
+        <code className="mv-verde">&gt;</code><span>citação</span>
+        <code className="mv-lilas">[[nota]]</code><span>conecta a outra nota</span>
+        <code className="mv-terra">@nome</code><span>menciona uma pessoa</span>
+        <code className="mv-verde">#projeto</code><span>liga a um projeto</span>
+      </div>
+      <div className="guia-foot">Atalho <kbd>?</kbd> abre e fecha este guia</div>
+    </div>
+  );
 
   const item = (n: Nota) => (
     <button
@@ -281,24 +445,38 @@ export default function NotesView({ logged, userId, containers, arquivados, abri
 
         {nota ? (
           <div className="note-editor stagger" style={{ ["--i" as string]: 1 }}>
-            <div className="note-ed-head">
-              <input
-                className="note-title-in"
-                value={nota.titulo}
-                onChange={(e) => {
-                  editarLocal(nota.id, { titulo: e.target.value });
-                  agendarSalvar(nota.id, { titulo: e.target.value || "Sem título" });
-                }}
-              />
-              <div className="yeartabs" style={{ margin: 0 }}>
-                <button className={editando ? "" : "active"} onClick={() => setEditando(false)}>
-                  Visualizar
+            <div className="nv-topo">
+              {indicadorSalvo}
+              <div className="nv-acoes">
+                <div className="seg" role="tablist" aria-label="Modo da nota">
+                  <button role="tab" className={editando ? "on" : ""} onClick={() => setEditando(true)}>
+                    Editar
+                  </button>
+                  <button role="tab" className={editando ? "" : "on"} onClick={() => setEditando(false)}>
+                    Leitura
+                  </button>
+                </div>
+                <button
+                  className={`nv-btn${guiaAberto ? " on" : ""}`}
+                  title="Guia de marcações (?)"
+                  onClick={() => setGuiaAberto((v) => !v)}
+                >
+                  ?
                 </button>
-                <button className={editando ? "active" : ""} onClick={() => setEditando(true)}>
-                  Editar
+                <button className="nv-btn" title="Expandir (E)" onClick={() => setExpandida(true)}>
+                  ⤢ Expandir <kbd>E</kbd>
                 </button>
               </div>
             </div>
+            {guia}
+            <input
+              className="note-title-in"
+              value={nota.titulo}
+              onChange={(e) => {
+                editarLocal(nota.id, { titulo: e.target.value });
+                agendarSalvar(nota.id, { titulo: e.target.value || "Sem título" });
+              }}
+            />
 
             <div className="pillrow" style={{ margin: "0 0 10px" }}>
               {nota.evento_id && (
@@ -363,47 +541,8 @@ export default function NotesView({ logged, userId, containers, arquivados, abri
               </div>
             )}
 
-            {editando ? (
-              <>
-                <textarea
-                  ref={taRef}
-                  className="note-md"
-                  value={nota.md}
-                  spellCheck={false}
-                  placeholder={"Uma ideia por nota. Use [[título]] para ligar a outra nota, #tag para temas, @pessoa para gente.\n\n- [ ] linhas assim viram tarefas com um clique"}
-                  onChange={(e) => {
-                    editarLocal(nota.id, { md: e.target.value });
-                    agendarSalvar(nota.id, { md: e.target.value });
-                    requestAnimationFrame(refreshAc);
-                  }}
-                  onClick={refreshAc}
-                  onKeyUp={(e) => {
-                    if (e.key === "Escape") setAc([]);
-                  }}
-                />
-                {ac.length > 0 && (
-                  <div className="ac-list">
-                    {ac.map((t) => (
-                      <button key={t} className="ac-item" onMouseDown={(e) => (e.preventDefault(), completarAc(t))}>
-                        [[{t}]]
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <p className="capture-hint" style={{ marginTop: 6 }}>
-                  # ## ### títulos · **negrito** · *itálico* · `código` · ~~riscado~~ · &gt; citação · - lista · - [ ] vira tarefa · [[link]] · --- divisória
-                </p>
-              </>
-            ) : (
-              <div
-                className="note note-render"
-                dangerouslySetInnerHTML={{ __html: mdToHtml(nota.md) || "<p style='color:var(--ink-3)'>— nota vazia — clique em Editar para escrever</p>" }}
-                onClick={(e) => {
-                  const wl = (e.target as HTMLElement).closest(".wikilink") as HTMLElement | null;
-                  if (wl?.dataset.nota) abrirWikilink(wl.dataset.nota);
-                }}
-              />
-            )}
+            {expandida ? corpoLeitura : editando ? corpoEdicao : corpoLeitura}
+            {conexoes}
 
             {encaminhamentos > 0 && (
               <button className="btn primary" style={{ marginTop: 14 }} onClick={criarEncaminhamentos}>
@@ -431,10 +570,66 @@ export default function NotesView({ logged, userId, containers, arquivados, abri
           </div>
         ) : (
           <div className="note-editor stagger" style={{ ["--i" as string]: 1 }}>
-            <p className="year-note">Crie a primeira nota com o botão “+ Nova” — uma ideia por nota, ligadas por [[links]].</p>
+            <p className="year-note">Crie a primeira nota com o botão “+ Nova” (atalho n) — uma ideia por nota, ligadas por [[links]].</p>
           </div>
         )}
       </div>
+
+      {/* ── 12b: nota expandida em tela cheia — Esc volta.
+             Portal no body: o .view-in tem transform (stagger) e prenderia o fixed ── */}
+      {expandida &&
+        nota &&
+        createPortal(
+        <div className="nota-cheia" role="dialog" aria-label="Nota expandida">
+          <div className="ncx-head">
+            <button className="esp-breadcrumb" onClick={() => setExpandida(false)}>
+              ‹ Notas <kbd>Esc</kbd>
+            </button>
+            {indicadorSalvo}
+            <div className="nv-acoes">
+              <div className="seg" role="tablist" aria-label="Modo da nota">
+                <button role="tab" className={editando ? "on" : ""} onClick={() => setEditando(true)}>
+                  Editar
+                </button>
+                <button role="tab" className={editando ? "" : "on"} onClick={() => setEditando(false)}>
+                  Leitura
+                </button>
+              </div>
+              <button className="nv-btn" onClick={() => setExpandida(false)}>⇱ Recolher</button>
+            </div>
+          </div>
+          <div className="ncx-scroll">
+            <div className="ncx-col">
+              <input
+                className="ncx-titulo"
+                value={nota.titulo}
+                onChange={(e) => {
+                  editarLocal(nota.id, { titulo: e.target.value });
+                  agendarSalvar(nota.id, { titulo: e.target.value || "Sem título" });
+                }}
+              />
+              <div className="ncx-chips">
+                {grupoDe(nota) && (
+                  <span className="nc-chip grupo">
+                    {grupoDe(nota)!.kind === "projeto" ? "▶ " : "▣ "}
+                    {grupoDe(nota)!.nome}
+                  </span>
+                )}
+                {tagsDe(nota.md).map((t) => (
+                  <span key={t} className="nc-chip wl">#{t}</span>
+                ))}
+                {pessoasDe(nota.md).map((p) => (
+                  <span key={p} className="nc-chip at">@{p}</span>
+                ))}
+                <span className="ncx-quando">editada {dataCurta(nota.atualizada_em)}</span>
+              </div>
+              {editando ? corpoEdicao : corpoLeitura}
+              {conexoes}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
