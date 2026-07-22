@@ -8,11 +8,15 @@ import {
   definirAreasDoProjeto,
   desarquivarContainer,
   hojeISO,
+  somaDias,
   type Container,
+  type Kind,
   type Nota,
+  type Pessoa,
   type ProjetoArea,
   type Tarefa,
 } from "@/lib/db";
+import { saudeDaArea, SAUDE_LABEL } from "@/lib/saude";
 import IconePicker from "@/components/IconePicker";
 import { linksDe, snippetDe } from "@/lib/markdown";
 import { normalizar } from "@/lib/parser";
@@ -32,6 +36,7 @@ type Props = {
   projetoAreas: ProjetoArea[];
   tarefas: Tarefa[];
   notas: Nota[];
+  pessoas: Pessoa[];
   onBack: () => void;
   onConclude: (id: string) => void;
   onEditTarefa: (t: Tarefa) => void;
@@ -48,6 +53,7 @@ export default function ParaPage({
   projetoAreas,
   tarefas,
   notas,
+  pessoas,
   onBack,
   onConclude,
   onEditTarefa,
@@ -100,6 +106,28 @@ export default function ParaPage({
   const pct = doGrupo.length ? Math.round((concluidas.length / doGrupo.length) * 100) : 0;
   const projetoDe = (t: Tarefa) =>
     t.container_id !== c.id ? projetosDaArea.find((p) => p.id === t.container_id) ?? null : null;
+
+  // 15b: saúde da área (derivada) · 15a: pessoas do projeto e projeção de término
+  const saude = c.kind === "area" && !c.arquivado_em ? saudeDaArea(idsDoEscopo, tarefas, notas) : null;
+  const pessoasDoGrupo =
+    c.kind === "projeto"
+      ? pessoas
+          .map((q) => ({ pessoa: q, pend: doGrupo.filter((t) => t.responsavel_id === q.id && t.status === "em_espera").length }))
+          .filter((d) => doGrupo.some((t) => t.responsavel_id === d.pessoa.id))
+      : [];
+  const projecao = (() => {
+    if (c.kind !== "projeto" || !c.prazo || c.arquivado_em || abertas.length === 0) return null;
+    const corte = somaDias(hoje, -14);
+    const ritmo = concluidas.filter((t) => (t.concluida_em ?? "").slice(0, 10) >= corte).length / 14;
+    if (ritmo <= 0) return null;
+    const termino = somaDias(hoje, Math.ceil(abertas.length / ritmo));
+    const folga = Math.round((new Date(c.prazo).getTime() - new Date(termino).getTime()) / 86400000);
+    if (folga === 0) return { ok: true, txt: "No ritmo atual, você termina em cima da meta. 🎯" };
+    const sem = Math.abs(folga) >= 14 ? `${Math.round(Math.abs(folga) / 7)} semanas` : `${Math.abs(folga)} dia${Math.abs(folga) !== 1 ? "s" : ""}`;
+    return folga > 0
+      ? { ok: true, txt: `No ritmo atual, você termina ${sem} antes da meta. 🎯` }
+      : { ok: false, txt: `No ritmo atual, o projeto passa ${sem} da meta — reforce ou renegocie o prazo.` };
+  })();
 
   const salvar = async () => {
     if (!fNome.trim()) return;
@@ -206,6 +234,11 @@ export default function ParaPage({
               </h1>
               <div className="page-props">
                 <span className="chip">{KIND_LABEL[c.kind]}</span>
+                {saude && (
+                  <span className={`chip saude saude-${saude}`} title="Saúde da área — derivada das tarefas e notas">
+                    ● {SAUDE_LABEL[saude]}
+                  </span>
+                )}
                 {c.arquivado_em && (
                   <span className="chip arch" title="Este container está no Arquivo — nada foi apagado">
                     ▤ arquivado em {c.arquivado_em.slice(0, 10).split("-").reverse().slice(0, 2).join("/")}
@@ -370,6 +403,24 @@ export default function ParaPage({
                 ))}
               </>
             )}
+
+            {pessoasDoGrupo.length > 0 && (
+              <>
+                <h3 style={{ marginTop: 16 }}>Pessoas</h3>
+                {pessoasDoGrupo.map((d) => (
+                  <div key={d.pessoa.id} className="pg-pessoa">
+                    <span className="pp-ava" style={{ background: "var(--terracotta-bg)", color: "var(--terracotta-deep)" }}>
+                      {d.pessoa.nome.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="pg-pessoa-nome">@{d.pessoa.nome}</span>
+                    <small className={d.pend ? "pg-pend" : undefined}>
+                      {d.pend ? `${d.pend} pendência${d.pend !== 1 ? "s" : ""}` : "em dia"}
+                    </small>
+                  </div>
+                ))}
+              </>
+            )}
+            {projecao && <div className={`pg-projecao${projecao.ok ? "" : " atencao"}`}>{projecao.txt}</div>}
           </div>
         </div>
       </div>
@@ -378,28 +429,34 @@ export default function ParaPage({
 }
 
 /** Lista PARA (celular): projetos, áreas e recursos → página.
- *  Com soArquivo, vira a página do Arquivo (o A do PARA): só os arquivados. */
+ *  Com kinds, mostra só esses tipos (cards do hub 7a); com soArquivo,
+ *  vira a página do Arquivo (o A do PARA): só os arquivados. */
 export function ParaLista({
   containers,
   arquivados,
   tarefas,
   soArquivo = false,
+  kinds,
   onOpen,
 }: {
   containers: Container[];
   arquivados: Container[];
   tarefas: Tarefa[];
   soArquivo?: boolean;
+  kinds?: Kind[];
   onOpen: (id: string) => void;
 }) {
   const abertas = (id: string) => tarefas.filter((t) => t.container_id === id && t.status !== "concluida").length;
+  const todos: [string, Kind][] = [
+    ["Projetos", "projeto"],
+    ["Áreas", "area"],
+    ["Recursos", "recurso"],
+  ];
   const grupos: [string, Container[]][] = soArquivo
     ? []
-    : [
-        ["Projetos", containers.filter((x) => x.kind === "projeto")],
-        ["Áreas", containers.filter((x) => x.kind === "area")],
-        ["Recursos", containers.filter((x) => x.kind === "recurso")],
-      ];
+    : todos
+        .filter(([, k]) => !kinds || kinds.includes(k))
+        .map(([label, k]) => [label, containers.filter((x) => x.kind === k)]);
   return (
     <div className="view-in">
       <div className="pagewrap">
@@ -417,13 +474,13 @@ export function ParaLista({
             ))}
           </div>
         ))}
-        <div className="note-group-h">▤ Arquivo</div>
-        {arquivados.length === 0 && (
+        {!kinds && <div className="note-group-h">▤ Arquivo</div>}
+        {!kinds && arquivados.length === 0 && (
           <p className="empty-hint">
             Nada arquivado ainda — ao concluir um projeto, arquive-o na página dele (nada se perde).
           </p>
         )}
-        {arquivados.map((x) => (
+        {(kinds ? [] : arquivados).map((x) => (
           <button key={x.id} className="listrow arquivado" onClick={() => onOpen(x.id)}>
             {x.emoji ? `${x.emoji} ` : ""}
             {x.nome}

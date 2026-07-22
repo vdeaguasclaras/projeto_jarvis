@@ -215,6 +215,20 @@ export async function listInbox(): Promise<InboxItem[]> {
   return (data as InboxItem[]) ?? [];
 }
 
+export type Incubado = { id: string; texto: string; incubada_ate: string };
+
+/** Itens incubados (dormindo até a data) — o Arquivo 15d mostra quando voltam. */
+export async function listIncubados(): Promise<Incubado[]> {
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("kairos_inbox")
+    .select("id, texto, incubada_ate")
+    .is("triado_em", null)
+    .gt("incubada_ate", hojeISO())
+    .order("incubada_ate");
+  return (data as Incubado[]) ?? [];
+}
+
 export async function capturar(userId: string, texto: string, imagemPath?: string | null): Promise<string | null> {
   if (!supabase) return "sem banco";
   const { error } = await supabase
