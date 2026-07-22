@@ -589,6 +589,37 @@ export async function mudarPrazoTarefa(id: string, prazoISO: string): Promise<st
   return error ? error.message : null;
 }
 
+/** Solta a tarefa do prazo ("soltar" da revisão semanal): ela continua aberta, sem data. */
+export async function soltarPrazoTarefa(id: string): Promise<string | null> {
+  if (!supabase) return "sem banco";
+  const { error } = await supabase.from("kairos_tarefas").update({ prazo: null }).eq("id", id);
+  return error ? error.message : null;
+}
+
+/** Dias com Despacho registrado no intervalo [deISO, ateISO] — o "X de 7" do jornal. */
+export async function checksEntre(deISO: string, ateISO: string): Promise<number> {
+  if (!supabase) return 0;
+  const { count } = await supabase
+    .from("kairos_rituais")
+    .select("id", { count: "exact", head: true })
+    .eq("tipo", "check_dia")
+    .gte("data", deISO)
+    .lte("data", ateISO);
+  return count ?? 0;
+}
+
+/** Placares das últimas revisões semanais (a média histórica da narrativa do jornal). */
+export async function placaresDeRevisoes(limite = 8): Promise<Record<string, unknown>[]> {
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("kairos_rituais")
+    .select("placar")
+    .eq("tipo", "revisao_semana")
+    .order("data", { ascending: false })
+    .limit(limite);
+  return (data ?? []).map((r: { placar: Record<string, unknown> | null }) => r.placar ?? {});
+}
+
 /** Quantos itens da Inbox foram triados no intervalo [deISO, ateISO) — datas locais. */
 export async function contarTriadasEntre(deISO: string, ateISO: string): Promise<number> {
   if (!supabase) return 0;
