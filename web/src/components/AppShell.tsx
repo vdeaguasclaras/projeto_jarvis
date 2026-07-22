@@ -22,6 +22,8 @@ import EventoModal, { type EventoForm } from "@/components/EventoModal";
 import EventoPanel from "@/components/EventoPanel";
 import TarefaPanel, { type TarefaEdicao } from "@/components/TarefaPanel";
 import ParaPage, { ParaLista } from "@/components/ParaPage";
+import PessoasPage from "@/components/PessoasPage";
+import ArquivoPage from "@/components/ArquivoPage";
 import PrioModal from "@/components/PrioModal";
 import RevisaoModal from "@/components/RevisaoModal";
 import Pwa from "@/components/Pwa";
@@ -50,6 +52,7 @@ import {
   listContainers,
   listEventos,
   listInbox,
+  listIncubados,
   listPessoas,
   listPrioridades,
   listProjetoAreas,
@@ -65,6 +68,7 @@ import {
   type EscopoPrio,
   type Evento,
   type InboxItem,
+  type Incubado,
   type Kind,
   type Nota,
   type Pessoa,
@@ -124,6 +128,7 @@ export default function AppShell() {
   const [tarefaEdit, setTarefaEdit] = useState<Tarefa | null>(null);
   // Páginas PARA: id do container aberto, ou "lista" (índice no celular)
   const [paginaId, setPaginaId] = useState<string | null>(null);
+  const [incubados, setIncubados] = useState<Incubado[]>([]);
   const [prioEscopo, setPrioEscopo] = useState<EscopoPrio | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -150,11 +155,12 @@ export default function AppShell() {
 
   const refresh = useCallback(async () => {
     if (!session) return;
-    const [cs, pa, ps, inb, ts, sq, evD, evS, pd, psem, rev, ns] = await Promise.all([
+    const [cs, pa, ps, inb, incs, ts, sq, evD, evS, pd, psem, rev, ns] = await Promise.all([
       listContainers(),
       listProjetoAreas(),
       listPessoas(),
       listInbox(),
+      listIncubados(),
       listTarefas(),
       sequenciaCheck(),
       // janela estendida para trás: eventos de dia inteiro longos (férias) começam antes
@@ -169,6 +175,7 @@ export default function AppShell() {
     setProjetoAreas(pa);
     setPessoas(ps);
     setInboxItems(inb);
+    setIncubados(incs);
     setTarefas(ts);
     setSeq(sq);
     setEventosDia(evD);
@@ -187,6 +194,7 @@ export default function AppShell() {
       setArquivados([]);
       setProjetoAreas([]);
       setInboxItems([]);
+      setIncubados([]);
       setTarefas([]);
       setEventosDia([]);
       setEventosSemana([]);
@@ -796,19 +804,53 @@ export default function AppShell() {
               containers={containers}
               arquivados={arquivados}
               tarefas={tarefas}
+              notas={notas}
+              pessoas={pessoas}
+              projetoAreas={projetoAreas}
               onOpen={setPaginaId}
+              onPessoas={() => setPaginaId("pessoas")}
               onNotas={() => irParaView("notas")}
+              onAbrirNota={(id) => {
+                setNotaAbrir(id);
+                irParaView("notas");
+              }}
               onGrafo={() => irParaView("grafo")}
               onArquivo={() => setPaginaId("arquivo")}
               onNovo={setNewKind}
+              onLista={(kinds) => setPaginaId(kinds.includes("projeto") ? "lista-projetos" : "lista-areas")}
+            />
+          ) : session && (paginaId === "lista-projetos" || paginaId === "lista-areas") ? (
+            <div className="view-in">
+              <div className="pagewrap">
+                <button className="page-back" onClick={() => setPaginaId("lista")}>← Espaços</button>
+              </div>
+              <ParaLista
+                containers={containers}
+                arquivados={arquivados}
+                tarefas={tarefas}
+                kinds={paginaId === "lista-projetos" ? ["projeto"] : ["area", "recurso"]}
+                onOpen={setPaginaId}
+              />
+            </div>
+          ) : session && paginaId === "pessoas" ? (
+            <PessoasPage
+              userId={session.user.id}
+              pessoas={pessoas}
+              tarefas={tarefas}
+              containers={containers}
+              onBack={() => setPaginaId("lista")}
+              onEditTarefa={setTarefaEdit}
+              onChanged={refresh}
+              onToast={showToast}
             />
           ) : session && paginaId === "arquivo" ? (
-            <ParaLista
-              containers={containers}
+            <ArquivoPage
               arquivados={arquivados}
-              tarefas={tarefas}
-              soArquivo
+              incubados={incubados}
+              onBack={() => setPaginaId("lista")}
               onOpen={setPaginaId}
+              onChanged={refresh}
+              onToast={showToast}
             />
           ) : session && paginaId && [...containers, ...arquivados].some((c) => c.id === paginaId) ? (
             <ParaPage
@@ -819,6 +861,7 @@ export default function AppShell() {
               projetoAreas={projetoAreas}
               tarefas={tarefas}
               notas={notas}
+              pessoas={pessoas}
               onBack={() => setPaginaId(null)}
               onConclude={conclude}
               onEditTarefa={setTarefaEdit}
