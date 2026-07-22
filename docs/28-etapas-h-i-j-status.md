@@ -55,24 +55,21 @@ O wizard de 7 passos (`RevisaoModal`) deu lugar ao **`RevisaoJornal`**:
 - Notificação do Despacho no PWA: **já existia** (Pwa.tsx, uma por dia com
   Inbox pendente, botão 🔔 no trilho) — conferida, nada a fazer.
 
-## ⚠️ Políticas `jim_*` — decisão pendente do Raul
+## Políticas `jim_*` — RESOLVIDO no mesmo dia (remoção, não aperto)
 
-`escrita_staff` das `jim_*` é `qual: true` para qualquer autenticado, e
-`jim_profiles` está **vazia** — apertar agora quebraria a escrita do
-mapa-de-sala até criar os perfis. Como não dá para ver `auth.users` desta
-sessão (bloqueado) nem saber quem usa o Jim, **não apliquei**. Quando o Raul
-quiser (obrigatório antes de abrir o Kairós a outras pessoas), o caminho é:
+Na conversa após a publicação, o Raul decidiu: o projeto do Jim **acabou**, então
+em vez de apertar as políticas, as **19 tabelas `jim_*` foram removidas** (mais a
+função `jim_touch_updated_at` e os 3 triggers) — migração **0012**, aplicada em
+22/07/2026. Antes da remoção, backup completo validado (4.011 linhas + schema com
+colunas/constraints/índices) foi entregue ao Raul na conversa
+(`backup-jim-2026-07-22.zip`). O banco ficou só com as 10 `kairos_*`, todas com
+RLS "dono" — o alerta de segurança que existia desde docs/08 deixou de existir.
 
-```sql
--- 1. criar o(s) perfil(is) de staff do Jim:
-insert into jim_profiles (id, nome, papel) values ('<uuid do usuário>', 'Raul', 'staff');
--- 2. apertar cada escrita_staff (exemplo para uma tabela; repetir nas demais):
-alter policy escrita_staff on jim_jogos using (
-  exists (select 1 from jim_profiles p where p.id = auth.uid() and p.papel in ('staff','admin'))
-) with check (
-  exists (select 1 from jim_profiles p where p.id = auth.uid() and p.papel in ('staff','admin'))
-);
-```
+**Sobras no storage** (arquivos não são exportáveis desta sessão — o proxy
+bloqueia o endpoint de storage): bucket `sumulas` (público, 58 arquivos, 171 MB,
+súmulas digitalizadas do Jim) e `cartoes-resposta` (privado, 2 arquivos, 23 MB,
+origem incerta). Decisão do Raul pendente: baixar pelo painel do Supabase antes
+de eu apagar, apagar direto, ou manter.
 
 ## Como foi verificado
 
